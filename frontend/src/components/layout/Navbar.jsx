@@ -132,7 +132,7 @@ const Navbar = () => {
                       <User className="w-4 h-4 text-white" />
                     </div>
                     <span className="text-sm font-medium text-urdu-brown max-w-24 truncate nastaleeq-primary">
-                      {user?.username}
+                      {user?.name || user?.username || "User"}
                     </span>
                   </button>
 
@@ -143,7 +143,7 @@ const Navbar = () => {
 
                     <div className="px-4 py-3 border-b border-urdu-gold/20 bg-gradient-to-r from-urdu-cream/30 to-transparent">
                       <p className="font-medium text-urdu-brown truncate nastaleeq-primary">
-                        {user?.profile?.fullName || user?.username}
+                        {user?.name || user?.username || "User"}
                       </p>
                       <p className="text-xs text-urdu-maroon capitalize nastaleeq-primary">
                         {user?.role === "admin"
@@ -175,7 +175,15 @@ const Navbar = () => {
                     {/* Dashboard Link */}
                     {canAccessDashboard(user?.role) && (
                       <Link
-                        to={`/dashboard/${user?.role}`}
+                        to={
+                          user?.role === "admin"
+                            ? "/admin"
+                            : user?.role === "poet"
+                            ? "/poet"
+                            : user?.role === "moderator"
+                            ? "/moderator"
+                            : "/dashboard"
+                        }
                         className="flex items-center space-x-2 px-4 py-3 text-sm text-urdu-brown hover:bg-urdu-cream/30 hover:text-urdu-maroon transition-all nastaleeq-primary"
                       >
                         <BarChart3 size={14} />

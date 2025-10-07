@@ -94,9 +94,17 @@ export const AuthProvider = ({ children }) => {
       if (error.response?.status === 401) {
         message = "Invalid email or password";
       } else if (error.response?.status === 403) {
+        const responseData = error.response.data;
         message =
-          error.response.data?.message ||
+          responseData?.message ||
           "Account access denied. Please check your account status.";
+
+        // Return the specific error code for handling in UI
+        return {
+          success: false,
+          message,
+          code: responseData?.code,
+        };
       } else if (error.response?.status === 500) {
         message = "Server error. Please try again later.";
       } else if (error.response?.data?.message) {
@@ -110,7 +118,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       setError(message);
-      return { success: false, message };
+      return { success: false, message, code: error.response?.data?.code };
     } finally {
       setLoading(false);
     }
@@ -126,6 +134,17 @@ export const AuthProvider = ({ children }) => {
       console.log("📡 Registration response:", response.data);
 
       if (response.data.success) {
+        // For poet accounts requiring approval, don't log them in yet
+        if (response.data.requiresApproval) {
+          console.log("📋 Poet registration successful but requires approval");
+          return {
+            success: true,
+            requiresApproval: true,
+            message: response.data.message,
+          };
+        }
+
+        // For readers or auto-approved accounts, proceed with login
         const token = response.data.accessToken || response.data.token;
         localStorage.setItem("token", token);
         setUser(response.data.user);
@@ -313,6 +332,10 @@ export const AuthProvider = ({ children }) => {
     return roles.includes(user.role);
   };
 
+  const updateUser = (updatedData) => {
+    setUser((prev) => ({ ...prev, ...updatedData }));
+  };
+
   const value = {
     user,
     loading,
@@ -321,6 +344,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    updateUser,
     socialLogin,
     forgotPassword,
     resetPassword,

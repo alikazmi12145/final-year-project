@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { authAPI, poetryAPI, adminAPI } from "../services/api";
 import {
   User,
@@ -27,10 +28,14 @@ import {
   Upload,
   Trash2,
   RefreshCw,
+  LogOut,
+  ArrowLeft,
+  BarChart3,
 } from "lucide-react";
 
 const Profile = () => {
   const { user, updateProfile, logout } = useAuth();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [activeSection, setActiveSection] = useState("profile");
   const [loading, setLoading] = useState(false);
@@ -70,31 +75,50 @@ const Profile = () => {
     confirmPassword: "",
   });
   const [formData, setFormData] = useState({
-    fullName: user?.fullName || user?.name || "",
-    bio: user?.bio || "",
-    location: user?.location || "",
-    website: user?.website || "",
-    email: user?.email || "",
+    fullName: "",
+    bio: "",
+    location: "",
+    website: "",
+    email: "",
   });
 
   useEffect(() => {
-    fetchUserData();
-    fetchRecentActivity();
-  }, []);
+    if (user) {
+      setFormData({
+        fullName: user?.fullName || user?.name || "",
+        bio: user?.bio || "",
+        location: user?.location || "",
+        website: user?.website || "",
+        email: user?.email || "",
+      });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserData();
+      fetchRecentActivity();
+    }
+  }, [user]);
 
   const fetchUserData = async () => {
     try {
       setLoading(true);
+
       // Fetch user statistics
       if (user?.role === "poet") {
-        const poetStats = await poetryAPI.getMyPoems();
-        setStatistics((prev) => ({
-          ...prev,
-          totalPoems: poetStats.data?.poems?.length || 0,
-        }));
+        try {
+          const poetStats = await poetryAPI.getMyPoems();
+          setStatistics((prev) => ({
+            ...prev,
+            totalPoems: poetStats.data?.poems?.length || 0,
+          }));
+        } catch (error) {
+          console.log("Poet stats API not available, using default values");
+        }
       }
 
-      // Fetch bookmarked poems
+      // Fetch bookmarked poems - now handled gracefully at API level
       const bookmarkedPoems = await poetryAPI.getBookmarkedPoems();
       setStatistics((prev) => ({
         ...prev,
@@ -105,9 +129,20 @@ const Profile = () => {
       setStatistics((prev) => ({
         ...prev,
         joinedDate: user?.createdAt,
+        poemsRead: 12, // Mock data until API is available
+        likedPoems: 8, // Mock data until API is available
+        totalViews: 245, // Mock data until API is available
       }));
     } catch (error) {
       console.error("Failed to fetch user data:", error);
+      // Set default statistics if all API calls fail
+      setStatistics({
+        poemsRead: 0,
+        likedPoems: 0,
+        bookmarks: 0,
+        totalViews: 0,
+        joinedDate: user?.createdAt || null,
+      });
     } finally {
       setLoading(false);
     }
@@ -268,10 +303,24 @@ const Profile = () => {
     }
   };
 
-  console.log(user);
+  // Debug logging - properly format user object
+  console.log("Profile - User data:", {
+    name: user?.name,
+    role: user?.role,
+    email: user?.email,
+    id: user?._id,
+    fullName: user?.fullName,
+  });
 
   if (!user) {
-    return <di>loading...</di>;
+    return (
+      <div className="min-h-screen cultural-bg flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 text-urdu-maroon animate-spin mx-auto mb-4" />
+          <p className="text-urdu-brown">Loading profile...</p>
+        </div>
+      </div>
+    );
   }
   const stats = [
     {
@@ -297,6 +346,66 @@ const Profile = () => {
   return (
     <div className="min-h-screen cultural-bg py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Navigation Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate("/")}
+              className="flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-urdu-gold/20"
+            >
+              <ArrowLeft className="w-4 h-4 text-urdu-brown" />
+              <span className="text-urdu-brown font-medium">Home</span>
+            </button>
+
+            {/* Dashboard Link for Poets/Admins */}
+            {(user?.role === "poet" ||
+              user?.role === "admin" ||
+              user?.role === "moderator") && (
+              <button
+                onClick={() => {
+                  if (user?.role === "admin") navigate("/admin");
+                  else if (user?.role === "poet") navigate("/poet");
+                  else if (user?.role === "moderator") navigate("/moderator");
+                  else navigate("/dashboard");
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-urdu-brown text-white rounded-lg hover:bg-urdu-maroon transition-colors"
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span className="font-medium">Dashboard</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-sm font-medium text-urdu-brown">
+                {user?.fullName || user?.name || "User"}
+              </p>
+              <p className="text-xs text-urdu-maroon capitalize">
+                {user?.role === "admin"
+                  ? "ایڈمن"
+                  : user?.role === "poet"
+                  ? "شاعر"
+                  : user?.role === "moderator"
+                  ? "منیجر"
+                  : "قاری"}
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                if (window.confirm("Are you sure you want to logout?")) {
+                  logout();
+                  navigate("/auth");
+                }
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="font-medium">Logout</span>
+            </button>
+          </div>
+        </div>
         {/* Message Banner */}
         {message.text && (
           <div
@@ -414,13 +523,15 @@ const Profile = () => {
                     <button
                       onClick={() => {
                         setIsEditing(false);
-                        setFormData({
-                          fullName: user?.fullName || user?.name || "",
-                          bio: user?.bio || "",
-                          location: user?.location || "",
-                          website: user?.website || "",
-                          email: user?.email || "",
-                        });
+                        if (user) {
+                          setFormData({
+                            fullName: user?.fullName || user?.name || "",
+                            bio: user?.bio || "",
+                            location: user?.location || "",
+                            website: user?.website || "",
+                            email: user?.email || "",
+                          });
+                        }
                       }}
                       className="btn-secondary flex items-center gap-2"
                     >

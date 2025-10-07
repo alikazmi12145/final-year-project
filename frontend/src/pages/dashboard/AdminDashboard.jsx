@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
@@ -38,10 +39,13 @@ import {
   Database,
   Globe,
   Zap,
+  LogOut,
+  User,
 } from "lucide-react";
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
   const [poems, setPoems] = useState([]);
@@ -2954,16 +2958,27 @@ const AdminDashboard = () => {
                 ایڈمن کنٹرول پینل - خوش آمدید {user?.name}
               </p>
             </div>
-            <Button
-              onClick={fetchDashboardData}
-              className="flex items-center gap-2"
-              disabled={loading}
-            >
-              <RefreshCw
-                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => navigate("/profile")}
+                className="flex items-center gap-2 bg-urdu-brown"
+              >
+                <User className="w-4 h-4" />
+                Admin Profile
+              </Button>
+              <Button
+                onClick={() => {
+                  if (window.confirm("Are you sure you want to logout?")) {
+                    logout();
+                    navigate("/auth");
+                  }
+                }}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
 

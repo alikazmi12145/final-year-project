@@ -9,6 +9,20 @@ const Layout = ({ children }) => {
   const { loading, user } = useAuth();
   const location = useLocation();
 
+  // Check if current route should hide navbar
+  const hideNavbarRoutes = [
+    "/auth",
+    "/admin",
+    "/poet",
+    "/moderator",
+    "/dashboard",
+    "/profile",
+  ];
+
+  const shouldHideNavbar = hideNavbarRoutes.some((route) =>
+    location.pathname.startsWith(route)
+  );
+
   // Check if current route is auth page
   const isAuthPage = location.pathname === "/auth";
 
@@ -38,7 +52,7 @@ const Layout = ({ children }) => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-urdu-cream/10">
-      <Navbar />
+      {!shouldHideNavbar && <Navbar />}
       <main className="flex-grow relative">
         {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -47,7 +61,7 @@ const Layout = ({ children }) => {
         </div>
         <div className="relative z-10">{children}</div>
       </main>
-      {!user && !isAuthPage && <Footer />}
+      {!user && !isAuthPage && !shouldHideNavbar && <Footer />}
     </div>
   );
 };

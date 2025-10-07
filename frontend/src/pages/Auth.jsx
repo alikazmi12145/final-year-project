@@ -11,6 +11,7 @@ import {
   Star,
   Shield,
   Feather,
+  AlertCircle,
 } from "lucide-react";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { Button } from "../components/ui/Button";
@@ -19,6 +20,10 @@ const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [selectedRole, setSelectedRole] = useState("reader"); // Default to reader
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertType, setAlertType] = useState(""); // "error" or "success"
+  const [showAlert, setShowAlert] = useState(false);
 
   const { login, register, loading, error, setError } = useAuth();
   const navigate = useNavigate();
@@ -32,11 +37,45 @@ const Auth = () => {
     watch,
   } = useForm({ mode: "onChange" });
 
+  // Function to show alert with auto-dismiss
+  const showAlertMessage = (message, type) => {
+    setAlertMessage(message);
+    setAlertType(type);
+    setShowAlert(true);
+
+    // Auto-dismiss after 3 seconds
+    setTimeout(() => {
+      setShowAlert(false);
+      setTimeout(() => {
+        setAlertMessage("");
+        setAlertType("");
+      }, 300); // Wait for fade-out animation
+    }, 3000);
+  };
+
   useEffect(() => {
     setError("");
     setSuccessMessage("");
+    setSelectedRole("reader"); // Reset role selection
+    setShowAlert(false);
+    setAlertMessage("");
+    setAlertType("");
     reset();
   }, [isLogin, setError, reset]);
+
+  // Handle error state changes from AuthContext
+  useEffect(() => {
+    if (error) {
+      showAlertMessage(error, "error");
+    }
+  }, [error]);
+
+  // Handle success message changes
+  useEffect(() => {
+    if (successMessage) {
+      showAlertMessage(successMessage, "success");
+    }
+  }, [successMessage]);
 
   const from = location.state?.from?.pathname || "/dashboard";
 
@@ -48,18 +87,28 @@ const Auth = () => {
 
       let result;
       if (isLogin) {
-        setSuccessMessage("تصدیق کی جا رہی ہے... (Authenticating...)");
+        showAlertMessage(
+          "تصدیق کی جا رہی ہے... / Authenticating...",
+          "success"
+        );
         result = await login({ email: data.email, password: data.password });
       } else {
         if (data.password !== data.confirmPassword) {
-          setError("Passwords do not match");
+          showAlertMessage(
+            "پاس ورڈ میں فرق ہے / Passwords do not match",
+            "error"
+          );
           return;
         }
-        setSuccessMessage("اکاؤنٹ بنایا جا رہا ہے... (Creating account...)");
+        showAlertMessage(
+          "اکاؤنٹ بنایا جا رہا ہے... / Creating account...",
+          "success"
+        );
         result = await register({
           name: data.name,
           email: data.email,
           password: data.password,
+          role: selectedRole, // Include selected role
         });
       }
 
@@ -67,10 +116,29 @@ const Auth = () => {
 
       if (result?.success) {
         console.log("✅ Authentication successful");
-        setSuccessMessage(
+
+        if (!isLogin && result.requiresApproval) {
+          // For poet registration requiring approval, redirect to signin
+          showAlertMessage(
+            "اکاؤنٹ کامیابی سے بن گیا! براہ کرم ایڈمن کی منظوری کا انتظار کریں۔ / Account created successfully! Please wait for admin approval.",
+            "success"
+          );
+          setTimeout(() => {
+            setIsLogin(true); // Switch to login mode
+            reset(); // Clear form
+            showAlertMessage(
+              "اب آپ لاگ ان کر سکتے ہیں جب ایڈمن آپ کے اکاؤنٹ کی منظوری دے دے۔ / You can now login once admin approves your account.",
+              "success"
+            );
+          }, 3000);
+          return;
+        }
+
+        showAlertMessage(
           isLogin
-            ? "کامیابی سے لاگ ان ہو گئے! ریڈائریکٹ ہو رہے ہیں... (Successfully logged in! Redirecting...)"
-            : "اکاؤنٹ کامیابی سے بن گیا! ریڈائریکٹ ہو رہے ہیں... (Account created successfully! Redirecting...)"
+            ? "کامیابی سے لاگ ان ہو گئے! ریڈائریکٹ ہو رہے ہیں... / Successfully logged in! Redirecting..."
+            : "اکاؤنٹ کامیابی سے بن گیا! ریڈائریکٹ ہو رہے ہیں... / Account created successfully! Redirecting...",
+          "success"
         );
 
         // Add a small delay to show success message
@@ -79,13 +147,60 @@ const Auth = () => {
         }, 1500);
       } else {
         console.log("❌ Authentication failed:", result?.message);
-        setError(result?.message || "Authentication failed. Please try again.");
-        setSuccessMessage("");
+
+        // Show specific error messages
+        let errorMessage =
+          result?.message || "Authentication failed. Please try again.";
+
+        if (result?.code === "POET_PENDING_APPROVAL") {
+          errorMessage =
+            "Authentication failed: Your poet account is pending admin approval. Please wait for approval.";
+        } else if (result?.code === "READER_PENDING_APPROVAL") {
+          errorMessage =
+            "Authentication failed: Your reader account is pending admin approval. Please wait for approval.";
+        } else if (errorMessage.toLowerCase().includes("email")) {
+          errorMessage =
+            "آپ کا ای میل درست نہیں ہے۔ براہ کرم چیک کریں۔ (Your email is not correct. Please check.)";
+        } else if (errorMessage.toLowerCase().includes("password")) {
+          errorMessage =
+            "آپ کا پاس ورڈ غلط ہے۔ براہ کرم چیک کریں۔ (Your password is incorrect. Please check.)";
+        } else if (
+          errorMessage.toLowerCase().includes("invalid email or password")
+        ) {
+          errorMessage =
+            "ای میل یا پاس ورڈ غلط ہے۔ براہ کرم چیک کریں۔ (Email or password is incorrect. Please check.)";
+        }
+
+        setError(errorMessage);
+        setShowAlert(false);
       }
     } catch (error) {
       console.error("💥 Authentication error:", error);
-      setError("An unexpected error occurred. Please try again.");
-      setSuccessMessage("");
+
+      let errorMessage = "An unexpected error occurred. Please try again.";
+
+      if (error.response?.status === 401) {
+        errorMessage =
+          "ای میل یا پاس ورڈ غلط ہے۔ براہ کرم چیک کریں۔ (Email or password is incorrect. Please check.)";
+      } else if (error.response?.status === 403) {
+        const responseData = error.response?.data;
+        if (responseData?.code === "POET_PENDING_APPROVAL") {
+          errorMessage =
+            "Authentication failed: Your poet account is pending admin approval. Please wait for approval.";
+        } else if (responseData?.code === "READER_PENDING_APPROVAL") {
+          errorMessage =
+            "Authentication failed: Your reader account is pending admin approval. Please wait for approval.";
+        } else {
+          errorMessage =
+            responseData?.message || "Access denied. Please contact support.";
+        }
+      } else if (error.response?.status === 400) {
+        errorMessage =
+          "غلط معلومات۔ براہ کرم چیک کریں۔ (Invalid information. Please check.)";
+      }
+
+      setError(errorMessage);
+      setShowAlert(false);
     }
   };
 
@@ -170,6 +285,105 @@ const Auth = () => {
         {/* Auth Form */}
         <div className="w-full lg:w-2/3 max-w-md mx-auto">
           <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-urdu-gold/20">
+            {/* Dynamic Alert Message */}
+            {alertMessage && (
+              <div
+                className={`mb-6 p-4 rounded-lg shadow-lg border-2 transition-all duration-300 transform ${
+                  showAlert
+                    ? "opacity-100 translate-y-0 scale-100"
+                    : "opacity-0 -translate-y-2 scale-95"
+                } ${
+                  alertType === "error"
+                    ? "bg-red-50 border-red-300 text-red-800"
+                    : "bg-green-50 border-green-300 text-green-800"
+                }`}
+              >
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                        alertType === "error" ? "bg-red-500" : "bg-green-500"
+                      }`}
+                    >
+                      {alertType === "error" ? (
+                        <svg
+                          className="w-4 h-4 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="w-4 h-4 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <div className="ml-3 flex-1">
+                    <h3
+                      className={`text-sm font-bold mb-1 ${
+                        alertType === "error"
+                          ? "text-red-800"
+                          : "text-green-800"
+                      }`}
+                    >
+                      {alertType === "error"
+                        ? "خرابی / Error"
+                        : "کامیابی / Success"}
+                    </h3>
+                    <p
+                      className={`text-sm font-medium leading-relaxed ${
+                        alertType === "error"
+                          ? "text-red-700"
+                          : "text-green-700"
+                      }`}
+                    >
+                      {alertMessage}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowAlert(false)}
+                    className={`ml-2 ${
+                      alertType === "error"
+                        ? "text-red-400 hover:text-red-600"
+                        : "text-green-400 hover:text-green-600"
+                    }`}
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Header */}
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-urdu-maroon to-urdu-brown rounded-full mb-4 shadow-lg">
@@ -189,64 +403,6 @@ const Auth = () => {
                 {isLogin ? "اپنے اکاؤنٹ میں داخل ہوں" : "نیا اکاؤنٹ بنائیں"}
               </p>
             </div>
-
-            {/* Success Message */}
-            {successMessage && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                      <svg
-                        className="w-3 h-3 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-green-800">
-                      {successMessage}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Error Message */}
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                      <svg
-                        className="w-3 h-3 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-red-800">{error}</p>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Form */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -274,6 +430,87 @@ const Auth = () => {
                     <p className="text-red-500 text-xs mt-1">
                       {errors.name.message}
                     </p>
+                  )}
+                </div>
+              )}
+
+              {/* Role Selection - Only for Registration */}
+              {!isLogin && (
+                <div>
+                  <label className="block text-sm font-medium text-urdu-brown mb-2">
+                    <Shield className="inline w-4 h-4 mr-2" />
+                    آپ کا کردار (Your Role) *
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label
+                      className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${
+                        selectedRole === "reader"
+                          ? "border-urdu-gold bg-urdu-gold/10"
+                          : "border-gray-300 hover:border-urdu-gold/50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="role"
+                        value="reader"
+                        checked={selectedRole === "reader"}
+                        onChange={(e) => setSelectedRole(e.target.value)}
+                        className="sr-only"
+                      />
+                      <div className="text-center w-full">
+                        <User className="w-6 h-6 mx-auto mb-2 text-green-600" />
+                        <span className="text-sm font-medium text-urdu-brown">
+                          قارئ (Reader)
+                        </span>
+                        <p className="text-xs text-gray-500 mt-1">
+                          شاعری پڑھیں اور لطف اٹھائیں
+                        </p>
+                      </div>
+                    </label>
+                    <label
+                      className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${
+                        selectedRole === "poet"
+                          ? "border-urdu-gold bg-urdu-gold/10"
+                          : "border-gray-300 hover:border-urdu-gold/50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="role"
+                        value="poet"
+                        checked={selectedRole === "poet"}
+                        onChange={(e) => setSelectedRole(e.target.value)}
+                        className="sr-only"
+                      />
+                      <div className="text-center w-full">
+                        <Feather className="w-6 h-6 mx-auto mb-2 text-blue-600" />
+                        <span className="text-sm font-medium text-urdu-brown">
+                          شاعر (Poet)
+                        </span>
+                        <p className="text-xs text-gray-500 mt-1">
+                          شاعری لکھیں اور شیئر کریں
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                  {selectedRole === "poet" && (
+                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-start">
+                        <AlertCircle className="w-4 h-4 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs text-yellow-700">
+                            <strong>شاعر اکاؤنٹ کے لیے:</strong> آپ کے اکاؤنٹ کو
+                            ایڈمن کی منظوری درکار ہوگی۔ رجسٹریشن کے بعد لاگ ان
+                            کرنے سے پہلے منظوری کا انتظار کریں۔
+                          </p>
+                          <p className="text-xs text-yellow-600 mt-1">
+                            <strong>For Poet Account:</strong> Your account will
+                            require admin approval. Please wait for approval
+                            before attempting to login.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
