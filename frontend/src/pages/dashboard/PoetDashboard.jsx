@@ -63,10 +63,12 @@ import {
   Instagram,
   Youtube,
   Shield,
+  LogOut,
+  User,
 } from "lucide-react";
 
 const PoetDashboard = () => {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -697,15 +699,27 @@ const PoetDashboard = () => {
             {/* Action Buttons */}
             <div className="flex items-center space-x-3">
               <Button
-                onClick={refreshData}
-                disabled={refreshing}
+                onClick={() => navigate("/profile")}
                 variant="outline"
                 size="sm"
+                className="nastaleeq-primary"
               >
-                <RefreshCw
-                  className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
-                />
-                ریفریش
+                <User className="w-4 h-4 mr-2" />
+                پروفائل
+              </Button>
+              <Button
+                onClick={() => {
+                  if (window.confirm("کیا آپ واقعی لاگ آؤٹ کرنا چاہتے ہیں؟")) {
+                    logout();
+                    navigate("/auth");
+                  }
+                }}
+                variant="outline"
+                size="sm"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 nastaleeq-primary"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                لاگ آؤٹ
               </Button>
               <Button
                 onClick={handleCreatePoem}

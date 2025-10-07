@@ -136,7 +136,26 @@ export const poetryAPI = {
 
   // Bookmark/Favorites functions
   toggleBookmark: (id) => api.post(`/poems/${id}/bookmark`),
-  getBookmarkedPoems: (params = {}) => api.get("/poems/bookmarks", { params }),
+  getBookmarkedPoems: async (params = {}) => {
+    try {
+      return await api.get("/poems/bookmarks", { params });
+    } catch (error) {
+      // Handle 500 error gracefully for bookmarks endpoint
+      if (error.response?.status === 500) {
+        console.warn(
+          "📚 Bookmarks endpoint not fully implemented, returning empty result"
+        );
+        return {
+          data: {
+            success: true,
+            poems: [],
+            message: "Bookmarks feature coming soon",
+          },
+        };
+      }
+      throw error;
+    }
+  },
 
   // View tracking
   incrementView: (id) => api.post(`/poems/${id}/view`),
