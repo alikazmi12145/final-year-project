@@ -2964,11 +2964,11 @@ const AdminDashboard = () => {
                 className="flex items-center gap-2 bg-urdu-brown"
               >
                 <User className="w-4 h-4" />
-                Admin Profile
+                <span className="nastaleeq-primary">ایڈمن پروفائل</span>
               </Button>
               <Button
                 onClick={() => {
-                  if (window.confirm("Are you sure you want to logout?")) {
+                  if (window.confirm("کیا آپ واقعی لاگ آؤٹ کرنا چاہتے ہیں؟")) {
                     logout();
                     navigate("/auth");
                   }
@@ -2976,7 +2976,7 @@ const AdminDashboard = () => {
                 className="flex items-center gap-2 bg-red-600 hover:bg-red-700"
               >
                 <LogOut className="w-4 h-4" />
-                Logout
+                <span className="nastaleeq-primary">لاگ آؤٹ</span>
               </Button>
             </div>
           </div>

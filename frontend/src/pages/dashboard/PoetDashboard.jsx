@@ -754,7 +754,9 @@ const PoetDashboard = () => {
           <Card className="p-6 bg-gradient-to-br from-white to-purple-50 border-l-4 border-purple-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">کل views</p>
+                <p className="text-sm text-gray-600 mb-1 nastaleeq-primary">
+                  کل views
+                </p>
                 <p className="text-2xl font-bold text-urdu-brown">
                   {analytics.totalViews}
                 </p>
@@ -769,7 +771,9 @@ const PoetDashboard = () => {
           <Card className="p-6 bg-gradient-to-br from-white to-red-50 border-l-4 border-red-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">کل پسند</p>
+                <p className="text-sm text-gray-600 mb-1 nastaleeq-primary">
+                  کل پسند
+                </p>
                 <p className="text-2xl font-bold text-urdu-brown">
                   {analytics.totalLikes}
                 </p>
@@ -960,7 +964,7 @@ const PoetDashboard = () => {
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown"
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown nastaleeq-primary"
                 >
                   <option value="all">تمام حالات</option>
                   <option value="published">شائع شدہ</option>
@@ -972,7 +976,7 @@ const PoetDashboard = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown"
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown nastaleeq-primary"
                 >
                   <option value="newest">نیا پہلے</option>
                   <option value="oldest">پرانا پہلے</option>

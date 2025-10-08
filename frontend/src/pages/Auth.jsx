@@ -208,16 +208,16 @@ const Auth = () => {
     <div className="min-h-screen bg-gradient-to-br from-urdu-cream via-white to-urdu-gold/10 flex items-center justify-center py-12 px-4 relative overflow-hidden">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-20 left-10 text-8xl text-urdu-maroon font-urdu">
+        <div className="absolute top-20 left-10 text-8xl text-urdu-maroon nastaleeq-heading">
           ب
         </div>
-        <div className="absolute top-40 right-20 text-6xl text-urdu-brown font-urdu">
+        <div className="absolute top-40 right-20 text-6xl text-urdu-brown nastaleeq-heading">
           ز
         </div>
-        <div className="absolute bottom-20 left-1/3 text-7xl text-urdu-gold font-urdu">
+        <div className="absolute bottom-20 left-1/3 text-7xl text-urdu-gold nastaleeq-heading">
           م
         </div>
-        <div className="absolute top-1/3 right-10 text-5xl text-urdu-maroon font-urdu">
+        <div className="absolute top-1/3 right-10 text-5xl text-urdu-maroon nastaleeq-heading">
           س
         </div>
       </div>
@@ -230,7 +230,7 @@ const Auth = () => {
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full mb-4">
                 <User className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-urdu-brown mb-2">
+              <h3 className="text-xl font-bold text-urdu-brown mb-2 nastaleeq-heading">
                 آسان رجسٹریشن
               </h3>
               <h4 className="text-lg font-semibold text-urdu-maroon mb-2">
@@ -242,7 +242,7 @@ const Auth = () => {
               <div className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
                 <div>
-                  <p className="text-urdu-brown font-medium">
+                  <p className="text-urdu-brown font-medium nastaleeq-primary">
                     قارئین کے لیے: صرف لاگ ان کریں
                   </p>
                   <p className="text-gray-600">
@@ -254,7 +254,7 @@ const Auth = () => {
               <div className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                 <div>
-                  <p className="text-urdu-brown font-medium">
+                  <p className="text-urdu-brown font-medium nastaleeq-primary">
                     خودکار اکاؤنٹ بنایا جائے گا
                   </p>
                   <p className="text-gray-600">Account created automatically</p>
@@ -264,7 +264,9 @@ const Auth = () => {
               <div className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-urdu-gold rounded-full mt-2 flex-shrink-0"></div>
                 <div>
-                  <p className="text-urdu-brown font-medium">فوری رسائی</p>
+                  <p className="text-urdu-brown font-medium nastaleeq-primary">
+                    فوری رسائی
+                  </p>
                   <p className="text-gray-600">Immediate access to poetry</p>
                 </div>
               </div>
@@ -274,7 +276,7 @@ const Auth = () => {
               <p className="text-xs text-green-700 text-center">
                 No registration needed for readers!
                 <br />
-                <span className="font-urdu">
+                <span className="font-urdu nastaleeq-primary">
                   قارئین کو رجسٹریشن کی ضرورت نہیں!
                 </span>
               </p>
@@ -393,13 +395,13 @@ const Auth = () => {
                   <User className="w-10 h-10 text-white" />
                 )}
               </div>
-              <h1 className="text-3xl font-bold text-urdu-brown mb-2 font-urdu">
+              <h1 className="text-3xl font-bold text-urdu-brown mb-2 nastaleeq-heading">
                 {isLogin ? "داخل ہوں" : "رجسٹر کریں"}
               </h1>
               <h2 className="text-xl font-semibold text-urdu-maroon mb-2">
                 {isLogin ? "Login" : "Register"}
               </h2>
-              <p className="text-gray-600 text-sm">
+              <p className="text-gray-600 text-sm nastaleeq-primary">
                 {isLogin ? "اپنے اکاؤنٹ میں داخل ہوں" : "نیا اکاؤنٹ بنائیں"}
               </p>
             </div>
@@ -409,7 +411,7 @@ const Auth = () => {
               {/* Name Field - Only for Registration */}
               {!isLogin && (
                 <div>
-                  <label className="block text-sm font-medium text-urdu-brown mb-2">
+                  <label className="block text-sm font-medium text-urdu-brown mb-2 nastaleeq-primary">
                     <User className="inline w-4 h-4 mr-2" />
                     نام (Name) *
                   </label>
@@ -423,7 +425,7 @@ const Auth = () => {
                     })}
                     type="text"
                     placeholder="اپنا نام لکھیں / Enter your name"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-gold focus:border-transparent transition-all text-right"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-gold focus:border-transparent transition-all text-right nastaleeq-primary"
                     style={{ direction: "rtl" }}
                   />
                   {errors.name && (
@@ -437,7 +439,7 @@ const Auth = () => {
               {/* Role Selection - Only for Registration */}
               {!isLogin && (
                 <div>
-                  <label className="block text-sm font-medium text-urdu-brown mb-2">
+                  <label className="block text-sm font-medium text-urdu-brown mb-2 nastaleeq-primary">
                     <Shield className="inline w-4 h-4 mr-2" />
                     آپ کا کردار (Your Role) *
                   </label>
@@ -459,10 +461,10 @@ const Auth = () => {
                       />
                       <div className="text-center w-full">
                         <User className="w-6 h-6 mx-auto mb-2 text-green-600" />
-                        <span className="text-sm font-medium text-urdu-brown">
+                        <span className="text-sm font-medium text-urdu-brown nastaleeq-primary">
                           قارئ (Reader)
                         </span>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-gray-500 mt-1 nastaleeq-primary">
                           شاعری پڑھیں اور لطف اٹھائیں
                         </p>
                       </div>
@@ -484,10 +486,10 @@ const Auth = () => {
                       />
                       <div className="text-center w-full">
                         <Feather className="w-6 h-6 mx-auto mb-2 text-blue-600" />
-                        <span className="text-sm font-medium text-urdu-brown">
+                        <span className="text-sm font-medium text-urdu-brown nastaleeq-primary">
                           شاعر (Poet)
                         </span>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-gray-500 mt-1 nastaleeq-primary">
                           شاعری لکھیں اور شیئر کریں
                         </p>
                       </div>
@@ -498,7 +500,7 @@ const Auth = () => {
                       <div className="flex items-start">
                         <AlertCircle className="w-4 h-4 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" />
                         <div>
-                          <p className="text-xs text-yellow-700">
+                          <p className="text-xs text-yellow-700 nastaleeq-primary">
                             <strong>شاعر اکاؤنٹ کے لیے:</strong> آپ کے اکاؤنٹ کو
                             ایڈمن کی منظوری درکار ہوگی۔ رجسٹریشن کے بعد لاگ ان
                             کرنے سے پہلے منظوری کا انتظار کریں۔
@@ -517,7 +519,7 @@ const Auth = () => {
 
               {/* Email Field */}
               <div>
-                <label className="block text-sm font-medium text-urdu-brown mb-2">
+                <label className="block text-sm font-medium text-urdu-brown mb-2 nastaleeq-primary">
                   <Mail className="inline w-4 h-4 mr-2" />
                   ای میل (Email) *
                 </label>
@@ -542,7 +544,7 @@ const Auth = () => {
 
               {/* Password Field */}
               <div>
-                <label className="block text-sm font-medium text-urdu-brown mb-2">
+                <label className="block text-sm font-medium text-urdu-brown mb-2 nastaleeq-primary">
                   <Lock className="inline w-4 h-4 mr-2" />
                   پاس ورڈ (Password) *
                 </label>
@@ -557,7 +559,7 @@ const Auth = () => {
                     })}
                     type={showPassword ? "text" : "password"}
                     placeholder="پاس ورڈ درج کریں / Enter password"
-                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-gold focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-gold focus:border-transparent transition-all nastaleeq-primary"
                   />
                   <button
                     type="button"
@@ -581,7 +583,7 @@ const Auth = () => {
               {/* Confirm Password Field - Only for Registration */}
               {!isLogin && (
                 <div>
-                  <label className="block text-sm font-medium text-urdu-brown mb-2">
+                  <label className="block text-sm font-medium text-urdu-brown mb-2 nastaleeq-primary">
                     <Lock className="inline w-4 h-4 mr-2" />
                     پاس ورڈ کی تصدیق (Confirm Password) *
                   </label>
@@ -593,7 +595,7 @@ const Auth = () => {
                     })}
                     type="password"
                     placeholder="پاس ورڈ دوبارہ درج کریں / Re-enter password"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-gold focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-gold focus:border-transparent transition-all nastaleeq-primary"
                   />
                   {errors.confirmPassword && (
                     <p className="text-red-500 text-xs mt-1">
@@ -607,7 +609,7 @@ const Auth = () => {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-urdu-maroon to-urdu-brown hover:from-urdu-brown hover:to-urdu-maroon text-white font-semibold py-3 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
+                className="w-full bg-gradient-to-r from-urdu-maroon to-urdu-brown hover:from-urdu-brown hover:to-urdu-maroon text-white font-semibold py-3 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg nastaleeq-primary"
               >
                 {loading ? (
                   <div className="flex items-center justify-center">
@@ -628,13 +630,13 @@ const Auth = () => {
 
             {/* Toggle Login/Register */}
             <div className="mt-8 text-center">
-              <p className="text-gray-600 mb-2">
+              <p className="text-gray-600 mb-2 nastaleeq-primary">
                 {isLogin ? "کیا آپ کا اکاؤنٹ نہیں ہے؟" : "پہلے سے اکاؤنٹ ہے؟"}
               </p>
               <button
                 type="button"
                 onClick={() => setIsLogin(!isLogin)}
-                className="text-urdu-maroon hover:text-urdu-brown font-semibold transition-colors"
+                className="text-urdu-maroon hover:text-urdu-brown font-semibold transition-colors nastaleeq-primary"
               >
                 {isLogin
                   ? "نیا اکاؤنٹ بنائیں (Create Account)"
@@ -644,21 +646,27 @@ const Auth = () => {
 
             {/* Features for Users */}
             <div className="mt-8 border-t border-gray-200 pt-6">
-              <h3 className="text-lg font-semibold text-urdu-brown mb-4 text-center">
+              <h3 className="text-lg font-semibold text-urdu-brown mb-4 text-center nastaleeq-heading">
                 بازمِ سخن کی خصوصیات
               </h3>
               <div className="grid grid-cols-1 gap-3 text-sm">
                 <div className="flex items-center text-gray-600">
                   <Star className="w-4 h-4 text-urdu-gold mr-2 flex-shrink-0" />
-                  <span>کلاسیکی اردو شاعری کا خزانہ</span>
+                  <span className="nastaleeq-primary">
+                    کلاسیکی اردو شاعری کا خزانہ
+                  </span>
                 </div>
                 <div className="flex items-center text-gray-600">
                   <Feather className="w-4 h-4 text-urdu-gold mr-2 flex-shrink-0" />
-                  <span>مشاعرے اور شعری مقابلے</span>
+                  <span className="nastaleeq-primary">
+                    مشاعرے اور شعری مقابلے
+                  </span>
                 </div>
                 <div className="flex items-center text-gray-600">
                   <Shield className="w-4 h-4 text-urdu-gold mr-2 flex-shrink-0" />
-                  <span>محفوظ اور قابل اعتماد پلیٹ فارم</span>
+                  <span className="nastaleeq-primary">
+                    محفوظ اور قابل اعتماد پلیٹ فارم
+                  </span>
                 </div>
               </div>
             </div>
