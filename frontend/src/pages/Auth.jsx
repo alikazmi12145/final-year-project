@@ -12,20 +12,32 @@ import {
   Shield,
   Feather,
   AlertCircle,
+  RotateCcw,
 } from "lucide-react";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { Button } from "../components/ui/Button";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isResetPassword, setIsResetPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [selectedRole, setSelectedRole] = useState("reader"); // Default to reader
   const [alertMessage, setAlertMessage] = useState("");
   const [alertType, setAlertType] = useState(""); // "error" or "success"
   const [showAlert, setShowAlert] = useState(false);
+  const [resetToken, setResetToken] = useState(null);
 
-  const { login, register, loading, error, setError } = useAuth();
+  const {
+    login,
+    register,
+    forgotPassword,
+    resetPassword,
+    loading,
+    error,
+    setError,
+  } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -61,7 +73,24 @@ const Auth = () => {
     setAlertMessage("");
     setAlertType("");
     reset();
-  }, [isLogin, setError, reset]);
+
+    // Check for reset token in URL
+    const urlParams = new URLSearchParams(location.search);
+    const token = urlParams.get("token");
+    if (token) {
+      setResetToken(token);
+      setIsResetPassword(true);
+      setIsLogin(false);
+      setIsForgotPassword(false);
+    }
+  }, [
+    isLogin,
+    isForgotPassword,
+    isResetPassword,
+    setError,
+    reset,
+    location.search,
+  ]);
 
   // Handle error state changes from AuthContext
   useEffect(() => {
@@ -81,11 +110,66 @@ const Auth = () => {
 
   const onSubmit = async (data) => {
     try {
-      console.log("🔄 Form submission:", { email: data.email, isLogin });
       setError("");
       setSuccessMessage("");
 
       let result;
+
+      if (isForgotPassword) {
+        showAlertMessage(
+          "بھیجا جا رہا ہے... / Sending reset email...",
+          "success"
+        );
+        result = await forgotPassword(data.email);
+
+        if (result?.success) {
+          showAlertMessage(
+            "پاس ورڈ ری سیٹ لنک آپ کے ای میل پر بھیج دیا گیا ہے۔ / Password reset link has been sent to your email.",
+            "success"
+          );
+          setTimeout(() => {
+            setIsForgotPassword(false);
+            setIsLogin(true);
+          }, 3000);
+        } else {
+          setError(result?.message || "Failed to send reset email");
+        }
+        return;
+      }
+
+      if (isResetPassword) {
+        if (data.password !== data.confirmPassword) {
+          showAlertMessage(
+            "پاس ورڈ میں فرق ہے / Passwords do not match",
+            "error"
+          );
+          return;
+        }
+
+        showAlertMessage(
+          "پاس ورڈ تبدیل کیا جا رہا ہے... / Resetting password...",
+          "success"
+        );
+        result = await resetPassword(resetToken, data.password);
+
+        if (result?.success) {
+          showAlertMessage(
+            "پاس ورڈ کامیابی سے تبدیل ہو گیا! اب لاگ ان کریں۔ / Password reset successfully! Please login now.",
+            "success"
+          );
+          setTimeout(() => {
+            setIsResetPassword(false);
+            setIsLogin(true);
+            setResetToken(null);
+            // Clear URL parameters
+            navigate("/auth", { replace: true });
+          }, 3000);
+        } else {
+          setError(result?.message || "Failed to reset password");
+        }
+        return;
+      }
+
       if (isLogin) {
         showAlertMessage(
           "تصدیق کی جا رہی ہے... / Authenticating...",
@@ -389,27 +473,49 @@ const Auth = () => {
             {/* Header */}
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-urdu-maroon to-urdu-brown rounded-full mb-4 shadow-lg">
-                {isLogin ? (
+                {isForgotPassword ? (
+                  <Mail className="w-10 h-10 text-white" />
+                ) : isResetPassword ? (
+                  <RotateCcw className="w-10 h-10 text-white" />
+                ) : isLogin ? (
                   <Lock className="w-10 h-10 text-white" />
                 ) : (
                   <User className="w-10 h-10 text-white" />
                 )}
               </div>
               <h1 className="text-3xl font-bold text-urdu-brown mb-2 nastaleeq-heading">
-                {isLogin ? "داخل ہوں" : "رجسٹر کریں"}
+                {isForgotPassword
+                  ? "پاس ورڈ بھول گئے"
+                  : isResetPassword
+                  ? "نیا پاس ورڈ"
+                  : isLogin
+                  ? "داخل ہوں"
+                  : "رجسٹر کریں"}
               </h1>
               <h2 className="text-xl font-semibold text-urdu-maroon mb-2">
-                {isLogin ? "Login" : "Register"}
+                {isForgotPassword
+                  ? "Forgot Password"
+                  : isResetPassword
+                  ? "Reset Password"
+                  : isLogin
+                  ? "Login"
+                  : "Register"}
               </h2>
               <p className="text-gray-600 text-sm nastaleeq-primary">
-                {isLogin ? "اپنے اکاؤنٹ میں داخل ہوں" : "نیا اکاؤنٹ بنائیں"}
+                {isForgotPassword
+                  ? "اپنا ای میل درج کریں"
+                  : isResetPassword
+                  ? "نیا پاس ورڈ درج کریں"
+                  : isLogin
+                  ? "اپنے اکاؤنٹ میں داخل ہوں"
+                  : "نیا اکاؤنٹ بنائیں"}
               </p>
             </div>
 
             {/* Form */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* Name Field - Only for Registration */}
-              {!isLogin && (
+              {!isLogin && !isForgotPassword && !isResetPassword && (
                 <div>
                   <label className="block text-sm font-medium text-urdu-brown mb-2 nastaleeq-primary">
                     <User className="inline w-4 h-4 mr-2" />
@@ -437,7 +543,7 @@ const Auth = () => {
               )}
 
               {/* Role Selection - Only for Registration */}
-              {!isLogin && (
+              {!isLogin && !isForgotPassword && !isResetPassword && (
                 <div>
                   <label className="block text-sm font-medium text-urdu-brown mb-2 nastaleeq-primary">
                     <Shield className="inline w-4 h-4 mr-2" />
@@ -542,46 +648,55 @@ const Auth = () => {
                 )}
               </div>
 
-              {/* Password Field */}
-              <div>
-                <label className="block text-sm font-medium text-urdu-brown mb-2 nastaleeq-primary">
-                  <Lock className="inline w-4 h-4 mr-2" />
-                  پاس ورڈ (Password) *
-                </label>
-                <div className="relative">
-                  <input
-                    {...registerField("password", {
-                      required: "Password is required",
-                      minLength: {
-                        value: 6,
-                        message: "Password must be at least 6 characters",
-                      },
-                    })}
-                    type={showPassword ? "text" : "password"}
-                    placeholder="پاس ورڈ درج کریں / Enter password"
-                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-gold focus:border-transparent transition-all nastaleeq-primary"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
+              {/* Password Field - Only for Login, Register, and Reset Password */}
+              {!isForgotPassword && (
+                <div>
+                  <label className="block text-sm font-medium text-urdu-brown mb-2 nastaleeq-primary">
+                    <Lock className="inline w-4 h-4 mr-2" />
+                    {isResetPassword
+                      ? "نیا پاس ورڈ (New Password)"
+                      : "پاس ورڈ (Password)"}{" "}
+                    *
+                  </label>
+                  <div className="relative">
+                    <input
+                      {...registerField("password", {
+                        required: "Password is required",
+                        minLength: {
+                          value: 6,
+                          message: "Password must be at least 6 characters",
+                        },
+                      })}
+                      type={showPassword ? "text" : "password"}
+                      placeholder={
+                        isResetPassword
+                          ? "نیا پاس ورڈ درج کریں / Enter new password"
+                          : "پاس ورڈ درج کریں / Enter password"
+                      }
+                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-gold focus:border-transparent transition-all nastaleeq-primary"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.password.message}
+                    </p>
+                  )}
                 </div>
-                {errors.password && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {errors.password.message}
-                  </p>
-                )}
-              </div>
+              )}
 
-              {/* Confirm Password Field - Only for Registration */}
-              {!isLogin && (
+              {/* Confirm Password Field - Only for Registration and Reset Password */}
+              {!isLogin && !isForgotPassword && (
                 <div>
                   <label className="block text-sm font-medium text-urdu-brown mb-2 nastaleeq-primary">
                     <Lock className="inline w-4 h-4 mr-2" />
@@ -615,61 +730,136 @@ const Auth = () => {
                   <div className="flex items-center justify-center">
                     <LoadingSpinner size="sm" className="mr-2" />
                     <span>
-                      {isLogin
+                      {isForgotPassword
+                        ? "بھیجا جا رہا ہے... (Sending...)"
+                        : isResetPassword
+                        ? "تبدیل کیا جا رہا ہے... (Resetting...)"
+                        : isLogin
                         ? "داخل ہو رہے ہیں... (Logging in...)"
                         : "رجسٹر ہو رہے ہیں... (Registering...)"}
                     </span>
                   </div>
                 ) : (
                   <span>
-                    {isLogin ? "داخل ہوں (Login)" : "رجسٹر کریں (Register)"}
+                    {isForgotPassword
+                      ? "ای میل بھیجیں (Send Email)"
+                      : isResetPassword
+                      ? "پاس ورڈ تبدیل کریں (Reset Password)"
+                      : isLogin
+                      ? "داخل ہوں (Login)"
+                      : "رجسٹر کریں (Register)"}
                   </span>
                 )}
               </Button>
             </form>
 
-            {/* Toggle Login/Register */}
-            <div className="mt-8 text-center">
-              <p className="text-gray-600 mb-2 nastaleeq-primary">
-                {isLogin ? "کیا آپ کا اکاؤنٹ نہیں ہے؟" : "پہلے سے اکاؤنٹ ہے؟"}
-              </p>
-              <button
-                type="button"
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-urdu-maroon hover:text-urdu-brown font-semibold transition-colors nastaleeq-primary"
-              >
-                {isLogin
-                  ? "نیا اکاؤنٹ بنائیں (Create Account)"
-                  : "لاگ ان کریں (Login)"}
-              </button>
+            {/* Navigation Links */}
+            <div className="mt-8 text-center space-y-4">
+              {!isResetPassword && (
+                <>
+                  <div>
+                    <p className="text-gray-600 mb-2 nastaleeq-primary">
+                      {isForgotPassword
+                        ? "واپس لاگ ان میں جانا چاہتے ہیں؟"
+                        : isLogin
+                        ? "کیا آپ کا اکاؤنٹ نہیں ہے؟"
+                        : "پہلے سے اکاؤنٹ ہے؟"}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isForgotPassword) {
+                          setIsForgotPassword(false);
+                          setIsLogin(true);
+                        } else {
+                          setIsLogin(!isLogin);
+                          setIsForgotPassword(false);
+                        }
+                      }}
+                      className="text-urdu-maroon hover:text-urdu-brown font-semibold transition-colors nastaleeq-primary"
+                    >
+                      {isForgotPassword
+                        ? "واپس لاگ ان (Back to Login)"
+                        : isLogin
+                        ? "نیا اکاؤنٹ بنائیں (Create Account)"
+                        : "لاگ ان کریں (Login)"}
+                    </button>
+                  </div>
+
+                  {isLogin && !isForgotPassword && (
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsForgotPassword(true);
+                          setIsLogin(false);
+                        }}
+                        className="text-gray-500 hover:text-urdu-maroon text-sm transition-colors nastaleeq-primary"
+                      >
+                        پاس ورڈ بھول گئے؟ (Forgot Password?)
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
-            {/* Features for Users */}
-            <div className="mt-8 border-t border-gray-200 pt-6">
-              <h3 className="text-lg font-semibold text-urdu-brown mb-4 text-center nastaleeq-heading">
-                بازمِ سخن کی خصوصیات
-              </h3>
-              <div className="grid grid-cols-1 gap-3 text-sm">
-                <div className="flex items-center text-gray-600">
-                  <Star className="w-4 h-4 text-urdu-gold mr-2 flex-shrink-0" />
-                  <span className="nastaleeq-primary">
-                    کلاسیکی اردو شاعری کا خزانہ
-                  </span>
-                </div>
-                <div className="flex items-center text-gray-600">
-                  <Feather className="w-4 h-4 text-urdu-gold mr-2 flex-shrink-0" />
-                  <span className="nastaleeq-primary">
-                    مشاعرے اور شعری مقابلے
-                  </span>
-                </div>
-                <div className="flex items-center text-gray-600">
-                  <Shield className="w-4 h-4 text-urdu-gold mr-2 flex-shrink-0" />
-                  <span className="nastaleeq-primary">
-                    محفوظ اور قابل اعتماد پلیٹ فارم
-                  </span>
+            {/* Features for Users or Reset Password Info */}
+            {!isResetPassword ? (
+              <div className="mt-8 border-t border-gray-200 pt-6">
+                {isForgotPassword ? (
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold text-urdu-brown mb-3 nastaleeq-heading">
+                      پاس ورڈ ری سیٹ کی معلومات
+                    </h3>
+                    <div className="text-sm text-gray-600 space-y-2 nastaleeq-primary">
+                      <p>• اپنا رجسٹرڈ ای میل ایڈریس درج کریں</p>
+                      <p>• آپ کو ای میل میں ری سیٹ لنک ملے گا</p>
+                      <p>• لنک پر کلک کر کے نیا پاس ورڈ بنائیں</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-semibold text-urdu-brown mb-4 text-center nastaleeq-heading">
+                      بازمِ سخن کی خصوصیات
+                    </h3>
+                    <div className="grid grid-cols-1 gap-3 text-sm">
+                      <div className="flex items-center text-gray-600">
+                        <Star className="w-4 h-4 text-urdu-gold mr-2 flex-shrink-0" />
+                        <span className="nastaleeq-primary">
+                          کلاسیکی اردو شاعری کا خزانہ
+                        </span>
+                      </div>
+                      <div className="flex items-center text-gray-600">
+                        <Feather className="w-4 h-4 text-urdu-gold mr-2 flex-shrink-0" />
+                        <span className="nastaleeq-primary">
+                          مشاعرے اور شعری مقابلے
+                        </span>
+                      </div>
+                      <div className="flex items-center text-gray-600">
+                        <Shield className="w-4 h-4 text-urdu-gold mr-2 flex-shrink-0" />
+                        <span className="nastaleeq-primary">
+                          محفوظ اور قابل اعتماد پلیٹ فارم
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="mt-8 border-t border-gray-200 pt-6">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-urdu-brown mb-3 nastaleeq-heading">
+                    نیا پاس ورڈ بنانے کی ہدایات
+                  </h3>
+                  <div className="text-sm text-gray-600 space-y-2 nastaleeq-primary">
+                    <p>• کم از کم 6 حروف کا پاس ورڈ استعمال کریں</p>
+                    <p>• مضبوط پاس ورڈ بنانے کے لیے حروف اور نمبر ملائیں</p>
+                    <p>• نیا پاس ورڈ محفوظ جگہ محفوظ کریں</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

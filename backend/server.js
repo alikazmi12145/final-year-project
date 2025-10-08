@@ -17,7 +17,13 @@ import dashboardRoutes from "./routes/dashboard.js";
 import poetryCollectionRoutes from "./routes/poetryCollection.js";
 
 // Load environment variables
-dotenv.config();
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+dotenv.config({ path: join(__dirname, ".env") });
 
 const app = express();
 
@@ -122,8 +128,9 @@ const PORT = process.env.PORT || 5001;
 
 const startServer = async () => {
   try {
-    // Connect to MongoDB
-    await connectDB();
+    // Connect to MongoDB (temporarily disabled for testing)
+    // await connectDB();
+    console.log("⚠️ MongoDB connection temporarily disabled for testing");
 
     // Start the server
     app.listen(PORT, () => {
