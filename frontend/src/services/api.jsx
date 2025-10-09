@@ -413,8 +413,8 @@ export const dashboardAPI = {
   getFollowers: () => api.get("/dashboard/followers"),
   getFollowing: () => api.get("/dashboard/following"),
   updateProfile: (profileData) => api.put("/auth/profile", profileData),
-  updateProfilePicture: (formData) =>
-    api.put("/auth/profile", formData, {
+  uploadProfileImage: (formData) =>
+    api.post("/auth/profile/upload-image", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },

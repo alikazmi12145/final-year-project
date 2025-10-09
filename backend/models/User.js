@@ -147,6 +147,20 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
+    // Social Connections
+    followers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    following: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+
     // Engagement Stats
     stats: {
       poemsRead: { type: Number, default: 0 },
@@ -270,6 +284,39 @@ userSchema.methods.removeBookmark = function (poemId) {
     (id) => !id.equals(poemId)
   );
   return this.save();
+};
+
+// Follow/Unfollow methods
+userSchema.methods.followUser = async function (userIdToFollow) {
+  if (!this.following.includes(userIdToFollow)) {
+    this.following.push(userIdToFollow);
+    await this.save();
+
+    // Add this user to the other user's followers
+    const userToFollow = await mongoose.model("User").findById(userIdToFollow);
+    if (userToFollow && !userToFollow.followers.includes(this._id)) {
+      userToFollow.followers.push(this._id);
+      await userToFollow.save();
+    }
+  }
+  return this;
+};
+
+userSchema.methods.unfollowUser = async function (userIdToUnfollow) {
+  this.following = this.following.filter((id) => !id.equals(userIdToUnfollow));
+  await this.save();
+
+  // Remove this user from the other user's followers
+  const userToUnfollow = await mongoose
+    .model("User")
+    .findById(userIdToUnfollow);
+  if (userToUnfollow) {
+    userToUnfollow.followers = userToUnfollow.followers.filter(
+      (id) => !id.equals(this._id)
+    );
+    await userToUnfollow.save();
+  }
+  return this;
 };
 
 export default mongoose.model("User", userSchema);
