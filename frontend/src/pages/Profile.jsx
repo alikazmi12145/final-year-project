@@ -260,14 +260,27 @@ const Profile = () => {
 
     try {
       setLoading(true);
-      // In a real app, you'd upload to a service like Cloudinary
       const formData = new FormData();
       formData.append("avatar", file);
 
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Mock upload
-      showMessage("success", "Profile picture updated successfully!");
+      const response = await dashboardAPI.uploadProfileImage(formData);
+
+      if (response.data.success) {
+        // Update user state with new profile image
+        setUser((prev) => ({
+          ...prev,
+          profileImage: response.data.profileImage,
+        }));
+        showMessage("success", "Profile picture updated successfully!");
+      } else {
+        showMessage("error", response.data.message || "Failed to upload image");
+      }
     } catch (error) {
-      showMessage("error", "Failed to upload image");
+      console.error("Upload error:", error);
+      showMessage(
+        "error",
+        error.response?.data?.message || "Failed to upload image"
+      );
     } finally {
       setLoading(false);
     }
@@ -430,9 +443,15 @@ const Profile = () => {
             {/* Avatar */}
             <div className="relative">
               <div className="w-32 h-32 bg-gradient-to-r from-urdu-gold to-urdu-brown rounded-full flex items-center justify-center overflow-hidden">
-                {user?.profile?.avatar || user?.avatar ? (
+                {user?.profileImage?.url ||
+                user?.profile?.avatar ||
+                user?.avatar ? (
                   <img
-                    src={user?.profile?.avatar || user?.avatar}
+                    src={
+                      user?.profileImage?.url ||
+                      user?.profile?.avatar ||
+                      user?.avatar
+                    }
                     alt={user?.name}
                     className="w-full h-full rounded-full object-cover"
                   />

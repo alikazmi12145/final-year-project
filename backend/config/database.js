@@ -6,7 +6,10 @@ dotenv.config();
 const connectDB = async () => {
   try {
     const conn = await mongoose.connect(
-      process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bazm-e-sukhan"
+      process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bazm-e-sukhan",
+      {
+        serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+      }
     );
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
@@ -17,7 +20,7 @@ const connectDB = async () => {
       "⚠️  Server will continue without database connection for testing"
     );
     // Don't exit the process, just log the error
-    return null;
+    throw error;
   }
 };
 

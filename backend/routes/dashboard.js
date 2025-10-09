@@ -319,4 +319,72 @@ router.patch("/admin/users/:id/toggle-status", auth, async (req, res) => {
   }
 });
 
+// Get followers
+router.get("/followers", auth, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Get user with followers populated
+    const user = await User.findById(userId).populate(
+      "followers",
+      "name email profilePicture bio role"
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        followers: user.followers || [],
+        count: user.followers?.length || 0,
+      },
+    });
+  } catch (error) {
+    console.error("Get followers error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch followers",
+    });
+  }
+});
+
+// Get following
+router.get("/following", auth, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Get user with following populated
+    const user = await User.findById(userId).populate(
+      "following",
+      "name email profilePicture bio role"
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        following: user.following || [],
+        count: user.following?.length || 0,
+      },
+    });
+  } catch (error) {
+    console.error("Get following error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch following",
+    });
+  }
+});
+
 export default router;

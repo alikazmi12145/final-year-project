@@ -8,8 +8,28 @@ import { auth, adminAuth } from "../middleware/auth.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 import mongoose from "mongoose";
+import multer from "multer";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+import cloudinary from "../config/cloudinary.js";
 
 const router = express.Router();
+
+// Configure Cloudinary storage for profile images
+const profileStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "user-profiles",
+    allowed_formats: ["jpg", "jpeg", "png", "gif"],
+    transformation: [{ width: 500, height: 500, crop: "fill" }],
+  },
+});
+
+const uploadProfile = multer({
+  storage: profileStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+});
 
 // Email transporter setup
 const transporter = nodemailer.createTransport({
@@ -74,7 +94,17 @@ router.post(
       const { name, email, password, role = "poet", bio, location } = req.body;
 
       // Check if user already exists
-      const existingUser = await User.findOne({ email });
+      let existingUser;
+      try {
+        existingUser = await User.findOne({ email });
+      } catch (dbError) {
+        console.error("Database query error:", dbError);
+        return res.status(500).json({
+          success: false,
+          message: "Database connection error. Please try again later.",
+        });
+      }
+
       if (existingUser) {
         return res.status(400).json({
           success: false,
@@ -109,7 +139,15 @@ router.post(
       };
 
       const user = new User(userData);
-      await user.save();
+      try {
+        await user.save();
+      } catch (saveError) {
+        console.error("User save error:", saveError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to create user account. Please try again.",
+        });
+      }
 
       // Create poet profile if role is poet
       if (role === "poet") {
@@ -120,7 +158,12 @@ router.post(
           user: user._id,
           status: "pending",
         });
-        await poet.save();
+        try {
+          await poet.save();
+        } catch (poetError) {
+          console.error("Poet profile creation error:", poetError);
+          // Continue with user creation even if poet profile fails
+        }
       }
 
       // Send verification email
@@ -818,6 +861,77 @@ router.put(
       res.status(500).json({
         success: false,
         message: "Failed to update profile",
+      });
+    }
+  }
+);
+
+// Upload profile image
+router.post(
+  "/profile/upload-image",
+  auth,
+  uploadProfile.single("avatar"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No image file provided",
+        });
+      }
+
+      const user = await User.findById(req.user.userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      // Delete old image from Cloudinary if exists
+      if (user.profileImage?.publicId) {
+        try {
+          await cloudinary.uploader.destroy(user.profileImage.publicId);
+        } catch (deleteError) {
+          console.error("Error deleting old image:", deleteError);
+          // Continue even if deletion fails
+        }
+      }
+
+      // Update user profile image
+      user.profileImage = {
+        url: req.file.path,
+        publicId: req.file.filename,
+      };
+
+      await user.save();
+
+      // Update poet profile if user is a poet
+      if (user.role === "poet") {
+        const poet = await Poet.findOne({ user: user._id });
+        if (poet) {
+          poet.profileImage = {
+            url: req.file.path,
+            publicId: req.file.filename,
+          };
+          await poet.save();
+        }
+      }
+
+      res.json({
+        success: true,
+        message: "Profile image updated successfully",
+        profileImage: {
+          url: req.file.path,
+          publicId: req.file.filename,
+        },
+      });
+    } catch (error) {
+      console.error("Upload profile image error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to upload profile image",
+        error: error.message,
       });
     }
   }
