@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { authAPI, poetryAPI, adminAPI } from "../services/api";
+import { authAPI, poetryAPI, adminAPI, dashboardAPI } from "../services/api";
 import {
   User,
   Settings,
@@ -32,6 +32,15 @@ import {
   ArrowLeft,
   BarChart3,
 } from "lucide-react";
+
+// Helper function to get full image URL
+const getImageUrl = (url) => {
+  if (!url) return null;
+  // If it's already a full URL (starts with http), return as is
+  if (url.startsWith("http")) return url;
+  // Otherwise, prepend the backend URL
+  return `http://localhost:5000${url}`;
+};
 
 const Profile = () => {
   const { user, updateProfile, logout } = useAuth();
@@ -448,9 +457,9 @@ const Profile = () => {
                 user?.avatar ? (
                   <img
                     src={
-                      user?.profileImage?.url ||
-                      user?.profile?.avatar ||
-                      user?.avatar
+                      getImageUrl(user?.profileImage?.url) ||
+                      getImageUrl(user?.profile?.avatar) ||
+                      getImageUrl(user?.avatar)
                     }
                     alt={user?.name}
                     className="w-full h-full rounded-full object-cover"
@@ -583,10 +592,12 @@ const Profile = () => {
                   )}
 
                   <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm text-urdu-brown">
-                    {user?.location && (
+                    {(user?.location?.city || user?.location?.country) && (
                       <span className="flex items-center gap-1">
                         <Globe size={14} />
-                        {user.location}
+                        {[user?.location?.city, user?.location?.country]
+                          .filter(Boolean)
+                          .join(", ")}
                       </span>
                     )}
                     {user?.website && (
@@ -691,8 +702,9 @@ const Profile = () => {
                           </p>
                           <p className="text-sm text-urdu-maroon flex items-center gap-1">
                             <Clock size={12} />
-                            {activity.time.toLocaleDateString()} at{" "}
-                            {activity.time.toLocaleTimeString()}
+                            {activity.time instanceof Date
+                              ? `${activity.time.toLocaleDateString()} at ${activity.time.toLocaleTimeString()}`
+                              : "Recently"}
                           </p>
                         </div>
                       </div>
@@ -1001,7 +1013,9 @@ const Profile = () => {
                             {activity.title}
                           </p>
                           <p className="text-xs text-urdu-maroon">
-                            {activity.time.toLocaleDateString()}
+                            {activity.time instanceof Date
+                              ? activity.time.toLocaleDateString()
+                              : "Recently"}
                           </p>
                         </div>
                       </div>
