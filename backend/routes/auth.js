@@ -9,27 +9,89 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 import mongoose from "mongoose";
 import multer from "multer";
-import { CloudinaryStorage } from "multer-storage-cloudinary";
-import cloudinary from "../config/cloudinary.js";
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+import fs from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const router = express.Router();
 
-// Configure Cloudinary storage for profile images
-const profileStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: "user-profiles",
-    allowed_formats: ["jpg", "jpeg", "png", "gif"],
-    transformation: [{ width: 500, height: 500, crop: "fill" }],
-  },
-});
+// Check if Cloudinary is configured
+const isCloudinaryConfigured =
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET &&
+  process.env.CLOUDINARY_CLOUD_NAME !== "your-cloud-name" &&
+  process.env.CLOUDINARY_API_KEY !== "your-api-key";
 
-const uploadProfile = multer({
-  storage: profileStorage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
-});
+let uploadProfile;
+
+if (isCloudinaryConfigured) {
+  // Use Cloudinary if configured
+  const { CloudinaryStorage } = await import("multer-storage-cloudinary");
+  const cloudinary = (await import("../config/cloudinary.js")).default;
+
+  const profileStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+      folder: "user-profiles",
+      allowed_formats: ["jpg", "jpeg", "png", "gif"],
+      transformation: [{ width: 500, height: 500, crop: "fill" }],
+    },
+  });
+
+  uploadProfile = multer({
+    storage: profileStorage,
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB limit
+    },
+  });
+
+  console.log("✅ Using Cloudinary for image uploads");
+} else {
+  // Use local storage as fallback
+  const uploadsDir = path.join(__dirname, "../uploads/profiles");
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  const localStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, uploadsDir);
+    },
+    filename: function (req, file, cb) {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      cb(null, "profile-" + uniqueSuffix + path.extname(file.originalname));
+    },
+  });
+
+  uploadProfile = multer({
+    storage: localStorage,
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB limit
+    },
+    fileFilter: function (req, file, cb) {
+      const allowedTypes = /jpeg|jpg|png|gif/;
+      const extname = allowedTypes.test(
+        path.extname(file.originalname).toLowerCase()
+      );
+      const mimetype = allowedTypes.test(file.mimetype);
+
+      if (mimetype && extname) {
+        return cb(null, true);
+      } else {
+        cb(new Error("Only image files are allowed!"));
+      }
+    },
+  });
+
+  console.log(
+    "⚠️ Using local storage for image uploads (Cloudinary not configured)"
+  );
+}
 
 // Email transporter setup
 const transporter = nodemailer.createTransport({
@@ -873,61 +935,118 @@ router.post(
   uploadProfile.single("avatar"),
   async (req, res) => {
     try {
+      console.log("📸 Upload request received");
+      console.log("User ID:", req.user.userId);
+      console.log("File:", req.file ? "✅ Present" : "❌ Missing");
+
       if (!req.file) {
+        console.log("❌ No file in request");
         return res.status(400).json({
           success: false,
           message: "No image file provided",
         });
       }
 
+      console.log("File details:", {
+        filename: req.file.filename,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+      });
+
       const user = await User.findById(req.user.userId);
       if (!user) {
+        console.log("❌ User not found:", req.user.userId);
         return res.status(404).json({
           success: false,
           message: "User not found",
         });
       }
 
-      // Delete old image from Cloudinary if exists
-      if (user.profileImage?.publicId) {
-        try {
-          await cloudinary.uploader.destroy(user.profileImage.publicId);
-        } catch (deleteError) {
-          console.error("Error deleting old image:", deleteError);
-          // Continue even if deletion fails
+      let imageUrl, imagePublicId;
+
+      if (isCloudinaryConfigured) {
+        console.log("☁️ Using Cloudinary storage");
+        // Delete old image from Cloudinary if exists
+        if (user.profileImage?.publicId) {
+          try {
+            const cloudinary = (await import("../config/cloudinary.js"))
+              .default;
+            await cloudinary.uploader.destroy(user.profileImage.publicId);
+            console.log("🗑️ Deleted old Cloudinary image");
+          } catch (deleteError) {
+            console.error("Error deleting old image:", deleteError);
+            // Continue even if deletion fails
+          }
         }
+
+        imageUrl = req.file.path;
+        imagePublicId = req.file.filename;
+      } else {
+        console.log("💾 Using local storage");
+        // Delete old local image if exists
+        if (
+          user.profileImage?.publicId &&
+          !user.profileImage.publicId.startsWith("http")
+        ) {
+          try {
+            const oldImagePath = path.join(
+              __dirname,
+              "../uploads/profiles",
+              user.profileImage.publicId
+            );
+            if (fs.existsSync(oldImagePath)) {
+              fs.unlinkSync(oldImagePath);
+              console.log("🗑️ Deleted old local image");
+            }
+          } catch (deleteError) {
+            console.error("Error deleting old local image:", deleteError);
+            // Continue even if deletion fails
+          }
+        }
+
+        // Use relative URL path for local storage
+        imageUrl = `/uploads/profiles/${req.file.filename}`;
+        imagePublicId = req.file.filename;
       }
+
+      console.log("📝 Updating user profile with image URL:", imageUrl);
 
       // Update user profile image
       user.profileImage = {
-        url: req.file.path,
-        publicId: req.file.filename,
+        url: imageUrl,
+        publicId: imagePublicId,
       };
 
       await user.save();
+      console.log("✅ User profile updated");
 
       // Update poet profile if user is a poet
       if (user.role === "poet") {
         const poet = await Poet.findOne({ user: user._id });
         if (poet) {
           poet.profileImage = {
-            url: req.file.path,
-            publicId: req.file.filename,
+            url: imageUrl,
+            publicId: imagePublicId,
           };
           await poet.save();
+          console.log("✅ Poet profile updated");
         }
       }
+
+      console.log("🎉 Upload successful!");
 
       res.json({
         success: true,
         message: "Profile image updated successfully",
         profileImage: {
-          url: req.file.path,
-          publicId: req.file.filename,
+          url: imageUrl,
+          publicId: imagePublicId,
         },
       });
     } catch (error) {
-      console.error("Upload profile image error:", error);
+      console.error("❌ Upload profile image error:", error);
+      console.error("Error message:", error.message);
+      console.error("Stack trace:", error.stack);
       res.status(500).json({
         success: false,
         message: "Failed to upload profile image",

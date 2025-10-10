@@ -1050,43 +1050,74 @@ router.post("/:id/bookmark", auth, poemOperationLimit, async (req, res) => {
 router.get("/bookmarks", auth, poemOperationLimit, async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
-    const skip = (page - 1) * limit;
 
-    const user = await User.findById(req.user.userId).populate({
-      path: "bookmarkedPoems",
-      populate: [
-        { path: "author", select: "name" },
-        { path: "poet", select: "name bio" },
-      ],
-      options: {
-        skip: skip,
-        limit: parseInt(limit),
-        sort: { createdAt: -1 },
-      },
-    });
+    console.log("📚 Fetching bookmarks for user:", req.user.userId);
+
+    const user = await User.findById(req.user.userId);
 
     if (!user) {
+      console.log("❌ User not found:", req.user.userId);
       return res.status(404).json({
         success: false,
         message: "User not found",
       });
     }
 
+    console.log(
+      "📖 User has",
+      user.bookmarkedPoems?.length || 0,
+      "bookmarked poems"
+    );
+
+    // If no bookmarks, return empty array
+    if (!user.bookmarkedPoems || user.bookmarkedPoems.length === 0) {
+      return res.json({
+        success: true,
+        poems: [],
+        pagination: {
+          current: parseInt(page),
+          total: 0,
+          hasNext: false,
+          hasPrev: false,
+        },
+      });
+    }
+
+    // Populate bookmarks with poem details
+    const populatedUser = await User.findById(req.user.userId).populate({
+      path: "bookmarkedPoems",
+      populate: [
+        { path: "author", select: "name email" },
+        { path: "poet", select: "name bio profileImage" },
+      ],
+    });
+
+    const skip = (page - 1) * limit;
+    const paginatedPoems = populatedUser.bookmarkedPoems.slice(
+      skip,
+      skip + parseInt(limit)
+    );
+
+    console.log("✅ Returning", paginatedPoems.length, "bookmarked poems");
+
     res.json({
       success: true,
-      poems: user.bookmarkedPoems,
+      poems: paginatedPoems,
       pagination: {
         current: parseInt(page),
-        total: Math.ceil(user.bookmarkedPoems.length / limit),
-        hasNext: page * limit < user.bookmarkedPoems.length,
+        total: Math.ceil(populatedUser.bookmarkedPoems.length / limit),
+        hasNext: page * limit < populatedUser.bookmarkedPoems.length,
         hasPrev: page > 1,
       },
     });
   } catch (error) {
-    console.error("Get bookmarks error:", error);
+    console.error("❌ Get bookmarks error:", error);
+    console.error("Error details:", error.message);
+    console.error("Stack trace:", error.stack);
     res.status(500).json({
       success: false,
       message: "Failed to fetch bookmarked poems",
+      error: error.message,
     });
   }
 });
