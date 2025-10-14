@@ -93,6 +93,23 @@ Respond in JSON format with classical Urdu poetry context:
     };
   } catch (error) {
     console.error("OpenAI enhancement error:", error);
+
+    // Handle quota exceeded error gracefully
+    if (error.status === 429 || error.code === "insufficient_quota") {
+      console.log("⚠️ OpenAI quota exceeded, using fallback enhancement");
+      return {
+        success: true,
+        enhancedQuery: query,
+        synonyms: [],
+        relatedTerms: [],
+        relatedPoets: [],
+        poetryForms: [],
+        emotionalContext: [],
+        semanticExpansion: [],
+        originalQuery: query,
+        fallback: true,
+      };
+    }
     return {
       success: false,
       enhancedKeywords: [query],
@@ -241,6 +258,28 @@ Focus on classical Urdu poetry. Respond as a simple JSON array of strings:
     };
   } catch (error) {
     console.error("OpenAI suggestions error:", error);
+
+    // Handle quota exceeded error gracefully
+    if (error.status === 429 || error.code === "insufficient_quota") {
+      console.log("⚠️ OpenAI quota exceeded, using fallback suggestions");
+      // Return some hardcoded popular suggestions
+      const fallbackSuggestions = [
+        "غالب کی غزلیں",
+        "اقبال کی نظمیں",
+        "فیض کی شاعری",
+        "میر کے اشعار",
+        "محبت کی شاعری",
+        "غم کے اشعار",
+        "وطن کی شاعری",
+        "قدرت کی نظمیں",
+      ];
+      return {
+        success: true,
+        suggestions: fallbackSuggestions,
+        fallback: true,
+      };
+    }
+
     return {
       success: false,
       suggestions: [],
