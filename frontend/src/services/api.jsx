@@ -421,6 +421,11 @@ export const dashboardAPI = {
     }),
   exportPoetData: () => api.get("/dashboard/export"),
 
+  // Notification Settings
+  updateNotificationSettings: (notificationSettings) =>
+    api.put("/auth/profile/notifications", { notificationSettings }),
+  sendTestEmail: () => api.post("/auth/profile/test-email"),
+
   // Admin Dashboard
   getAdminDashboard: () => api.get("/dashboard/admin"),
   approvePoem: (id) => api.patch(`/dashboard/admin/poems/${id}/approve`),

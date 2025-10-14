@@ -250,11 +250,22 @@ const Profile = () => {
       };
       setSettings(newSettings);
 
-      // In a real app, you'd save settings to backend
-      await new Promise((resolve) => setTimeout(resolve, 500)); // Mock API call
-      showMessage("success", "Settings updated successfully!");
+      // Save notification settings to backend if it's a notification setting
+      if (section === "notifications") {
+        await dashboardAPI.updateNotificationSettings(
+          newSettings.notifications
+        );
+        showMessage("success", "Notification settings updated successfully!");
+      } else {
+        // In a real app, you'd save other settings to backend too
+        await new Promise((resolve) => setTimeout(resolve, 500)); // Mock API call
+        showMessage("success", "Settings updated successfully!");
+      }
     } catch (error) {
+      console.error("Settings update error:", error);
       showMessage("error", "Failed to update settings");
+      // Revert settings on error
+      setSettings((prevSettings) => prevSettings);
     }
   };
 
@@ -952,6 +963,216 @@ const Profile = () => {
                             : ""
                         }`}
                       />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email Notification Settings */}
+              <div className="card p-6">
+                <h3 className="text-lg font-semibold text-urdu-brown mb-4 flex items-center gap-2">
+                  <Bell size={20} />
+                  Email Notifications
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-urdu-brown font-medium">
+                        Email Notifications
+                      </label>
+                      <p className="text-sm text-urdu-maroon">
+                        Receive notifications via email
+                      </p>
+                    </div>
+                    <button
+                      onClick={() =>
+                        handleSettingsUpdate(
+                          "notifications",
+                          "emailNotifications",
+                          !settings.notifications.emailNotifications
+                        )
+                      }
+                      className={`w-12 h-6 rounded-full transition-colors ${
+                        settings.notifications.emailNotifications
+                          ? "bg-urdu-gold"
+                          : "bg-gray-300"
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                          settings.notifications.emailNotifications
+                            ? "transform translate-x-6"
+                            : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-urdu-brown font-medium">
+                        Poem Likes
+                      </label>
+                      <p className="text-sm text-urdu-maroon">
+                        When someone likes your poems
+                      </p>
+                    </div>
+                    <button
+                      onClick={() =>
+                        handleSettingsUpdate(
+                          "notifications",
+                          "poemLikes",
+                          !settings.notifications.poemLikes
+                        )
+                      }
+                      className={`w-12 h-6 rounded-full transition-colors ${
+                        settings.notifications.poemLikes
+                          ? "bg-urdu-gold"
+                          : "bg-gray-300"
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                          settings.notifications.poemLikes
+                            ? "transform translate-x-6"
+                            : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-urdu-brown font-medium">
+                        Comments
+                      </label>
+                      <p className="text-sm text-urdu-maroon">
+                        When someone comments on your content
+                      </p>
+                    </div>
+                    <button
+                      onClick={() =>
+                        handleSettingsUpdate(
+                          "notifications",
+                          "comments",
+                          !settings.notifications.comments
+                        )
+                      }
+                      className={`w-12 h-6 rounded-full transition-colors ${
+                        settings.notifications.comments
+                          ? "bg-urdu-gold"
+                          : "bg-gray-300"
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                          settings.notifications.comments
+                            ? "transform translate-x-6"
+                            : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-urdu-brown font-medium">
+                        Contest Updates
+                      </label>
+                      <p className="text-sm text-urdu-maroon">
+                        Poetry contest announcements
+                      </p>
+                    </div>
+                    <button
+                      onClick={() =>
+                        handleSettingsUpdate(
+                          "notifications",
+                          "contests",
+                          !settings.notifications.contests
+                        )
+                      }
+                      className={`w-12 h-6 rounded-full transition-colors ${
+                        settings.notifications.contests
+                          ? "bg-urdu-gold"
+                          : "bg-gray-300"
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                          settings.notifications.contests
+                            ? "transform translate-x-6"
+                            : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-urdu-brown font-medium">
+                        Newsletter
+                      </label>
+                      <p className="text-sm text-urdu-maroon">
+                        Weekly poetry highlights and news
+                      </p>
+                    </div>
+                    <button
+                      onClick={() =>
+                        handleSettingsUpdate(
+                          "notifications",
+                          "newsletter",
+                          !settings.notifications.newsletter
+                        )
+                      }
+                      className={`w-12 h-6 rounded-full transition-colors ${
+                        settings.notifications.newsletter
+                          ? "bg-urdu-gold"
+                          : "bg-gray-300"
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                          settings.notifications.newsletter
+                            ? "transform translate-x-6"
+                            : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Test Email Button */}
+                  <div className="pt-4 border-t border-urdu-cream">
+                    <button
+                      onClick={async () => {
+                        try {
+                          setLoading(true);
+                          await dashboardAPI.sendTestEmail();
+                          showMessage(
+                            "success",
+                            "Test email sent successfully!"
+                          );
+                        } catch (error) {
+                          console.error("Test email error:", error);
+                          showMessage(
+                            "error",
+                            error.response?.data?.message ||
+                              "Failed to send test email"
+                          );
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={
+                        !settings.notifications.emailNotifications || loading
+                      }
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? (
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Mail className="w-4 h-4" />
+                      )}
+                      Send Test Email
                     </button>
                   </div>
                 </div>
