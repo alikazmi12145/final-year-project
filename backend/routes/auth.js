@@ -13,6 +13,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import fs from "fs";
+import emailService from "../services/emailService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -127,6 +128,24 @@ const generateTokens = (user) => {
   return { accessToken, refreshToken };
 };
 
+// Test email configuration endpoint
+router.get("/test-email", async (req, res) => {
+  try {
+    const result = await emailService.testEmailConfig();
+    res.json({
+      success: result.success,
+      message: result.message,
+      emailConfigured: result.success,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Email test failed",
+      error: error.message,
+    });
+  }
+});
+
 // Register endpoint with validation
 router.post(
   "/register",
@@ -179,7 +198,7 @@ router.post(
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
       // Generate email verification token
-      const emailVerificationToken = crypto.randomBytes(32).toString("hex");
+      const emailVerificationToken = emailService.generateVerificationToken();
       const emailVerificationExpiry = new Date(
         Date.now() + 24 * 60 * 60 * 1000
       ); // 24 hours
@@ -228,38 +247,19 @@ router.post(
         }
       }
 
-      // Send verification email
-      const verificationUrl = `${process.env.CLIENT_URL}/auth/verify-email?token=${emailVerificationToken}`;
-      const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: "بازمِ سخن میں خوش آمدید - ای میل کی تصدیق کریں",
-        html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%); padding: 20px; border-radius: 10px;">
-          <div style="background: white; padding: 30px; border-radius: 10px; text-align: center;">
-            <h1 style="color: #d97706; margin-bottom: 20px;">بازمِ سخن میں خوش آمدید</h1>
-            <h2 style="color: #374151;">Welcome to Bazm-e-Sukhan</h2>
-            <p style="color: #6b7280; font-size: 16px; line-height: 1.6;">
-              آپ کے اکاؤنٹ کو فعال کرنے کے لیے اپنی ای میل کی تصدیق کریں۔
-            </p>
-            <p style="color: #6b7280; font-size: 16px; line-height: 1.6;">
-              Please verify your email address to activate your account.
-            </p>
-            <a href="${verificationUrl}" style="display: inline-block; background: #d97706; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold;">
-              Verify Email / ای میل کی تصدیق کریں
-            </a>
-            <p style="color: #9ca3af; font-size: 14px;">
-              اگر آپ نے یہ اکاؤنٹ نہیں بنایا تو اس ای میل کو نظرانداز کریں۔
-              <br>
-              If you didn't create this account, please ignore this email.
-            </p>
-          </div>
-        </div>
-      `,
-      };
-
+      // Send verification email using new email service
       try {
-        await transporter.sendMail(mailOptions);
+        const emailResult = await emailService.sendVerificationEmail(
+          user,
+          emailVerificationToken
+        );
+        if (emailResult.success) {
+          console.log(`✅ Verification email sent to ${email}`);
+        } else {
+          console.log(
+            `⚠️ Email service not configured, using mock email for ${email}`
+          );
+        }
       } catch (emailError) {
         console.error("Email sending failed:", emailError);
         // Continue with registration even if email fails
@@ -640,6 +640,7 @@ router.post("/verify-email", async (req, res) => {
     user.emailVerification.isVerified = true;
     user.emailVerification.token = undefined;
     user.emailVerification.expiresAt = undefined;
+    user.isVerified = true; // Update main isVerified field
 
     // If reader, activate account immediately
     if (user.role === "reader") {
@@ -647,6 +648,14 @@ router.post("/verify-email", async (req, res) => {
     }
 
     await user.save();
+
+    // Send welcome email after verification
+    try {
+      await emailService.sendWelcomeEmail(user);
+    } catch (emailError) {
+      console.error("Welcome email failed:", emailError);
+      // Continue even if welcome email fails
+    }
 
     res.json({
       success: true,
@@ -683,40 +692,25 @@ router.post("/resend-verification", async (req, res) => {
     }
 
     // Generate new token
-    const emailVerificationToken = crypto.randomBytes(32).toString("hex");
+    const emailVerificationToken = emailService.generateVerificationToken();
     const emailVerificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     user.emailVerification.token = emailVerificationToken;
     user.emailVerification.expiresAt = emailVerificationExpiry;
     await user.save();
 
-    // Send verification email
-    const verificationUrl = `${process.env.CLIENT_URL}/auth/verify-email?token=${emailVerificationToken}`;
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "ای میل کی تصدیق - Bazm-e-Sukhan",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Email Verification</h2>
-          <p>Please click the link below to verify your email:</p>
-          <a href="${verificationUrl}">Verify Email</a>
-        </div>
-      `,
-    };
-
+    // Send verification email using new service
     try {
-      await transporter.sendMail(mailOptions);
-      console.log(`✅ Verification email sent to ${email}`);
-    } catch (emailError) {
-      console.error(
-        "📧 Email sending failed (this is normal in development):",
-        emailError.message
+      const emailResult = await emailService.sendVerificationEmail(
+        user,
+        emailVerificationToken
       );
       console.log(
-        `🔑 Development Mode - Verification token for ${email}: ${emailVerificationToken}`
+        `✅ Verification email sent to ${email} - Result:`,
+        emailResult.success
       );
-      console.log(`🔗 Verification URL: ${verificationUrl}`);
+    } catch (emailError) {
+      console.error("Email sending failed:", emailError);
     }
 
     res.json({
@@ -725,7 +719,6 @@ router.post("/resend-verification", async (req, res) => {
       // In development, include the verification token for testing
       ...(process.env.NODE_ENV === "development" && {
         verificationToken: emailVerificationToken,
-        verificationUrl,
         note: "Development mode: Check console for verification token",
       }),
     });
@@ -746,27 +739,47 @@ router.post(
     try {
       const { email } = req.body;
 
-      // TEST MODE - Skip database operations
-      console.log(`🔑 TEST MODE - Forgot password request for: ${email}`);
+      const user = await User.findOne({ email });
 
-      // Generate test reset token
-      const resetToken = crypto.randomBytes(32).toString("hex");
-      const resetUrl = `${process.env.CLIENT_URL}/auth/reset-password?token=${resetToken}`;
+      // Always return success for security (don't reveal if email exists)
+      if (!user) {
+        return res.json({
+          success: true,
+          message: "If the email exists, a password reset link has been sent",
+        });
+      }
 
-      console.log(`🔗 TEST MODE - Reset token: ${resetToken}`);
-      console.log(`🔗 TEST MODE - Reset URL: ${resetUrl}`);
+      // Generate reset token
+      const resetToken = emailService.generateResetToken();
+      const resetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-      // Simulate email sending (without actually sending)
-      console.log(`📧 TEST MODE - Would send reset email to: ${email}`);
+      user.passwordReset = {
+        token: resetToken,
+        expiresAt: resetExpiry,
+      };
+      await user.save();
 
-      return res.json({
+      // Send password reset email
+      try {
+        const emailResult = await emailService.sendPasswordResetEmail(
+          user,
+          resetToken
+        );
+        console.log(
+          `✅ Password reset email sent to ${email} - Result:`,
+          emailResult.success
+        );
+      } catch (emailError) {
+        console.error("Password reset email failed:", emailError);
+      }
+
+      res.json({
         success: true,
         message: "If the email exists, a password reset link has been sent",
         // Include test data in development
         ...(process.env.NODE_ENV === "development" && {
           resetToken,
-          resetUrl,
-          note: "TEST MODE: Check console for reset token (MongoDB disabled)",
+          note: "Development mode: Check console for reset token",
         }),
       });
     } catch (error) {

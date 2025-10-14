@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
+import { Card } from "../components/ui/Card";
+import { Button } from "../components/ui/Button";
+import PoetTimeline from "../components/poetry/PoetTimeline";
+import MemorialContributions from "../components/poetry/MemorialContributions";
+import EnhancedPoetSearch from "../components/poetry/EnhancedPoetSearch";
 import {
   User,
   Users,
@@ -10,6 +15,9 @@ import {
   MapPin,
   Calendar,
   Search,
+  Award,
+  Clock,
+  Globe,
 } from "lucide-react";
 
 const Poets = () => {
@@ -77,9 +85,35 @@ const Poets = () => {
     }
   };
 
-  const poet = id ? poets.find((p) => p._id === id) : null;
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedTab, setSelectedTab] = useState("biography");
 
-  if (id && poet) {
+  // Sample extended poet data
+  const extendedPoetData = {
+    birthYear: 1877,
+    deathYear: 1938,
+    birthPlace: "Sialkot",
+    deathPlace: "Lahore",
+    education: "Law, Philosophy, Literature",
+    era: "modern",
+    style: ["ghazal", "nazm", "qasida"],
+    themes: ["spiritual", "philosophy", "social"],
+    isAlive: false,
+    awards: ["Sir", "Knighthood"],
+    famousQuote: "Rise above sectional interests and private ambitions",
+    famousQuoteUrdu: "فرقہ واریت اور ذاتی مفادات سے اوپر اٹھو",
+    stats: {
+      totalPoems: 200,
+      totalAwards: 5,
+      totalLikes: 15000,
+      followers: 25000,
+    },
+  };
+
+  const poet = id ? poets.find((p) => p._id === id) : null;
+  const enhancedPoet = poet ? { ...poet, ...extendedPoetData } : null;
+
+  if (id && enhancedPoet) {
     return (
       <div className="min-h-screen cultural-bg py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
