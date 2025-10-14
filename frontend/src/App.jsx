@@ -29,6 +29,10 @@ import PoemDetailPageNew from "./pages/PoemDetailPageNew";
 import CollectionsPage from "./pages/CollectionsPage";
 import RecommendationsPage from "./pages/RecommendationsPage";
 
+// Email verification pages
+import VerifyEmail from "./pages/VerifyEmail";
+import ResetPassword from "./pages/ResetPassword";
+
 function App() {
   return (
     <Layout>
@@ -104,6 +108,10 @@ function App() {
             </PublicOnlyRoute>
           }
         />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/auth/verify-email" element={<VerifyEmail />} />
+        <Route path="/auth/reset-password" element={<ResetPassword />} />
 
         {/* Protected Routes */}
         <Route

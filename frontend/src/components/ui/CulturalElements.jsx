@@ -108,10 +108,48 @@ export const TraditionalCard = ({ children, className = "", title }) => (
   </div>
 );
 
+// Background cultural elements for pages
+export const CulturalElements = ({ className = "" }) => (
+  <div
+    className={`fixed inset-0 pointer-events-none overflow-hidden ${className}`}
+  >
+    {/* Top decorative elements */}
+    <div className="absolute top-10 left-10 opacity-10">
+      <IslamicPattern size={120} className="text-amber-600" />
+    </div>
+    <div className="absolute top-20 right-16 opacity-10">
+      <GeometricOrnament className="w-24 h-24 text-orange-500" />
+    </div>
+
+    {/* Middle decorative elements */}
+    <div className="absolute top-1/2 left-16 opacity-5 transform -translate-y-1/2">
+      <IslamicPattern size={200} className="text-amber-500" />
+    </div>
+    <div className="absolute top-1/3 right-10 opacity-10">
+      <GeometricOrnament className="w-16 h-16 text-amber-600" />
+    </div>
+
+    {/* Bottom decorative elements */}
+    <div className="absolute bottom-16 left-20 opacity-10">
+      <GeometricOrnament className="w-20 h-20 text-orange-400" />
+    </div>
+    <div className="absolute bottom-20 right-14 opacity-5">
+      <IslamicPattern size={100} className="text-amber-600" />
+    </div>
+
+    {/* Subtle corner decorations */}
+    <div className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-amber-300 opacity-20"></div>
+    <div className="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-amber-300 opacity-20"></div>
+    <div className="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-amber-300 opacity-20"></div>
+    <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-amber-300 opacity-20"></div>
+  </div>
+);
+
 export default {
   IslamicPattern,
   CulturalBorder,
   GeometricOrnament,
   CalligraphyDivider,
   TraditionalCard,
+  CulturalElements,
 };
