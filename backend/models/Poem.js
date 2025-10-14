@@ -332,11 +332,12 @@ poemSchema.index({ publishedAt: -1 });
 poemSchema.index({ views: -1 });
 poemSchema.index({ averageRating: -1 });
 poemSchema.index({ "contestEntry.contest": 1 });
-// Temporarily disabled text index to fix language override issue
-// poemSchema.index(
-//   { title: "text", content: "text", searchKeywords: "text" },
-//   { default_language: "none" }
-// );
+poemSchema.index({ searchKeywords: 1 }); // Index for search keywords
+// Text index for full-text search
+poemSchema.index(
+  { title: "text", content: "text", searchKeywords: "text" },
+  { default_language: "none" } // Disable language stemming for multilingual content
+);
 
 // Virtual for like count
 poemSchema.virtual("likeCount").get(function () {
@@ -359,7 +360,7 @@ poemSchema.virtual("bookmarkCount").get(function () {
 });
 
 // Pre-save middleware
-poemSchema.pre("save", function (next) {
+poemSchema.pre("save", async function (next) {
   // Update word count
   if (this.isModified("content")) {
     this.wordCount = this.content.split(/\s+/).length;
@@ -367,8 +368,8 @@ poemSchema.pre("save", function (next) {
       .split(/\n/)
       .filter((line) => line.trim()).length;
 
-    // Create search keywords
-    this.searchKeywords = this.content
+    // Create search keywords from content
+    const contentKeywords = this.content
       .toLowerCase()
       .replace(
         /[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\s]/g,
@@ -377,6 +378,60 @@ poemSchema.pre("save", function (next) {
       .split(/\s+/)
       .filter((word) => word.length > 2);
 
+    // Add title, category, theme, mood, and tags to keywords
+    const allKeywords = [
+      ...contentKeywords,
+      this.title?.toLowerCase(),
+      this.category,
+      this.theme,
+      this.mood,
+      ...(this.tags || []),
+    ].filter((keyword) => keyword && keyword.toString().trim().length > 0);
+
+    // Add poet names if poet is populated
+    if (this.poet) {
+      try {
+        await this.populate("poet");
+        if (this.poet?.name) {
+          allKeywords.push(this.poet.name.toLowerCase());
+          allKeywords.push(...this.poet.name.toLowerCase().split(" "));
+        }
+        if (this.poet?.urduName) {
+          allKeywords.push(this.poet.urduName);
+        }
+
+        // Add common English-Urdu poet name mappings
+        const poetMappings = {
+          "allama iqbal": ["iqbal", "اقبال", "علامہ اقبال"],
+          "mirza ghalib": ["ghalib", "غالب", "مرزا غالب"],
+          "faiz ahmed faiz": ["faiz", "فیض", "فیض احمد فیض"],
+        };
+
+        if (this.poet?.name) {
+          const poetNameLower = this.poet.name.toLowerCase();
+          for (const [englishName, variants] of Object.entries(poetMappings)) {
+            if (
+              poetNameLower.includes(englishName) ||
+              englishName.includes(poetNameLower)
+            ) {
+              allKeywords.push(...variants);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn(
+          "Could not populate poet for search keywords:",
+          error.message
+        );
+      }
+    }
+
+    // Remove duplicates and empty strings
+    this.searchKeywords = [
+      ...new Set(
+        allKeywords.filter((k) => k && k.toString().trim().length > 0)
+      ),
+    ];
     this.indexedContent = this.content.toLowerCase();
   }
 

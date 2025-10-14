@@ -10,6 +10,7 @@ import {
   optionalAuth,
 } from "../middleware/auth.js";
 import rateLimit from "express-rate-limit";
+import AIPoetryService from "../services/aiPoetryService.js";
 
 const router = express.Router();
 
@@ -1217,6 +1218,856 @@ router.post("/:id/view", optionalAuth, poemOperationLimit, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to update view count",
+    });
+  }
+});
+
+// ============= ROUTE ALIASES FOR REQUESTED PATTERNS =============
+
+/**
+ * @route   POST /api/poems/add
+ * @desc    Create a new poem (alias for POST /)
+ * @access  Private
+ */
+router.post(
+  "/add",
+  auth,
+  createPoemLimit,
+  [
+    body("title")
+      .trim()
+      .isLength({ min: 1, max: 200 })
+      .withMessage("Title is required and must be between 1-200 characters"),
+    body("content")
+      .trim()
+      .isLength({ min: 10, max: 10000 })
+      .withMessage("Content must be between 10-10000 characters"),
+    body("category")
+      .isIn([
+        "ghazal",
+        "nazm",
+        "rubai",
+        "qawwali",
+        "marsiya",
+        "salam",
+        "hamd",
+        "naat",
+        "free-verse",
+        "other",
+      ])
+      .withMessage("Valid category is required"),
+  ],
+  async (req, res) => {
+    // This is the same logic as the main POST / route
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation errors",
+          errors: errors.array(),
+        });
+      }
+
+      const {
+        title,
+        subtitle,
+        content,
+        transliteration,
+        translation,
+        category,
+        subcategory,
+        tags,
+        mood,
+        theme,
+        poetryLanguage,
+        script,
+        status = "draft",
+      } = req.body;
+
+      const newPoem = new Poem({
+        title: title.trim(),
+        subtitle: subtitle?.trim(),
+        content: content.trim(),
+        transliteration: transliteration?.trim(),
+        translation: translation || {},
+        author: req.user.userId,
+        category,
+        subcategory,
+        tags: tags?.map((tag) => tag.toLowerCase().trim()) || [],
+        mood,
+        theme,
+        poetryLanguage: poetryLanguage || "urdu",
+        script: script || "nastaliq",
+        status,
+        published: status === "published",
+        publishedAt: status === "published" ? new Date() : null,
+      });
+
+      await newPoem.save();
+      await newPoem.populate("author", "name email");
+
+      res.status(201).json({
+        success: true,
+        message: "Poem created successfully",
+        poem: newPoem,
+      });
+    } catch (error) {
+      console.error("Create poem error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to create poem",
+        error: error.message,
+      });
+    }
+  }
+);
+
+/**
+ * @route   PUT /api/poems/edit/:id
+ * @desc    Edit a poem (alias for PUT /:id)
+ * @access  Private
+ */
+router.put("/edit/:id", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid poem ID",
+      });
+    }
+
+    const poem = await Poem.findById(id);
+    if (!poem) {
+      return res.status(404).json({
+        success: false,
+        message: "Poem not found",
+      });
+    }
+
+    // Check authorization
+    if (
+      poem.author.toString() !== req.user.userId &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to edit this poem",
+      });
+    }
+
+    // Update fields
+    const allowedFields = [
+      "title",
+      "subtitle",
+      "content",
+      "transliteration",
+      "translation",
+      "category",
+      "subcategory",
+      "tags",
+      "mood",
+      "theme",
+      "status",
+    ];
+
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        poem[field] = req.body[field];
+      }
+    });
+
+    if (req.body.tags) {
+      poem.tags = req.body.tags.map((tag) => tag.toLowerCase().trim());
+    }
+
+    if (req.body.status === "published" && !poem.publishedAt) {
+      poem.publishedAt = new Date();
+      poem.published = true;
+    }
+
+    await poem.save();
+    await poem.populate("author", "name email");
+
+    res.json({
+      success: true,
+      message: "Poem updated successfully",
+      poem: poem,
+    });
+  } catch (error) {
+    console.error("Edit poem error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update poem",
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * @route   DELETE /api/poems/delete/:id
+ * @desc    Delete a poem (alias for DELETE /:id)
+ * @access  Private
+ */
+router.delete("/delete/:id", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid poem ID",
+      });
+    }
+
+    const poem = await Poem.findById(id);
+    if (!poem) {
+      return res.status(404).json({
+        success: false,
+        message: "Poem not found",
+      });
+    }
+
+    // Check authorization
+    if (
+      poem.author.toString() !== req.user.userId &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to delete this poem",
+      });
+    }
+
+    await Poem.findByIdAndDelete(id);
+
+    res.json({
+      success: true,
+      message: "Poem deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete poem error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete poem",
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * @route   POST /api/poems/rate
+ * @desc    Rate a poem (alias for POST /:id/rating)
+ * @access  Private
+ */
+router.post("/rate", auth, poemOperationLimit, async (req, res) => {
+  try {
+    const { poemId, rating, review } = req.body;
+
+    if (!poemId) {
+      return res.status(400).json({
+        success: false,
+        message: "شاعری کی ID ضروری ہے", // Poem ID is required
+      });
+    }
+
+    // Forward to the existing rating endpoint
+    req.params.id = poemId;
+    req.body = { rating, review };
+    req.url = `/${poemId}/rating`;
+
+    // Call the existing rating handler
+    const poem = await Poem.findById(poemId);
+    if (!poem) {
+      return res.status(404).json({
+        success: false,
+        message: "شاعری موجود نہیں",
+      });
+    }
+
+    // Add rating
+    await poem.addRating(req.user.userId, rating, review);
+
+    res.json({
+      success: true,
+      message: "ریٹنگ کامیابی سے شامل ہوئی", // Rating added successfully
+      averageRating: poem.averageRating,
+    });
+  } catch (error) {
+    console.error("Rate poem error:", error);
+    res.status(500).json({
+      success: false,
+      message: "ریٹنگ شامل کرتے وقت خرابی ہوئی", // Error adding rating
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * @route   POST /api/poems/favorite
+ * @desc    Add/remove poem from favorites (alias for POST /:id/bookmark)
+ * @access  Private
+ */
+router.post("/favorite", auth, poemOperationLimit, async (req, res) => {
+  try {
+    const { poemId } = req.body;
+
+    if (!poemId) {
+      return res.status(400).json({
+        success: false,
+        message: "شاعری کی ID ضروری ہے", // Poem ID is required
+      });
+    }
+
+    const poem = await Poem.findById(poemId);
+    if (!poem) {
+      return res.status(404).json({
+        success: false,
+        message: "شاعری موجود نہیں",
+      });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "صارف موجود نہیں", // User not found
+      });
+    }
+
+    // Toggle bookmark
+    const existingBookmark = user.bookmarkedPoems?.includes(poemId);
+
+    if (existingBookmark) {
+      // Remove from bookmarks
+      user.bookmarkedPoems = user.bookmarkedPoems.filter(
+        (id) => id.toString() !== poemId.toString()
+      );
+      await user.save();
+
+      res.json({
+        success: true,
+        action: "removed",
+        message: "شاعری پسندیدہ فہرست سے ہٹائی گئی", // Poem removed from favorites
+        isBookmarked: false,
+      });
+    } else {
+      // Add to bookmarks
+      user.bookmarkedPoems = user.bookmarkedPoems || [];
+      user.bookmarkedPoems.push(poemId);
+      await user.save();
+
+      res.json({
+        success: true,
+        action: "added",
+        message: "شاعری پسندیدہ فہرست میں شامل ہوئی", // Poem added to favorites
+        isBookmarked: true,
+      });
+    }
+  } catch (error) {
+    console.error("Favorite poem error:", error);
+    res.status(500).json({
+      success: false,
+      message: "پسندیدہ فہرست میں تبدیلی کرتے وقت خرابی ہوئی", // Error changing favorites
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * @route   POST /api/poems/recommend
+ * @desc    Get AI-powered recommendations (alias for GET /recommendations)
+ * @access  Private
+ */
+router.post("/recommend", auth, poemOperationLimit, async (req, res) => {
+  try {
+    const { userId, preferences } = req.body;
+    const { limit = 10, type = "personalized" } = req.query;
+
+    // Get user's interaction history for recommendations
+    const userInteractions = await Poem.find({
+      $or: [
+        { "likes.user": req.user.userId },
+        { "bookmarks.user": req.user.userId },
+        { "ratings.user": req.user.userId },
+      ],
+    }).populate("author", "name");
+
+    // Build user profile
+    const userProfile = {
+      favoriteCategories: [...new Set(userInteractions.map((p) => p.category))],
+      favoritePoets: [
+        ...new Set(userInteractions.map((p) => p.author?.name).filter(Boolean)),
+      ],
+      preferredThemes: [
+        ...new Set(userInteractions.map((p) => p.theme).filter(Boolean)),
+      ],
+      recentInteractions: userInteractions.slice(-10),
+    };
+
+    // Get available poems for recommendations
+    const excludeIds = [
+      ...userInteractions.map((p) => p._id),
+      ...(await Poem.find({ author: req.user.userId }).select("_id")).map(
+        (p) => p._id
+      ),
+    ];
+
+    const availablePoems = await Poem.find({
+      _id: { $nin: excludeIds },
+      status: "published",
+      published: true,
+    })
+      .populate("author", "name profilePicture")
+      .sort({ averageRating: -1, views: -1 })
+      .limit(parseInt(limit) * 2); // Get more for better selection
+
+    // Generate AI recommendations if available
+    let recommendations = availablePoems.slice(0, parseInt(limit));
+    let aiGenerated = false;
+
+    try {
+      const aiRecommendations =
+        await AIPoetryService.generatePersonalizedRecommendations(
+          userProfile,
+          availablePoems
+        );
+
+      if (
+        aiRecommendations.success &&
+        aiRecommendations.recommendations.length > 0
+      ) {
+        recommendations = aiRecommendations.recommendations.slice(
+          0,
+          parseInt(limit)
+        );
+        aiGenerated = true;
+      }
+    } catch (aiError) {
+      console.log(
+        "AI recommendations failed, using fallback:",
+        aiError.message
+      );
+    }
+
+    res.json({
+      success: true,
+      recommendations: recommendations,
+      aiGenerated: aiGenerated,
+      userProfile: {
+        categoriesCount: userProfile.favoriteCategories.length,
+        poetsCount: userProfile.favoritePoets.length,
+        interactionsCount: userProfile.recentInteractions.length,
+      },
+      message: aiGenerated
+        ? "AI سے بنی تجاویز" // AI-generated recommendations
+        : "بنیادی تجاویز", // Basic recommendations
+    });
+  } catch (error) {
+    console.error("Recommendations error:", error);
+    res.status(500).json({
+      success: false,
+      message: "تجاویز حاصل کرتے وقت خرابی ہوئی", // Error getting recommendations
+      error: error.message,
+    });
+  }
+});
+
+// ============= AI-POWERED ANALYSIS ROUTES =============
+
+/**
+ * @route   POST /api/poems/:id/analyze
+ * @desc    Generate AI-powered analysis of a poem
+ * @access  Public
+ */
+router.post("/:id/analyze", poemOperationLimit, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const poem = await Poem.findById(id).populate("author", "name email");
+
+    if (!poem) {
+      return res.status(404).json({
+        success: false,
+        message: "شاعری موجود نہیں", // Poem not found
+      });
+    }
+
+    console.log(`🤖 Analyzing poem: ${poem.title}`);
+
+    const analysis = await AIPoetryService.analyzePoemContent(poem);
+
+    if (analysis.success) {
+      res.json({
+        success: true,
+        poem: {
+          title: poem.title,
+          author: poem.author?.name,
+          category: poem.category,
+        },
+        analysis: analysis.analysis,
+        message: "شاعری کا AI تجزیہ مکمل ہوگیا", // AI analysis completed
+      });
+    } else {
+      res.status(503).json({
+        success: false,
+        message: "AI تجزیہ دستیاب نہیں", // AI analysis not available
+        reason: analysis.reason,
+      });
+    }
+  } catch (error) {
+    console.error("AI analysis error:", error);
+    res.status(500).json({
+      success: false,
+      message: "تجزیہ کرتے وقت خرابی ہوئی", // Error during analysis
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * @route   POST /api/poems/:id/evaluate
+ * @desc    Get AI evaluation and scoring of a poem
+ * @access  Private
+ */
+router.post("/:id/evaluate", auth, poemOperationLimit, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const poem = await Poem.findById(id).populate("author", "name");
+
+    if (!poem) {
+      return res.status(404).json({
+        success: false,
+        message: "شاعری موجود نہیں",
+      });
+    }
+
+    // Check if user is the author or has permission
+    if (
+      poem.author._id.toString() !== req.user.userId &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "آپ کو اس شاعری کا تجزیہ کرنے کی اجازت نہیں", // You don't have permission to evaluate this poem
+      });
+    }
+
+    console.log(`🤖 Evaluating poem: ${poem.title}`);
+
+    const evaluation = await AIPoetryService.evaluatePoem(poem);
+
+    if (evaluation.success) {
+      res.json({
+        success: true,
+        poem: {
+          title: poem.title,
+          author: poem.author?.name,
+        },
+        evaluation: evaluation.evaluation,
+        message: "شاعری کا AI جائزہ مکمل ہوگیا", // AI evaluation completed
+      });
+    } else {
+      res.status(503).json({
+        success: false,
+        message: "AI جائزہ دستیاب نہیں", // AI evaluation not available
+        reason: evaluation.reason,
+      });
+    }
+  } catch (error) {
+    console.error("AI evaluation error:", error);
+    res.status(500).json({
+      success: false,
+      message: "جائزہ کرتے وقت خرابی ہوئی", // Error during evaluation
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * @route   GET /api/poems/ai/personalized
+ * @desc    Get AI-powered personalized poem recommendations
+ * @access  Private
+ */
+router.get("/ai/personalized", auth, poemOperationLimit, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { limit = 10 } = req.query;
+
+    // Get user's interaction history
+    const user = await User.findById(userId);
+    const userInteractions = await Poem.find({
+      $or: [
+        { "likes.user": userId },
+        { "bookmarks.user": userId },
+        { "ratings.user": userId },
+      ],
+    }).populate("author", "name");
+
+    // Build user profile
+    const userProfile = {
+      favoriteCategories: [...new Set(userInteractions.map((p) => p.category))],
+      favoritePoets: [
+        ...new Set(userInteractions.map((p) => p.author?.name).filter(Boolean)),
+      ],
+      preferredThemes: [
+        ...new Set(userInteractions.map((p) => p.theme).filter(Boolean)),
+      ],
+      recentInteractions: userInteractions.slice(-10),
+      readingHistory: user.bookmarkedPoems || [],
+    };
+
+    // Get available poems (exclude user's own poems and already interacted)
+    const excludeIds = [
+      ...userInteractions.map((p) => p._id),
+      ...(await Poem.find({ author: userId }).select("_id")).map((p) => p._id),
+    ];
+
+    const availablePoems = await Poem.find({
+      _id: { $nin: excludeIds },
+      status: "published",
+      published: true,
+    })
+      .populate("author", "name profilePicture")
+      .limit(100); // Get more to allow AI to choose from
+
+    console.log(
+      `🤖 Generating personalized recommendations for user ${userId}`
+    );
+
+    const recommendations =
+      await AIPoetryService.generatePersonalizedRecommendations(
+        userProfile,
+        availablePoems
+      );
+
+    res.json({
+      success: true,
+      recommendations: recommendations.recommendations.slice(
+        0,
+        parseInt(limit)
+      ),
+      reasoning: recommendations.reasoning,
+      userProfile: {
+        categoriesCount: userProfile.favoriteCategories.length,
+        poetsCount: userProfile.favoritePoets.length,
+        interactionsCount: userProfile.recentInteractions.length,
+      },
+      message: "ذاتی تجاویز تیار ہوگئیں", // Personalized recommendations ready
+      fallback: recommendations.fallback || false,
+    });
+  } catch (error) {
+    console.error("Personalized recommendations error:", error);
+    res.status(500).json({
+      success: false,
+      message: "ذاتی تجاویز حاصل کرتے وقت خرابی ہوئی", // Error getting personalized recommendations
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * @route   POST /api/poems/ai/thematic-analysis
+ * @desc    Generate thematic analysis of multiple poems
+ * @access  Public
+ */
+router.post("/ai/thematic-analysis", poemOperationLimit, async (req, res) => {
+  try {
+    const { poemIds, theme, author } = req.body;
+
+    let poems = [];
+
+    if (poemIds && poemIds.length > 0) {
+      // Analyze specific poems
+      poems = await Poem.find({
+        _id: { $in: poemIds },
+        status: "published",
+      })
+        .populate("author", "name")
+        .limit(20); // Max 20 poems for analysis
+    } else if (theme) {
+      // Analyze poems by theme
+      poems = await Poem.find({
+        theme: theme,
+        status: "published",
+      })
+        .populate("author", "name")
+        .limit(20);
+    } else if (author) {
+      // Analyze poems by author
+      poems = await Poem.find({
+        author: author,
+        status: "published",
+      })
+        .populate("author", "name")
+        .limit(20);
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "شاعری کی فہرست، موضوع، یا مصنف میں سے کوئی ایک ضروری ہے", // Poem list, theme, or author is required
+      });
+    }
+
+    if (poems.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "تجزیہ کے لیے کوئی شاعری نہیں ملی", // No poems found for analysis
+      });
+    }
+
+    console.log(`🤖 Generating thematic analysis for ${poems.length} poems`);
+
+    const analysis = await AIPoetryService.generateThematicAnalysis(poems);
+
+    if (analysis.success) {
+      res.json({
+        success: true,
+        analysis: analysis.analysis,
+        poemCount: poems.length,
+        poems: poems.map((p) => ({
+          title: p.title,
+          author: p.author?.name,
+          category: p.category,
+        })),
+        message: "موضوعاتی تجزیہ مکمل ہوگیا", // Thematic analysis completed
+      });
+    } else {
+      res.status(503).json({
+        success: false,
+        message: "موضوعاتی تجزیہ دستیاب نہیں", // Thematic analysis not available
+        reason: analysis.reason,
+      });
+    }
+  } catch (error) {
+    console.error("Thematic analysis error:", error);
+    res.status(500).json({
+      success: false,
+      message: "موضوعاتی تجزیہ کرتے وقت خرابی ہوئی", // Error during thematic analysis
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * @route   POST /api/poems/ai/writing-suggestions
+ * @desc    Get AI-powered writing suggestions for poets
+ * @access  Private
+ */
+router.post(
+  "/ai/writing-suggestions",
+  auth,
+  poemOperationLimit,
+  async (req, res) => {
+    try {
+      const { theme, style = "ghazal" } = req.body;
+
+      if (!theme || theme.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "موضوع ضروری ہے", // Theme is required
+        });
+      }
+
+      const validStyles = ["ghazal", "nazm", "rubai", "qasida", "free_verse"];
+      if (!validStyles.includes(style)) {
+        return res.status(400).json({
+          success: false,
+          message: "غلط شاعری کی قسم", // Invalid poetry style
+          validStyles: validStyles,
+        });
+      }
+
+      console.log(
+        `🤖 Generating writing suggestions for theme: ${theme}, style: ${style}`
+      );
+
+      const suggestions = await AIPoetryService.generateWritingSuggestions(
+        theme,
+        style
+      );
+
+      if (suggestions.success) {
+        res.json({
+          success: true,
+          suggestions: suggestions.suggestions,
+          message: "تحریری تجاویز تیار ہوگئیں", // Writing suggestions ready
+          fallback: suggestions.suggestions.fallback || false,
+        });
+      } else {
+        res.status(503).json({
+          success: false,
+          message: "تحریری تجاویز دستیاب نہیں", // Writing suggestions not available
+          reason: suggestions.reason,
+        });
+      }
+    } catch (error) {
+      console.error("Writing suggestions error:", error);
+      res.status(500).json({
+        success: false,
+        message: "تحریری تجاویز حاصل کرتے وقت خرابی ہوئی", // Error getting writing suggestions
+        error: error.message,
+      });
+    }
+  }
+);
+
+/**
+ * @route   GET /api/poems/ai/features
+ * @desc    Get available AI features and their status
+ * @access  Public
+ */
+router.get("/ai/features", (req, res) => {
+  try {
+    const isOpenAIConfigured =
+      process.env.OPENAI_API_KEY &&
+      process.env.OPENAI_API_KEY !== "your-openai-api-key" &&
+      process.env.OPENAI_API_KEY.length > 10;
+
+    const features = {
+      poemAnalysis: {
+        available: isOpenAIConfigured,
+        description: "شاعری کا تفصیلی تجزیہ", // Detailed poem analysis
+        endpoint: "/api/poems/:id/analyze",
+      },
+      poemEvaluation: {
+        available: isOpenAIConfigured,
+        description: "شاعری کا AI جائزہ اور نمبریں", // AI evaluation and scoring
+        endpoint: "/api/poems/:id/evaluate",
+      },
+      personalizedRecommendations: {
+        available: isOpenAIConfigured,
+        description: "ذاتی تجاویز", // Personalized recommendations
+        endpoint: "/api/poems/ai/personalized",
+      },
+      thematicAnalysis: {
+        available: isOpenAIConfigured,
+        description: "موضوعاتی تجزیہ", // Thematic analysis
+        endpoint: "/api/poems/ai/thematic-analysis",
+      },
+      writingSuggestions: {
+        available: isOpenAIConfigured,
+        description: "تحریری تجاویز", // Writing suggestions
+        endpoint: "/api/poems/ai/writing-suggestions",
+      },
+    };
+
+    res.json({
+      success: true,
+      features: features,
+      aiConfigured: isOpenAIConfigured,
+      message: isOpenAIConfigured
+        ? "تمام AI فیچرز دستیاب ہیں" // All AI features available
+        : "AI فیچرز دستیاب نہیں - OpenAI API key کی ضرورت", // AI features unavailable - OpenAI API key needed
+    });
+  } catch (error) {
+    console.error("AI features check error:", error);
+    res.status(500).json({
+      success: false,
+      message: "AI فیچرز کی جانچ کرتے وقت خرابی ہوئی", // Error checking AI features
+      error: error.message,
     });
   }
 });

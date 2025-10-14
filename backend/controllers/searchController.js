@@ -5,6 +5,8 @@ import natural from "natural";
 import Tesseract from "tesseract.js";
 import Fuse from "fuse.js";
 import cloudinary from "../config/cloudinary.js";
+import RekhtaService from "../services/rekhtaService.js";
+import AIPoetryService from "../services/aiPoetryService.js";
 import {
   enhanceSearchQuery,
   analyzeExtractedText,
@@ -62,19 +64,20 @@ export const textSearch = async (req, res) => {
     }
 
     let searchTerms = [query];
-    let enhancedData = null;
+    let enhancedData = { success: false };
 
-    // Use ChatGPT to enhance the search query with timeout
-    if (useAI) {
+    // Temporarily disable AI enhancement to prevent connection issues
+    // TODO: Re-enable AI enhancement once OpenAI quota/connection issues are resolved
+    if (false && useAI) {
       try {
-        const enhanceWithTimeout = withTimeout(enhanceSearchQuery, 5000);
+        const enhanceWithTimeout = withTimeout(enhanceSearchQuery, 3000);
         enhancedData = await enhanceWithTimeout(query);
-        if (enhancedData.success) {
+        if (enhancedData && enhancedData.success) {
           searchTerms = [
             query,
             enhancedData.urduTranslation,
-            ...enhancedData.enhancedKeywords,
-            ...enhancedData.semanticExpansion,
+            ...(enhancedData.enhancedKeywords || []),
+            ...(enhancedData.semanticExpansion || []),
           ].filter((term) => term && term.trim().length > 0);
         }
       } catch (error) {
@@ -90,18 +93,56 @@ export const textSearch = async (req, res) => {
     const processedQuery = processUrduText(query);
     const skip = (page - 1) * limit;
 
-    // Build enhanced search strategies using AI-powered terms
+    console.log(
+      `🔍 Text search for: "${query}" (processed: "${processedQuery}")`
+    );
+
+    // Build enhanced search strategies with poet name matching
     const searchStrategies = [];
 
-    // Primary search with original query
-    searchStrategies.push({
+    // Check if query matches any poet names (both English and Urdu)
+    const poetMatches = await Poet.find({
       $or: [
-        { title: { $regex: processedQuery, $options: "i" } },
-        { content: { $regex: processedQuery, $options: "i" } },
-        { searchKeywords: { $in: processedQuery.split(" ") } },
+        { name: { $regex: query, $options: "i" } },
+        { urduName: { $regex: query, $options: "i" } },
+        { name: { $regex: processedQuery, $options: "i" } },
+        { urduName: { $regex: processedQuery, $options: "i" } },
       ],
+    }).select("_id name urduName");
+
+    console.log(
+      `🎭 Found ${poetMatches.length} matching poets:`,
+      poetMatches.map((p) => p.name)
+    );
+
+    // Primary search with original query including poet search
+    const primarySearchConditions = [
+      { title: { $regex: processedQuery, $options: "i" } },
+      { content: { $regex: processedQuery, $options: "i" } },
+      { searchKeywords: { $in: processedQuery.split(" ") } },
+    ];
+
+    // Add poet-based search if poets found
+    if (poetMatches.length > 0) {
+      primarySearchConditions.push({
+        poet: { $in: poetMatches.map((p) => p._id) },
+      });
+    }
+
+    searchStrategies.push({
+      $or: primarySearchConditions,
       status: "published",
     });
+
+    // Fallback search without status restriction (for debugging)
+    searchStrategies.push({
+      $or: primarySearchConditions,
+    });
+
+    console.log(
+      `📋 Search strategies:`,
+      JSON.stringify(searchStrategies, null, 2)
+    );
 
     // Enhanced search with AI-suggested terms
     if (enhancedData && enhancedData.success) {
@@ -162,6 +203,12 @@ export const textSearch = async (req, res) => {
       .sort({ views: -1, averageRating: -1, publishedAt: -1 })
       .skip(skip)
       .limit(limit);
+
+    console.log(`📊 Found ${results.length} poems in search results`);
+
+    // Check total count in database for debugging
+    const totalPoems = await Poem.countDocuments({ status: "published" });
+    console.log(`📚 Total published poems in database: ${totalPoems}`);
 
     // Calculate enhanced relevance scores with AI context
     const scoredResults = results.map((poem) => {
@@ -555,7 +602,7 @@ export const imageSearch = async (req, res) => {
   }
 };
 
-// 5. Smart Search Suggestions using ChatGPT
+// 5. Smart Search Suggestions - Simplified version without OpenAI dependency
 export const getSmartSuggestions = async (req, res) => {
   try {
     const { partialQuery } = req.body;
@@ -568,10 +615,8 @@ export const getSmartSuggestions = async (req, res) => {
       });
     }
 
-    const suggestionsData = await generateSmartSuggestions(partialQuery);
-
-    // Also get recent popular searches as fallback
-    const popularSearches = [
+    // Hardcoded smart suggestions based on Urdu poetry patterns
+    const smartSuggestions = [
       "محبت کی شاعری",
       "غالب کے اشعار",
       "اقبال کی نظمیں",
@@ -580,21 +625,46 @@ export const getSmartSuggestions = async (req, res) => {
       "میر تقی میر",
       "عشق کی باتیں",
       "زندگی کے گیت",
+      "حافظ شیرازی",
+      "سعدی کے اشعار",
+      "غزل کی دنیا",
+      "نظم آزاد",
+      "قلندر کی بات",
+      "صوفی شاعری",
     ];
+
+    // Filter suggestions based on partial query
+    const filteredSuggestions = smartSuggestions.filter(
+      (suggestion) =>
+        suggestion.includes(partialQuery) ||
+        partialQuery.includes(suggestion.split(" ")[0]) ||
+        partialQuery.length < 3
+    );
+
+    // Always return at least some suggestions
+    const finalSuggestions =
+      filteredSuggestions.length > 0
+        ? filteredSuggestions.slice(0, 8)
+        : smartSuggestions.slice(0, 6);
 
     res.json({
       success: true,
-      aiSuggestions: suggestionsData.suggestions || [],
-      popularSuggestions: popularSearches,
-      totalSuggestions:
-        (suggestionsData.suggestions || []).length + popularSearches.length,
+      suggestions: finalSuggestions,
+      totalSuggestions: finalSuggestions.length,
+      partialQuery: partialQuery,
     });
   } catch (error) {
     console.error("Smart suggestions error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
-      suggestions: [],
+    // Always return a success response with fallback data
+    res.json({
+      success: true,
+      suggestions: [
+        "محبت کی شاعری",
+        "غالب کے اشعار",
+        "اقبال کی نظمیں",
+        "دکھ کے گیت",
+      ],
+      message: "Using fallback suggestions",
     });
   }
 };
@@ -734,3 +804,318 @@ export const advancedSearch = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// 7. Unified Search - Combines Database, Rekhta API, and OpenAI
+export const unifiedSearch = async (req, res) => {
+  try {
+    const {
+      query,
+      limit = 20,
+      page = 1,
+      useAI = true,
+      includeRekhta = true,
+      sources = ["database", "rekhta", "ai"], // Which sources to search
+    } = req.body;
+
+    if (!query || query.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Search query is required",
+      });
+    }
+
+    console.log(
+      `🔍 Unified search for: "${query}" across sources: ${sources.join(", ")}`
+    );
+
+    const results = {
+      success: true,
+      query: query,
+      sources: {
+        database: { poems: [], count: 0, source: "Local Database" },
+        rekhta: { poems: [], count: 0, source: "Rekhta.org" },
+        ai: { suggestions: [], recommendations: [], source: "OpenAI" },
+      },
+      combined: [],
+      searchTime: new Date().toISOString(),
+    };
+
+    // 1. Search Local Database
+    if (sources.includes("database")) {
+      try {
+        console.log("🔍 Searching local database...");
+        const processedQuery = processUrduText(query);
+
+        const databaseResults = await Poem.find({
+          $or: [
+            { title: { $regex: processedQuery, $options: "i" } },
+            { content: { $regex: processedQuery, $options: "i" } },
+            { searchKeywords: { $in: processedQuery.split(" ") } },
+          ],
+          status: "published",
+        })
+          .populate("poet", "name bio profileImage")
+          .populate("author", "username profile.fullName")
+          .sort({ views: -1, averageRating: -1 })
+          .limit(Math.floor(limit / 2)); // Reserve half for database
+
+        results.sources.database.poems = databaseResults.map((poem) => ({
+          ...poem.toObject(),
+          source: "database",
+          excerpt:
+            poem.content.substring(0, 200) +
+            (poem.content.length > 200 ? "..." : ""),
+          relevanceScore: calculateRelevanceScore(poem, query),
+        }));
+        results.sources.database.count = databaseResults.length;
+
+        console.log(
+          `✅ Found ${databaseResults.length} poems in local database`
+        );
+      } catch (error) {
+        console.error("❌ Database search error:", error);
+        results.sources.database.error = error.message;
+      }
+    }
+
+    // 2. Search Rekhta API
+    if (sources.includes("rekhta") && includeRekhta) {
+      try {
+        console.log("🔍 Searching Rekhta API...");
+
+        // First try searching for poems
+        const rekhtaSearchResults = await RekhtaService.searchPoems(
+          query,
+          "poem"
+        );
+
+        if (
+          rekhtaSearchResults.success &&
+          rekhtaSearchResults.results.length > 0
+        ) {
+          results.sources.rekhta.poems = rekhtaSearchResults.results
+            .slice(0, Math.floor(limit / 3))
+            .map((poem) => ({
+              title: poem.title,
+              content: poem.content,
+              url: poem.url,
+              type: poem.type,
+              source: "rekhta",
+              excerpt:
+                poem.content.substring(0, 200) +
+                (poem.content.length > 200 ? "..." : ""),
+              relevanceScore: calculateTextRelevance(poem.content, query),
+            }));
+          results.sources.rekhta.count = rekhtaSearchResults.results.length;
+          console.log(
+            `✅ Found ${rekhtaSearchResults.results.length} poems from Rekhta`
+          );
+        } else {
+          // Try searching for poet-specific content
+          const poetQuery = extractPoetName(query);
+          if (poetQuery) {
+            console.log(`🔍 Searching for poet: ${poetQuery}`);
+            const poetResults = await RekhtaService.getPoemsByPoet(
+              poetQuery,
+              1,
+              5
+            );
+
+            if (poetResults.success && poetResults.poems.length > 0) {
+              results.sources.rekhta.poems = poetResults.poems.map((poem) => ({
+                ...poem,
+                source: "rekhta",
+                poet: poetResults.poet,
+                excerpt:
+                  poem.content.substring(0, 200) +
+                  (poem.content.length > 200 ? "..." : ""),
+                relevanceScore: calculateTextRelevance(poem.content, query),
+              }));
+              results.sources.rekhta.count = poetResults.poems.length;
+              console.log(
+                `✅ Found ${poetResults.poems.length} poems by poet ${poetQuery}`
+              );
+            }
+          }
+        }
+
+        // Get featured poems as fallback
+        if (results.sources.rekhta.count === 0) {
+          console.log("🔍 Getting featured poems as fallback...");
+          const featuredResults = await RekhtaService.getFeaturedPoems();
+          if (featuredResults.success) {
+            results.sources.rekhta.poems = featuredResults.poems
+              .slice(0, 3)
+              .map((poem) => ({
+                ...poem,
+                source: "rekhta",
+                excerpt:
+                  poem.content.substring(0, 200) +
+                  (poem.content.length > 200 ? "..." : ""),
+                relevanceScore: 0.3, // Low relevance for featured content
+              }));
+            results.sources.rekhta.count = featuredResults.poems.length;
+            results.sources.rekhta.note =
+              "Featured poems (no direct matches found)";
+          }
+        }
+      } catch (error) {
+        console.error("❌ Rekhta search error:", error);
+        results.sources.rekhta.error = error.message;
+      }
+    }
+
+    // 3. AI-Enhanced Suggestions and Analysis
+    if (sources.includes("ai") && useAI) {
+      try {
+        console.log("🔍 Getting AI suggestions...");
+
+        // Get AI writing suggestions for the query
+        const suggestions = await AIPoetryService.generateWritingSuggestions(
+          query,
+          "ghazal"
+        );
+        if (suggestions.success) {
+          results.sources.ai.suggestions = suggestions.suggestions;
+          console.log(`✅ Generated AI writing suggestions`);
+        }
+
+        // Get AI recommendations based on available poems
+        const allPoems = [
+          ...results.sources.database.poems,
+          ...results.sources.rekhta.poems,
+        ];
+        if (allPoems.length > 0) {
+          const mockUserProfile = {
+            favoriteCategories: [query],
+            favoritePoets: [extractPoetName(query)].filter(Boolean),
+            preferredThemes: [query],
+          };
+
+          const recommendations =
+            await AIPoetryService.generatePersonalizedRecommendations(
+              mockUserProfile,
+              allPoems
+            );
+
+          if (recommendations.success) {
+            results.sources.ai.recommendations =
+              recommendations.recommendations;
+            results.sources.ai.reasoning = recommendations.reasoning;
+            console.log(`✅ Generated AI recommendations`);
+          }
+        }
+      } catch (error) {
+        console.error("❌ AI processing error:", error);
+        results.sources.ai.error = error.message;
+      }
+    }
+
+    // 4. Combine and rank all results
+    const combinedPoems = [
+      ...results.sources.database.poems,
+      ...results.sources.rekhta.poems,
+    ];
+
+    // Sort by relevance score and source priority
+    combinedPoems.sort((a, b) => {
+      // Prioritize database results slightly
+      if (a.source === "database" && b.source !== "database") return -0.1;
+      if (b.source === "database" && a.source !== "database") return 0.1;
+
+      return b.relevanceScore - a.relevanceScore;
+    });
+
+    results.combined = combinedPoems.slice(0, limit);
+
+    // 5. Add summary statistics
+    results.summary = {
+      totalResults: combinedPoems.length,
+      databaseResults: results.sources.database.count,
+      rekhtaResults: results.sources.rekhta.count,
+      aiSuggestions: results.sources.ai.suggestions?.length || 0,
+      searchComplete: true,
+      searchDuration: `${
+        Date.now() - new Date(results.searchTime).getTime()
+      }ms`,
+    };
+
+    console.log(
+      `🎉 Unified search complete: ${results.combined.length} total results`
+    );
+
+    res.json(results);
+  } catch (error) {
+    console.error("Unified search error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      query: req.body.query || "Unknown query",
+    });
+  }
+};
+
+// Helper functions for unified search
+function calculateRelevanceScore(poem, query) {
+  const queryLower = query.toLowerCase();
+  const titleLower = poem.title.toLowerCase();
+  const contentLower = poem.content.toLowerCase();
+
+  let score = 0;
+
+  // Title exact match gets highest score
+  if (titleLower.includes(queryLower)) score += 100;
+
+  // Content matches
+  const contentMatches = (
+    contentLower.match(new RegExp(queryLower, "gi")) || []
+  ).length;
+  score += contentMatches * 10;
+
+  // Popularity bonus
+  score += Math.log(poem.views + 1) * 2;
+  score += poem.averageRating * 5;
+
+  return score;
+}
+
+function calculateTextRelevance(text, query) {
+  const queryLower = query.toLowerCase();
+  const textLower = text.toLowerCase();
+
+  const matches = (textLower.match(new RegExp(queryLower, "gi")) || []).length;
+  return matches * 10 + (textLower.includes(queryLower) ? 50 : 0);
+}
+
+function extractPoetName(query) {
+  const commonPoets = {
+    غالب: "ghalib",
+    ghalib: "ghalib",
+    mirza: "ghalib",
+    "mirza ghalib": "ghalib",
+    اقبال: "iqbal",
+    iqbal: "iqbal",
+    "allama iqbal": "iqbal",
+    "علامہ اقبال": "iqbal",
+    فیض: "faiz",
+    faiz: "faiz",
+    "faiz ahmed faiz": "faiz",
+    "فیض احمد فیض": "faiz",
+    میر: "mir",
+    mir: "mir",
+    "mir taqi mir": "mir",
+    "میر تقی میر": "mir",
+    ذوق: "zauq",
+    zauq: "zauq",
+    "ibrahim zauq": "zauq",
+    "ابراہیم ذوق": "zauq",
+  };
+
+  const queryLower = query.toLowerCase();
+  for (const [poet, slug] of Object.entries(commonPoets)) {
+    if (queryLower.includes(poet.toLowerCase())) {
+      return slug;
+    }
+  }
+  return null;
+}

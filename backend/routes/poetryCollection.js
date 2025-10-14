@@ -352,6 +352,127 @@ router.delete(
  */
 router.get("/favorites", auth, PoetryCollectionController.getFavorites);
 
+// ============= AI POETRY ANALYSIS ROUTES =============
+
+/**
+ * @route   GET /api/poetry/:poemId/ai-analysis
+ * @desc    Get AI analysis for a poem
+ * @access  Public
+ */
+router.get("/:poemId/ai-analysis", PoetryCollectionController.getAIAnalysis);
+
+/**
+ * @route   POST /api/poetry/ai/writing-suggestions
+ * @desc    Get AI writing suggestions based on theme and style
+ * @access  Private
+ * @body    { theme: "محبت", style: "ghazal" }
+ */
+router.post(
+  "/ai/writing-suggestions",
+  auth,
+  PoetryCollectionController.getWritingSuggestions
+);
+
+/**
+ * @route   GET /api/poetry/:poemId/evaluate
+ * @desc    Evaluate a poem using AI
+ * @access  Public
+ */
+router.get("/:poemId/evaluate", PoetryCollectionController.evaluatePoem);
+
+/**
+ * @route   GET /api/poetry/ai/recommendations
+ * @desc    Get AI-powered personalized recommendations
+ * @access  Private
+ * @params  ?limit=10
+ */
+router.get(
+  "/ai/recommendations",
+  auth,
+  PoetryCollectionController.getAIRecommendations
+);
+
+// ============= REKHTA API INTEGRATION ROUTES =============
+
+/**
+ * @route   GET /api/poetry/rekhta/poets/:poet
+ * @desc    Get poems by classical poet from Rekhta
+ * @access  Public
+ * @params  ?page=1&limit=20
+ */
+router.get(
+  "/rekhta/poets/:poet",
+  PoetryCollectionController.getRekhtaPoemsByPoet
+);
+
+/**
+ * @route   POST /api/poetry/rekhta/search
+ * @desc    Search poems on Rekhta
+ * @access  Public
+ * @body    { query: "غالب", type: "poem" }
+ */
+router.post("/rekhta/search", PoetryCollectionController.searchRekhtaPoems);
+
+/**
+ * @route   GET /api/poetry/rekhta/featured
+ * @desc    Get featured poems from Rekhta
+ * @access  Public
+ */
+router.get(
+  "/rekhta/featured",
+  PoetryCollectionController.getFeaturedRekhtaPoems
+);
+
+/**
+ * @route   GET /api/poetry/rekhta/poets
+ * @desc    Get list of supported classical poets
+ * @access  Public
+ */
+router.get("/rekhta/poets", PoetryCollectionController.getSupportedPoets);
+
+// ============= ENHANCED POEM INTERACTION ROUTES =============
+
+/**
+ * @route   POST /api/poetry/:poemId/rate
+ * @desc    Rate or review a poem
+ * @access  Private
+ * @body    { rating: 5, review: "بہترین شاعری" }
+ */
+router.post("/:poemId/rate", auth, PoetryCollectionController.ratePoem);
+
+/**
+ * @route   POST /api/poetry/:poemId/favorite
+ * @desc    Toggle poem favorite status
+ * @access  Private
+ */
+router.post(
+  "/:poemId/favorite",
+  auth,
+  PoetryCollectionController.toggleFavorite
+);
+
+/**
+ * @route   POST /api/poetry/:poemId/bookmark-toggle
+ * @desc    Toggle bookmark on a poem
+ * @access  Private
+ */
+router.post(
+  "/:poemId/bookmark-toggle",
+  auth,
+  PoetryCollectionController.toggleBookmark
+);
+
+/**
+ * @route   POST /api/poetry/:poemId/like-toggle
+ * @desc    Toggle like on a poem
+ * @access  Private
+ */
+router.post(
+  "/:poemId/like-toggle",
+  auth,
+  PoetryCollectionController.toggleLike
+);
+
 // ============= AI RECOMMENDATIONS ROUTES =============
 
 /**

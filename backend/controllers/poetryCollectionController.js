@@ -2,11 +2,14 @@ import Poem from "../models/Poem.js";
 import Review from "../models/Review.js";
 import Collection from "../models/Collection.js";
 import User from "../models/User.js";
+import Poet from "../models/poet.js";
+import AIPoetryService from "../services/aiPoetryService.js";
+import RekhtaService from "../services/rekhtaService.js";
 import mongoose from "mongoose";
 
 /**
- * Comprehensive Poetry Collection Controller
- * Handles CRUD operations, ratings, AI recommendations, and favorites
+ * Complete Poetry Collection Controller
+ * Handles CRUD operations, ratings, AI recommendations, Rekhta integration, and favorites
  */
 
 class PoetryCollectionController {
@@ -1351,6 +1354,654 @@ class PoetryCollectionController {
       res.status(500).json({
         success: false,
         message: "تجزیات حاصل کرتے وقت خرابی ہوئی",
+        error: error.message,
+      });
+    }
+  }
+
+  // ============= AI POETRY ANALYSIS =============
+
+  /**
+   * Get AI analysis for a poem
+   */
+  static async getAIAnalysis(req, res) {
+    try {
+      const { poemId } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(poemId)) {
+        return res.status(400).json({
+          success: false,
+          message: "غلط شاعری ID",
+        });
+      }
+
+      const poem = await Poem.findById(poemId)
+        .populate("poet", "name bio")
+        .populate("author", "username profile.fullName");
+
+      if (!poem) {
+        return res.status(404).json({
+          success: false,
+          message: "شاعری موجود نہیں",
+        });
+      }
+
+      // Get AI analysis
+      const analysis = await AIPoetryService.analyzePoemContent(poem);
+
+      if (analysis.success) {
+        res.json({
+          success: true,
+          analysis: analysis.analysis,
+          poem: {
+            id: poem._id,
+            title: poem.title,
+            author: poem.author,
+            poet: poem.poet,
+          },
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "AI تجزیہ دستیاب نہیں", // "AI analysis not available"
+          reason: analysis.reason,
+        });
+      }
+    } catch (error) {
+      console.error("Error getting AI analysis:", error);
+      res.status(500).json({
+        success: false,
+        message: "AI تجزیہ حاصل کرتے وقت خرابی ہوئی",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get AI writing suggestions based on theme and style
+   */
+  static async getWritingSuggestions(req, res) {
+    try {
+      const { theme, style = "ghazal" } = req.body;
+
+      if (!theme) {
+        return res.status(400).json({
+          success: false,
+          message: "موضوع ضروری ہے", // "Theme is required"
+        });
+      }
+
+      const suggestions = await AIPoetryService.generateWritingSuggestions(
+        theme,
+        style
+      );
+
+      if (suggestions.success) {
+        res.json({
+          success: true,
+          suggestions: suggestions.suggestions,
+          theme,
+          style,
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "تجاویز دستیاب نہیں", // "Suggestions not available"
+          reason: suggestions.reason,
+        });
+      }
+    } catch (error) {
+      console.error("Error getting writing suggestions:", error);
+      res.status(500).json({
+        success: false,
+        message: "تجاویز حاصل کرتے وقت خرابی ہوئی",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Evaluate a poem using AI
+   */
+  static async evaluatePoem(req, res) {
+    try {
+      const { poemId } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(poemId)) {
+        return res.status(400).json({
+          success: false,
+          message: "غلط شاعری ID",
+        });
+      }
+
+      const poem = await Poem.findById(poemId);
+      if (!poem) {
+        return res.status(404).json({
+          success: false,
+          message: "شاعری موجود نہیں",
+        });
+      }
+
+      const evaluation = await AIPoetryService.evaluatePoem(poem);
+
+      if (evaluation.success) {
+        res.json({
+          success: true,
+          evaluation: evaluation.evaluation,
+          poem: {
+            id: poem._id,
+            title: poem.title,
+          },
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "تشخیص دستیاب نہیں", // "Evaluation not available"
+          reason: evaluation.reason,
+        });
+      }
+    } catch (error) {
+      console.error("Error evaluating poem:", error);
+      res.status(500).json({
+        success: false,
+        message: "تشخیص کرتے وقت خرابی ہوئی",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get AI-powered personalized recommendations
+   */
+  static async getAIRecommendations(req, res) {
+    try {
+      const userId = req.user?.id;
+      const { limit = 10 } = req.query;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "لاگ ان کریں", // "Please login"
+        });
+      }
+
+      // Get user's favorite poems for analysis
+      const userInteractions = await Poem.find({
+        $or: [
+          { "likes.user": userId },
+          { "bookmarks.user": userId },
+          { "ratings.user": userId, "ratings.rating": { $gte: 4 } },
+        ],
+      }).limit(20);
+
+      if (userInteractions.length === 0) {
+        // New user - return trending poems
+        return PoetryCollectionController.getTrendingPoems(parseInt(limit));
+      }
+
+      // Get user profile for AI recommendations
+      const user = await User.findById(userId);
+      const userProfile = {
+        favoriteCategories: [
+          ...new Set(userInteractions.map((p) => p.category)),
+        ],
+        favoritePoets: [
+          ...new Set(userInteractions.map((p) => p.poet).filter(Boolean)),
+        ],
+        preferredThemes: [...new Set(userInteractions.map((p) => p.theme))],
+        recentInteractions: userInteractions.slice(0, 10),
+        readingHistory: userInteractions,
+      };
+
+      // Get all available poems for recommendations
+      const availablePoems = await Poem.find({
+        status: "published",
+        published: true,
+        author: { $ne: userId }, // Exclude user's own poems
+      })
+        .populate("author", "username profile.fullName")
+        .limit(100);
+
+      const recommendations =
+        await AIPoetryService.generatePersonalizedRecommendations(
+          userProfile,
+          availablePoems
+        );
+
+      if (recommendations.success) {
+        res.json({
+          success: true,
+          recommendations: recommendations.recommendations.slice(
+            0,
+            parseInt(limit)
+          ),
+          reasoning: recommendations.reasoning,
+          diversityScore: recommendations.diversityScore,
+          confidenceScore: recommendations.confidenceScore,
+        });
+      } else {
+        // Fallback to algorithmic recommendations
+        const fallbackRecommendations =
+          await PoetryCollectionController.getPersonalizedRecommendations(
+            userId,
+            parseInt(limit)
+          );
+        res.json({
+          success: true,
+          recommendations: fallbackRecommendations,
+          reasoning: "بنیادی الگورتھم کی بنیاد پر تجاویز", // "Recommendations based on basic algorithm"
+          fallback: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error getting AI recommendations:", error);
+      res.status(500).json({
+        success: false,
+        message: "AI تجاویز حاصل کرتے وقت خرابی ہوئی",
+        error: error.message,
+      });
+    }
+  }
+
+  // ============= REKHTA API INTEGRATION =============
+
+  /**
+   * Get poems by classical poet from Rekhta
+   */
+  static async getRekhtaPoemsByPoet(req, res) {
+    try {
+      const { poet } = req.params;
+      const { page = 1, limit = 20 } = req.query;
+
+      if (!poet) {
+        return res.status(400).json({
+          success: false,
+          message: "شاعر کا نام ضروری ہے", // "Poet name is required"
+        });
+      }
+
+      const poetData = await RekhtaService.getPoemsByPoet(
+        poet,
+        parseInt(page),
+        parseInt(limit)
+      );
+
+      if (poetData.success) {
+        res.json({
+          success: true,
+          poet: poetData.poet,
+          poems: poetData.poems,
+          pagination: poetData.pagination,
+          source: "Rekhta.org",
+          fetchedAt: poetData.fetchedAt,
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: "شاعر کی شاعری نہیں ملی", // "Poet's poetry not found"
+          error: poetData.error,
+          availablePoets: poetData.availablePoets,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching Rekhta poems:", error);
+      res.status(500).json({
+        success: false,
+        message: "ریختہ سے شاعری حاصل کرتے وقت خرابی ہوئی",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Search poems on Rekhta
+   */
+  static async searchRekhtaPoems(req, res) {
+    try {
+      const { query, type = "poem" } = req.body;
+
+      if (!query) {
+        return res.status(400).json({
+          success: false,
+          message: "تلاش کی عبارت ضروری ہے", // "Search query is required"
+        });
+      }
+
+      const searchResults = await RekhtaService.searchPoems(query, type);
+
+      if (searchResults.success) {
+        res.json({
+          success: true,
+          results: searchResults.results,
+          query: searchResults.query,
+          type: searchResults.type,
+          source: "Rekhta.org",
+          fetchedAt: searchResults.fetchedAt,
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: "کوئی نتیجہ نہیں ملا", // "No results found"
+          query: searchResults.query,
+          error: searchResults.error,
+        });
+      }
+    } catch (error) {
+      console.error("Error searching Rekhta:", error);
+      res.status(500).json({
+        success: false,
+        message: "ریختہ میں تلاش کرتے وقت خرابی ہوئی",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get featured poems from Rekhta
+   */
+  static async getFeaturedRekhtaPoems(req, res) {
+    try {
+      const featuredPoems = await RekhtaService.getFeaturedPoems();
+
+      if (featuredPoems.success) {
+        res.json({
+          success: true,
+          poems: featuredPoems.poems,
+          source: "Rekhta.org",
+          fetchedAt: featuredPoems.fetchedAt,
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "نمایاں شاعری حاصل نہیں ہوسکی", // "Could not get featured poetry"
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching featured Rekhta poems:", error);
+      res.status(500).json({
+        success: false,
+        message: "نمایاں شاعری حاصل کرتے وقت خرابی ہوئی",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get list of supported classical poets
+   */
+  static async getSupportedPoets(req, res) {
+    try {
+      const poets = RekhtaService.getSupportedPoets();
+
+      res.json({
+        success: true,
+        poets,
+        count: poets.length,
+        source: "Rekhta Integration",
+      });
+    } catch (error) {
+      console.error("Error getting supported poets:", error);
+      res.status(500).json({
+        success: false,
+        message: "شعراء کی فہرست حاصل کرتے وقت خرابی ہوئی",
+        error: error.message,
+      });
+    }
+  }
+
+  // ============= POEM INTERACTIONS =============
+
+  /**
+   * Rate or review a poem
+   */
+  static async ratePoem(req, res) {
+    try {
+      const { poemId } = req.params;
+      const { rating, review } = req.body;
+      const userId = req.user.id;
+
+      if (!mongoose.Types.ObjectId.isValid(poemId)) {
+        return res.status(400).json({
+          success: false,
+          message: "غلط شاعری ID",
+        });
+      }
+
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({
+          success: false,
+          message: "ریٹنگ 1 سے 5 کے درمیان ہونی چاہیے",
+        });
+      }
+
+      const poem = await Poem.findById(poemId);
+      if (!poem) {
+        return res.status(404).json({
+          success: false,
+          message: "شاعری موجود نہیں",
+        });
+      }
+
+      // Add or update rating
+      await poem.addRating(userId, rating, review || "");
+
+      res.json({
+        success: true,
+        message: "ریٹنگ کامیابی سے شامل ہوئی", // "Rating added successfully"
+        rating: {
+          user: userId,
+          rating,
+          review,
+          ratedAt: new Date(),
+        },
+      });
+    } catch (error) {
+      console.error("Error rating poem:", error);
+      res.status(500).json({
+        success: false,
+        message: "ریٹنگ دیتے وقت خرابی ہوئی",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Toggle poem favorite status
+   */
+  static async toggleFavorite(req, res) {
+    try {
+      const { poemId } = req.params;
+      const userId = req.user.id;
+
+      if (!mongoose.Types.ObjectId.isValid(poemId)) {
+        return res.status(400).json({
+          success: false,
+          message: "غلط شاعری ID",
+        });
+      }
+
+      // Check if poem exists
+      const poem = await Poem.findById(poemId);
+      if (!poem) {
+        return res.status(404).json({
+          success: false,
+          message: "شاعری موجود نہیں",
+        });
+      }
+
+      // Get or create favorites collection
+      let favorites = await Collection.findOne({
+        user: userId,
+        type: "favorites",
+        isSystemGenerated: true,
+      });
+
+      if (!favorites) {
+        favorites = new Collection({
+          name: "پسندیدہ شاعری",
+          user: userId,
+          type: "favorites",
+          isSystemGenerated: true,
+          visibility: "private",
+        });
+        await favorites.save();
+      }
+
+      // Check if already in favorites
+      const existingPoem = favorites.poems.find(
+        (p) => p.poem.toString() === poemId
+      );
+
+      let message, isFavorited;
+
+      if (existingPoem) {
+        // Remove from favorites
+        await favorites.removePoem(poemId);
+        message = "پسندیدہ فہرست سے ہٹایا گیا"; // "Removed from favorites"
+        isFavorited = false;
+      } else {
+        // Add to favorites
+        await favorites.addPoem(poemId, userId);
+        message = "پسندیدہ فہرست میں شامل ہوا"; // "Added to favorites"
+        isFavorited = true;
+      }
+
+      res.json({
+        success: true,
+        message,
+        isFavorited,
+      });
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      res.status(500).json({
+        success: false,
+        message: "پسندیدہ فہرست اپ ڈیٹ کرتے وقت خرابی ہوئی",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Add poem to bookmarks
+   */
+  static async toggleBookmark(req, res) {
+    try {
+      const { poemId } = req.params;
+      const userId = req.user.id;
+
+      if (!mongoose.Types.ObjectId.isValid(poemId)) {
+        return res.status(400).json({
+          success: false,
+          message: "غلط شاعری ID",
+        });
+      }
+
+      const poem = await Poem.findById(poemId);
+      if (!poem) {
+        return res.status(404).json({
+          success: false,
+          message: "شاعری موجود نہیں",
+        });
+      }
+
+      // Check if already bookmarked
+      const isBookmarked = poem.bookmarks.some(
+        (bookmark) => bookmark.user.toString() === userId
+      );
+
+      let message, bookmarked;
+
+      if (isBookmarked) {
+        // Remove bookmark
+        poem.bookmarks = poem.bookmarks.filter(
+          (bookmark) => bookmark.user.toString() !== userId
+        );
+        message = "بک مارک ہٹایا گیا"; // "Bookmark removed"
+        bookmarked = false;
+      } else {
+        // Add bookmark
+        poem.bookmarks.push({ user: userId });
+        message = "بک مارک شامل ہوا"; // "Bookmark added"
+        bookmarked = true;
+      }
+
+      await poem.save();
+
+      res.json({
+        success: true,
+        message,
+        bookmarked,
+      });
+    } catch (error) {
+      console.error("Error toggling bookmark:", error);
+      res.status(500).json({
+        success: false,
+        message: "بک مارک اپ ڈیٹ کرتے وقت خرابی ہوئی",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Like or unlike a poem
+   */
+  static async toggleLike(req, res) {
+    try {
+      const { poemId } = req.params;
+      const userId = req.user.id;
+
+      if (!mongoose.Types.ObjectId.isValid(poemId)) {
+        return res.status(400).json({
+          success: false,
+          message: "غلط شاعری ID",
+        });
+      }
+
+      const poem = await Poem.findById(poemId);
+      if (!poem) {
+        return res.status(404).json({
+          success: false,
+          message: "شاعری موجود نہیں",
+        });
+      }
+
+      // Check if already liked
+      const isLiked = poem.likes.some(
+        (like) => like.user.toString() === userId
+      );
+
+      let message, liked;
+
+      if (isLiked) {
+        // Remove like
+        poem.likes = poem.likes.filter(
+          (like) => like.user.toString() !== userId
+        );
+        message = "لائک ہٹایا گیا"; // "Like removed"
+        liked = false;
+      } else {
+        // Add like (and remove dislike if exists)
+        poem.dislikes = poem.dislikes.filter(
+          (dislike) => dislike.user.toString() !== userId
+        );
+        poem.likes.push({ user: userId });
+        message = "لائک شامل ہوا"; // "Like added"
+        liked = true;
+      }
+
+      await poem.save();
+
+      res.json({
+        success: true,
+        message,
+        liked,
+        likeCount: poem.likes.length,
+      });
+    } catch (error) {
+      console.error("Error toggling like:", error);
+      res.status(500).json({
+        success: false,
+        message: "لائک اپ ڈیٹ کرتے وقت خرابی ہوئی",
         error: error.message,
       });
     }

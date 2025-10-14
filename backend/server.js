@@ -4,6 +4,11 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import {
+  requestLogger,
+  performanceMonitor,
+  rateLimitFormatter,
+} from "./middleware/errorHandler.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -45,6 +50,10 @@ app.use(
 // Middleware
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+// Enhanced logging and monitoring
+app.use(requestLogger);
+app.use(performanceMonitor);
 
 // Serve uploaded images as static files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -93,6 +102,7 @@ const startServer = async () => {
     const learningRoutes = await import("./routes/learning.js");
     const searchRoutes = await import("./routes/search.js");
     const dashboardRoutes = await import("./routes/dashboard.js");
+    const rekhtaRoutes = await import("./routes/rekhta.js");
 
     // Apply routes
     app.use("/api/auth", authRoutes.default);
@@ -104,6 +114,7 @@ const startServer = async () => {
     app.use("/api/learning", learningRoutes.default);
     app.use("/api/search", searchRoutes.default);
     app.use("/api/dashboard", dashboardRoutes.default);
+    app.use("/api/rekhta", rekhtaRoutes.default);
 
     console.log("✅ Routes loaded successfully");
   } catch (error) {
@@ -113,14 +124,21 @@ const startServer = async () => {
 
   // Error handling middleware (must be after routes)
   app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
+    console.error(
+      `💥 Unhandled error in ${req.method} ${req.path}:`,
+      err.stack
+    );
+
+    res.status(err.status || 500).json({
       success: false,
-      message: "Something went wrong!",
-      error:
-        process.env.NODE_ENV === "development"
-          ? err.message
-          : "Internal Server Error",
+      message: "خرابی ہوئی، براہ کرم دوبارہ کوشش کریں", // Error occurred, please try again
+      errorCode: "INTERNAL_SERVER_ERROR",
+      requestId: req.requestId || Math.random().toString(36).substr(2, 9),
+      timestamp: new Date().toISOString(),
+      ...(process.env.NODE_ENV === "development" && {
+        error: err.message,
+        stack: err.stack,
+      }),
     });
   });
 
