@@ -491,6 +491,232 @@ export const emailService = {
       };
     }
   },
+
+  // Send notification settings update confirmation
+  async sendNotificationSettingsUpdate(email, userName, settings) {
+    if (!transporter) {
+      console.log(
+        "⚠️ Email service not configured - Notification settings update email would have been sent"
+      );
+      return;
+    }
+
+    const enabledNotifications = Object.entries(settings)
+      .filter(([key, value]) => value === true)
+      .map(([key]) => {
+        switch (key) {
+          case "emailNotifications":
+            return "Email Notifications";
+          case "poemLikes":
+            return "Poem Likes";
+          case "comments":
+            return "Comments";
+          case "contests":
+            return "Contest Updates";
+          case "newsletter":
+            return "Newsletter";
+          default:
+            return key;
+        }
+      });
+
+    const enabledNotificationsUrdu = Object.entries(settings)
+      .filter(([key, value]) => value === true)
+      .map(([key]) => {
+        switch (key) {
+          case "emailNotifications":
+            return "ای میل اطلاعات";
+          case "poemLikes":
+            return "شعر پسند";
+          case "comments":
+            return "تبصرے";
+          case "contests":
+            return "مقابلہ اپڈیٹس";
+          case "newsletter":
+            return "نیوز لیٹر";
+          default:
+            return key;
+        }
+      });
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ur">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Notification Settings Updated</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 40px 30px; text-align: center; color: white; }
+          .logo { font-size: 32px; margin-bottom: 10px; }
+          .content { padding: 40px 30px; }
+          .urdu { font-family: 'Jameel Noori Nastaleeq', 'Arial Unicode MS', sans-serif; font-size: 18px; line-height: 1.8; direction: rtl; }
+          .english { font-size: 16px; line-height: 1.6; margin-bottom: 20px; }
+          .settings-list { background: #f8f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; }
+          .setting-item { padding: 8px 0; border-bottom: 1px solid #e0e0e0; }
+          .setting-item:last-child { border-bottom: none; }
+          .footer { background: #f8f9ff; padding: 30px; text-align: center; color: #666; }
+          .btn { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">📧</div>
+            <h1>Settings Updated</h1>
+            <p class="urdu">سیٹنگز اپڈیٹ ہو گئیں</p>
+          </div>
+          
+          <div class="content">
+            <h2>Hello ${userName}!</h2>
+            <p class="urdu">سلام ${userName}!</p>
+            
+            <p class="english">Your notification settings have been successfully updated.</p>
+            <p class="urdu">آپ کی اطلاع کی سیٹنگز کامیابی سے اپڈیٹ ہو گئی ہیں۔</p>
+            
+            <div class="settings-list">
+              <h3>Enabled Notifications / فعال اطلاعات</h3>
+              ${enabledNotifications
+                .map(
+                  (setting, index) => `
+                <div class="setting-item">
+                  <strong>${setting}</strong> - <span class="urdu">${
+                    enabledNotificationsUrdu[index] || setting
+                  }</span>
+                </div>
+              `
+                )
+                .join("")}
+            </div>
+            
+            <p class="english">You can change these settings anytime from your profile page.</p>
+            <p class="urdu">آپ اپنے پروفائل پیج سے کسی بھی وقت یہ سیٹنگز تبدیل کر سکتے ہیں۔</p>
+            
+            <a href="${
+              process.env.FRONTEND_URL || "http://localhost:3000"
+            }/profile" class="btn">View Profile</a>
+          </div>
+          
+          <div class="footer">
+            <p>Bazm-e-Sukhan Poetry Platform</p>
+            <p class="urdu">بزم سخن شاعری پلیٹ فارم</p>
+            <p><small>This is an automated message. Please do not reply.</small></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const mailOptions = {
+      from: `"Bazm-e-Sukhan" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "📧 Notification Settings Updated - اطلاع کی سیٹنگز اپڈیٹ",
+      html: htmlContent,
+    };
+
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log("✅ Notification settings update email sent successfully");
+    } catch (error) {
+      console.error("❌ Error sending notification settings email:", error);
+      throw error;
+    }
+  },
+
+  // Send test email
+  async sendTestEmail(email, userName) {
+    if (!transporter) {
+      console.log(
+        "⚠️ Email service not configured - Test email would have been sent"
+      );
+      return;
+    }
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ur">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Test Email</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%); padding: 40px 30px; text-align: center; color: white; }
+          .logo { font-size: 32px; margin-bottom: 10px; }
+          .content { padding: 40px 30px; text-align: center; }
+          .urdu { font-family: 'Jameel Noori Nastaleeq', 'Arial Unicode MS', sans-serif; font-size: 18px; line-height: 1.8; direction: rtl; margin: 15px 0; }
+          .english { font-size: 16px; line-height: 1.6; margin-bottom: 20px; }
+          .success-icon { font-size: 48px; margin: 20px 0; }
+          .footer { background: #f8f9ff; padding: 30px; text-align: center; color: #666; }
+          .timestamp { background: #e3f2fd; padding: 15px; border-radius: 10px; margin: 20px 0; font-family: monospace; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">🧪</div>
+            <h1>Test Email</h1>
+            <p class="urdu">ٹیسٹ ای میل</p>
+          </div>
+          
+          <div class="content">
+            <div class="success-icon">✅</div>
+            
+            <h2>Congratulations ${userName}!</h2>
+            <p class="urdu">مبارک ہو ${userName}!</p>
+            
+            <p class="english">Your email notifications are working perfectly!</p>
+            <p class="urdu">آپ کی ای میل اطلاعات بالکل ٹھیک کام کر رہی ہیں!</p>
+            
+            <p class="english">This test email confirms that:</p>
+            <p class="urdu">یہ ٹیسٹ ای میل اس بات کی تصدیق کرتا ہے کہ:</p>
+            
+            <ul style="text-align: left; margin: 20px 0;">
+              <li>✅ Email service is configured correctly</li>
+              <li>✅ Your email address is valid</li>
+              <li>✅ Notifications will be delivered</li>
+            </ul>
+            
+            <div class="timestamp">
+              <strong>Test completed at:</strong><br>
+              ${new Date().toLocaleString("en-US", {
+                timeZone: "Asia/Karachi",
+                dateStyle: "full",
+                timeStyle: "medium",
+              })}
+            </div>
+          </div>
+          
+          <div class="footer">
+            <p>Bazm-e-Sukhan Poetry Platform</p>
+            <p class="urdu">بزم سخن شاعری پلیٹ فارم</p>
+            <p><small>This is a test message. Please do not reply.</small></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const mailOptions = {
+      from: `"Bazm-e-Sukhan" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "🧪 Test Email - ٹیسٹ ای میل - Email Service Working!",
+      html: htmlContent,
+    };
+
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log("✅ Test email sent successfully");
+    } catch (error) {
+      console.error("❌ Error sending test email:", error);
+      throw error;
+    }
+  },
 };
 
 export default emailService;

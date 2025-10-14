@@ -941,6 +941,106 @@ router.put(
   }
 );
 
+// Update notification settings
+router.put("/profile/notifications", auth, async (req, res) => {
+  try {
+    const { notificationSettings } = req.body;
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Update notification settings
+    if (notificationSettings) {
+      user.preferences = user.preferences || {};
+      user.preferences.notifications = {
+        ...user.preferences.notifications,
+        ...notificationSettings,
+      };
+    }
+
+    await user.save();
+
+    // Send confirmation email if email notifications are enabled
+    if (notificationSettings.emailNotifications && user.email) {
+      try {
+        await emailService.sendNotificationSettingsUpdate(
+          user.email,
+          user.name,
+          notificationSettings
+        );
+      } catch (emailError) {
+        console.error(
+          "Failed to send notification settings email:",
+          emailError
+        );
+        // Don't fail the request if email fails
+      }
+    }
+
+    res.json({
+      success: true,
+      message: "Notification settings updated successfully",
+      notificationSettings: user.preferences.notifications,
+    });
+  } catch (error) {
+    console.error("Update notification settings error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update notification settings",
+    });
+  }
+});
+
+// Send test email
+router.post("/profile/test-email", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (!user.email) {
+      return res.status(400).json({
+        success: false,
+        message: "No email address found",
+      });
+    }
+
+    // Check if email notifications are enabled
+    const emailNotificationsEnabled =
+      user.preferences?.notifications?.emailNotifications !== false;
+
+    if (!emailNotificationsEnabled) {
+      return res.status(400).json({
+        success: false,
+        message: "Email notifications are disabled",
+      });
+    }
+
+    // Send test email
+    await emailService.sendTestEmail(user.email, user.name);
+
+    res.json({
+      success: true,
+      message: "Test email sent successfully",
+    });
+  } catch (error) {
+    console.error("Send test email error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send test email",
+    });
+  }
+});
+
 // Upload profile image
 router.post(
   "/profile/upload-image",
