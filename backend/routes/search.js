@@ -16,6 +16,7 @@ import {
   imageSearch,
   advancedSearch,
   getSmartSuggestions,
+  unifiedSearch,
 } from "../controllers/searchController.js";
 
 const router = express.Router();
@@ -30,6 +31,33 @@ router.get("/health", (req, res) => {
       process.env.OPENAI_API_KEY &&
       process.env.OPENAI_API_KEY !== "your-openai-api-key",
   });
+});
+
+// Debug endpoint to check database content
+router.get("/debug", async (req, res) => {
+  try {
+    const totalPoems = await Poem.countDocuments();
+    const publishedPoems = await Poem.countDocuments({ status: "published" });
+    const samplePoems = await Poem.find()
+      .limit(3)
+      .select("title content status author");
+
+    res.json({
+      success: true,
+      debug: {
+        totalPoems,
+        publishedPoems,
+        samplePoems,
+        message: "Database debug info",
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Debug query failed",
+      error: error.message,
+    });
+  }
 });
 
 // Rate limiting
@@ -163,6 +191,21 @@ router.post(
   searchLimit,
   [body("partialQuery").isLength({ min: 2, max: 100 }).trim()],
   getSmartSuggestions
+);
+
+// 🚀 UNIFIED SEARCH - Combines Database, Rekhta API, and OpenAI
+router.post(
+  "/unified",
+  searchLimit,
+  [
+    body("query").isLength({ min: 1, max: 500 }).trim(),
+    body("limit").optional().isInt({ min: 1, max: 50 }),
+    body("page").optional().isInt({ min: 1 }),
+    body("useAI").optional().isBoolean(),
+    body("includeRekhta").optional().isBoolean(),
+    body("sources").optional().isArray(),
+  ],
+  unifiedSearch
 );
 
 // Legacy text search with AI enhancement
