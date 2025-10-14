@@ -102,7 +102,7 @@ const emailConfig = getEmailConfig();
 
 if (emailConfig) {
   try {
-    transporter = nodemailer.createTransporter(emailConfig);
+    transporter = nodemailer.createTransport(emailConfig);
     console.log("✅ Email service configured successfully");
 
     // Verify connection
