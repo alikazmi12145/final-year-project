@@ -51,10 +51,21 @@ const processUrduText = (text) => {
     .toLowerCase();
 };
 
-// 1. Enhanced Text Search with ChatGPT integration
+// 1. Enhanced Text Search with dynamic MongoDB integration
 export const textSearch = async (req, res) => {
   try {
-    const { query, limit = 50, page = 1, useAI = true } = req.body;
+    console.log("🔍 Text search request:", req.query || req.body);
+    const {
+      query,
+      category,
+      mood,
+      theme,
+      language,
+      sortBy = "relevance",
+      useAI = true,
+      page = 1,
+      limit = 20,
+    } = req.query || req.body;
 
     if (!query || query.trim().length === 0) {
       return res.status(400).json({
@@ -63,32 +74,154 @@ export const textSearch = async (req, res) => {
       });
     }
 
-    let searchTerms = [query];
-    let enhancedData = { success: false };
+    let searchQuery = {};
+    let sortOptions = {};
 
-    // Temporarily disable AI enhancement to prevent connection issues
-    // TODO: Re-enable AI enhancement once OpenAI quota/connection issues are resolved
-    if (false && useAI) {
-      try {
-        const enhanceWithTimeout = withTimeout(enhanceSearchQuery, 3000);
-        enhancedData = await enhanceWithTimeout(query);
-        if (enhancedData && enhancedData.success) {
-          searchTerms = [
-            query,
-            enhancedData.urduTranslation,
-            ...(enhancedData.enhancedKeywords || []),
-            ...(enhancedData.semanticExpansion || []),
-          ].filter((term) => term && term.trim().length > 0);
-        }
-      } catch (error) {
-        console.warn(
-          "AI enhancement failed, using basic search:",
-          error.message
-        );
-        // Continue with basic search
-        enhancedData = { success: false };
-      }
+    // Build MongoDB search query with regex for multi-field search
+    const searchTerms = query.trim().split(/\s+/);
+    const regexPattern = searchTerms
+      .map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join("|");
+
+    // Multi-field search with regex
+    searchQuery.$or = [
+      { title: { $regex: regexPattern, $options: "i" } },
+      { content: { $regex: regexPattern, $options: "i" } },
+      { author: { $regex: regexPattern, $options: "i" } },
+      { "metadata.theme": { $regex: regexPattern, $options: "i" } },
+      {
+        "metadata.keywords": {
+          $in: searchTerms.map((term) => new RegExp(term, "i")),
+        },
+      },
+    ];
+
+    // Add filters
+    if (category && category !== "all") {
+      searchQuery.category = category;
     }
+    if (mood && mood !== "all") {
+      searchQuery["metadata.mood"] = mood;
+    }
+    if (theme && theme !== "all") {
+      searchQuery["metadata.theme"] = theme;
+    }
+    if (language && language !== "all") {
+      searchQuery.language = language;
+    }
+
+    // Only show published poems
+    searchQuery.status = "published";
+
+    // Sort options
+    switch (sortBy) {
+      case "newest":
+        sortOptions = { createdAt: -1 };
+        break;
+      case "oldest":
+        sortOptions = { createdAt: 1 };
+        break;
+      case "mostViewed":
+        sortOptions = { views: -1 };
+        break;
+      case "topRated":
+        sortOptions = { rating: -1 };
+        break;
+      default:
+        sortOptions = { views: -1, rating: -1 };
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    console.log("🔍 MongoDB Query:", JSON.stringify(searchQuery, null, 2));
+
+    // Execute search with population
+    const [poems, totalCount] = await Promise.all([
+      Poem.find(searchQuery)
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .populate("author", "name profile.penName")
+        .lean(),
+      Poem.countDocuments(searchQuery),
+    ]);
+
+    console.log(`📊 Found ${poems.length} poems out of ${totalCount} total`);
+
+    // Process results for better presentation
+    const processedResults = poems.map((poem) => ({
+      _id: poem._id,
+      title: poem.title,
+      content: poem.content,
+      snippet: poem.content.substring(0, 150) + "...",
+      author: poem.author?.name || poem.author?.profile?.penName || "Unknown",
+      category: poem.category,
+      mood: poem.metadata?.mood,
+      theme: poem.metadata?.theme,
+      views: poem.views || 0,
+      rating: poem.rating || 0,
+      createdAt: poem.createdAt,
+      language: poem.language || "urdu",
+    }));
+
+    // Apply Fuse.js fuzzy search for better relevance
+    if (processedResults.length > 0) {
+      const fuse = createFuseInstance(processedResults, [
+        "title",
+        "content",
+        "author",
+        "category",
+        "mood",
+        "theme",
+      ]);
+
+      const fuzzyResults = fuse.search(query);
+      const fuzzyMatches = fuzzyResults.map((result) => ({
+        ...result.item,
+        score: result.score,
+        matches: result.matches,
+      }));
+
+      // Combine MongoDB and Fuse.js results
+      const finalResults =
+        fuzzyMatches.length > 0 ? fuzzyMatches : processedResults;
+
+      return res.json({
+        success: true,
+        results: finalResults,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: totalCount,
+          pages: Math.ceil(totalCount / parseInt(limit)),
+        },
+        query: {
+          original: query,
+          processed: searchTerms,
+          filters: { category, mood, theme, language, sortBy },
+        },
+        searchType: "text",
+        aiEnhanced: useAI === "true",
+      });
+    }
+
+    return res.json({
+      success: true,
+      results: [],
+      message: "No poems found matching your search criteria",
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: 0,
+        pages: 0,
+      },
+      query: {
+        original: query,
+        processed: searchTerms,
+        filters: { category, mood, theme, language, sortBy },
+      },
+      searchType: "text",
+    });
 
     const processedQuery = processUrduText(query);
     const skip = (page - 1) * limit;

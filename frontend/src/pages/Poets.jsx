@@ -46,7 +46,7 @@ const Poets = () => {
       setError(null);
 
       // Dynamic import to avoid circular dependencies
-      const { poetAPI } = await import("../services/api.jsx");
+      const { poetAPI, rekhtaAPI } = await import("../services/api.jsx");
 
       const params = {
         ...filters,
@@ -55,16 +55,38 @@ const Poets = () => {
         isAlive: filters.isAlive === "all" ? undefined : filters.isAlive,
       };
 
+      // Fetch poets from MongoDB
       const response = await poetAPI.getAllPoets(params);
+      let mongoPoets = [];
 
       if (response?.data?.success) {
-        // Ensure poets is always an array
-        const poetsData = response.data.poets || response.data.data || [];
-        setPoets(Array.isArray(poetsData) ? poetsData : []);
-      } else {
-        console.error("Failed to fetch poets:", response?.data?.message);
-        setPoets([]);
-        setError(response?.data?.message || "Failed to fetch poets");
+        mongoPoets = response.data.poets || response.data.data || [];
+      }
+
+      // If no search term, also fetch classical poets from Rekhta
+      let rekhtaPoets = [];
+      if (!searchTerm || searchTerm.trim() === "") {
+        try {
+          const rekhtaResponse = await rekhtaAPI.getSupportedPoets();
+          if (rekhtaResponse?.data?.success) {
+            rekhtaPoets = (rekhtaResponse.data.poets || []).map((poet) => ({
+              ...poet,
+              isExternal: true,
+              source: "rekhta",
+              isDeceased: true, // Classical poets are typically deceased
+            }));
+          }
+        } catch (rekhtaError) {
+          console.log("Rekhta API not available:", rekhtaError.message);
+        }
+      }
+
+      // Combine MongoDB and Rekhta poets
+      const allPoets = [...mongoPoets, ...rekhtaPoets];
+      setPoets(Array.isArray(allPoets) ? allPoets : []);
+
+      if (allPoets.length === 0) {
+        setError("No poets found");
       }
     } catch (error) {
       console.error("Error fetching poets:", error);
@@ -284,15 +306,19 @@ const Poets = () => {
             {poets && poets.length > 0 ? (
               poets.map((poet) => (
                 <Link
-                  key={poet._id}
-                  to={`/poets/${poet._id}`}
+                  key={poet._id || poet.slug}
+                  to={
+                    poet.isExternal
+                      ? `/poets/external/${poet.slug}`
+                      : `/poets/${poet._id}`
+                  }
                   className="card p-6 hover:shadow-xl transition-all duration-300 group"
                 >
                   <div className="flex items-center space-x-4 mb-4">
                     <div className="w-16 h-16 bg-gradient-to-r from-urdu-gold to-urdu-brown rounded-full flex items-center justify-center">
-                      {poet.avatar ? (
+                      {poet.avatar || poet.image ? (
                         <img
-                          src={poet.avatar}
+                          src={poet.avatar || poet.image}
                           alt={poet.name}
                           className="w-full h-full rounded-full object-cover"
                         />
@@ -308,32 +334,76 @@ const Poets = () => {
                         {poet.isVerified && (
                           <Star className="w-4 h-4 text-urdu-gold fill-current" />
                         )}
+                        {poet.isExternal && (
+                          <span className="text-xs bg-urdu-gold text-white px-2 py-1 rounded-full">
+                            کلاسیکی
+                          </span>
+                        )}
+                        {poet.isDeceased && (
+                          <span className="text-xs bg-gray-400 text-white px-2 py-1 rounded-full">
+                            مرحوم
+                          </span>
+                        )}
                       </div>
-                      <p className="text-sm text-urdu-maroon">
-                        @{poet.username}
-                      </p>
-                      {poet.location && (
-                        <p className="text-xs text-urdu-maroon opacity-75">
-                          {poet.location}
+                      {!poet.isExternal && (
+                        <p className="text-sm text-urdu-maroon">
+                          @{poet.username}
                         </p>
+                      )}
+                      {poet.penName && (
+                        <p className="text-sm text-urdu-maroon font-urdu">
+                          {poet.penName}
+                        </p>
+                      )}
+                      {(poet.location || poet.birthPlace) && (
+                        <p className="text-xs text-urdu-maroon opacity-75">
+                          {poet.location || poet.birthPlace}
+                        </p>
+                      )}
+                      {poet.era && (
+                        <p className="text-xs text-urdu-brown">{poet.era}</p>
                       )}
                     </div>
                   </div>
 
                   <p className="text-sm text-urdu-maroon mb-4 line-clamp-2">
-                    {poet.bio || "A passionate poet sharing beautiful verses"}
+                    {poet.bio ||
+                      poet.description ||
+                      "A passionate poet sharing beautiful verses"}
                   </p>
 
                   <div className="flex items-center justify-between text-sm text-urdu-brown">
                     <div className="flex items-center space-x-1">
                       <BookOpen className="w-4 h-4" />
-                      <span>{poet.stats?.poemCount || 0} poems</span>
+                      <span>
+                        {poet.isExternal
+                          ? `${poet.totalPoems || 0} کلام`
+                          : `${poet.stats?.poemCount || 0} poems`}
+                      </span>
                     </div>
                     <div className="flex items-center space-x-1">
-                      <Heart className="w-4 h-4" />
-                      <span>{poet.stats?.totalLikes || 0} likes</span>
+                      {poet.isExternal ? (
+                        <>
+                          <Globe className="w-4 h-4" />
+                          <span>ریختہ</span>
+                        </>
+                      ) : (
+                        <>
+                          <Heart className="w-4 h-4" />
+                          <span>{poet.stats?.totalLikes || 0} likes</span>
+                        </>
+                      )}
                     </div>
                   </div>
+
+                  {/* Additional info for external poets */}
+                  {poet.isExternal && poet.famousPoems && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <p className="text-xs text-urdu-maroon opacity-75">
+                        مشہور کلام: {poet.famousPoems.slice(0, 2).join("، ")}
+                      </p>
+                    </div>
+                  )}
                 </Link>
               ))
             ) : (

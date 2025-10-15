@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from "react";
 import { Upload, Image, Camera, X, Eye, Scan, FileImage } from "lucide-react";
 import { Button } from "../ui/Button";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
+import api from "../../services/api";
 import Tesseract from "tesseract.js";
 
 const ImageSearch = ({ onSearch, loading = false }) => {
@@ -11,25 +12,120 @@ const ImageSearch = ({ onSearch, loading = false }) => {
   const [ocrProgress, setOcrProgress] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [ocrConfidence, setOcrConfidence] = useState(0);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
-  const handleImageUpload = useCallback((file) => {
-    if (file && file.type.startsWith("image/")) {
-      setSelectedImage(file);
+  // Enhanced OCR processing with progress tracking
+  const processImageWithOCR = useCallback(async (imageFile) => {
+    setIsProcessing(true);
+    setOcrProgress(0);
+    setExtractedText("");
+    setOcrConfidence(0);
 
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target.result);
-      };
-      reader.readAsDataURL(file);
+    try {
+      console.log("📸 Starting OCR processing for image search");
 
-      // Clear previous results
-      setExtractedText("");
-      setOcrProgress(0);
+      const {
+        data: { text, confidence },
+      } = await Tesseract.recognize(
+        imageFile,
+        "urd+eng+ara", // Urdu, English, Arabic
+        {
+          logger: (progress) => {
+            console.log("OCR Progress:", progress);
+            if (progress.status === "recognizing text") {
+              setOcrProgress(Math.round(progress.progress * 100));
+            }
+          },
+        }
+      );
+
+      console.log("📸 OCR completed:", { text, confidence });
+
+      setExtractedText(text);
+      setOcrConfidence(confidence);
+      setOcrProgress(100);
+
+      // Automatically search if text is extracted with good confidence
+      if (text && text.trim().length > 2) {
+        await performImageSearch(text, confidence);
+      }
+    } catch (error) {
+      console.error("❌ OCR processing error:", error);
+      alert("OCR processing failed. Please try with a clearer image.");
+    } finally {
+      setIsProcessing(false);
     }
   }, []);
+
+  // Dynamic image search with MongoDB integration
+  const performImageSearch = useCallback(
+    async (text, confidence) => {
+      if (!text || text.trim().length === 0) {
+        setSearchResults([]);
+        return;
+      }
+
+      setSearchLoading(true);
+      try {
+        console.log("📸 Performing image search with extracted text:", text);
+
+        const response = await api.search.image(text, confidence, {
+          language: "all",
+          useAI: true,
+          sortBy: "relevance",
+        });
+
+        if (response.data.success) {
+          setSearchResults(response.data.results || []);
+
+          // Call parent onSearch callback
+          if (onSearch) {
+            onSearch({
+              query: text,
+              extractedText: text,
+              ocrConfidence: confidence,
+              searchType: "image",
+              results: response.data.results || [],
+            });
+          }
+        }
+      } catch (error) {
+        console.error("❌ Image search error:", error);
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    },
+    [onSearch]
+  );
+
+  const handleImageUpload = useCallback(
+    (file) => {
+      if (file && file.type.startsWith("image/")) {
+        setSelectedImage(file);
+
+        // Create preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setImagePreview(e.target.result);
+        };
+        reader.readAsDataURL(file);
+
+        // Clear previous results
+        setExtractedText("");
+        setOcrProgress(0);
+        setSearchResults([]);
+
+        // Process with OCR
+        processImageWithOCR(file);
+      }
+    },
+    [processImageWithOCR]
+  );
 
   const handleDrag = useCallback((e) => {
     e.preventDefault();

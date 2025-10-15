@@ -8,32 +8,27 @@ import {
   Clock,
   BookOpen,
   Tag,
+  Calendar,
 } from "lucide-react";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
+import { LoadingSpinner } from "../ui/LoadingSpinner";
 
-const SearchResults = ({ results = [], loading = false, searchMeta = {} }) => {
+const SearchResults = ({
+  results = [],
+  loading = false,
+  searchMeta = {},
+  searchType = "text",
+  query = "",
+  pagination = null,
+  onPoemClick = () => {},
+  onAuthorClick = () => {},
+}) => {
   if (loading) {
     return (
-      <div className="space-y-4">
-        {[...Array(5)].map((_, index) => (
-          <Card key={index} className="p-6 animate-pulse">
-            <div className="space-y-3">
-              <div className="h-6 bg-gray-200 rounded w-3/4"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              <div className="space-y-2">
-                <div className="h-4 bg-gray-200 rounded"></div>
-                <div className="h-4 bg-gray-200 rounded"></div>
-                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-              </div>
-              <div className="flex gap-4">
-                <div className="h-4 bg-gray-200 rounded w-16"></div>
-                <div className="h-4 bg-gray-200 rounded w-16"></div>
-                <div className="h-4 bg-gray-200 rounded w-16"></div>
-              </div>
-            </div>
-          </Card>
-        ))}
+      <div className="flex justify-center items-center py-12">
+        <LoadingSpinner />
+        <span className="ml-3 text-gray-600">تلاش جاری ہے...</span>
       </div>
     );
   }
@@ -165,6 +160,157 @@ const SearchResults = ({ results = [], loading = false, searchMeta = {} }) => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Dynamic Search Results */}
+      <div className="space-y-6">
+        {/* Search Summary */}
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-blue-700">
+            <span className="flex items-center gap-1">
+              <BookOpen className="w-4 h-4" />"{query}" کے لیے {results.length}{" "}
+              نتائج ملے
+            </span>
+            {searchType !== "text" && (
+              <span className="px-2 py-1 bg-blue-200 text-blue-800 rounded-full">
+                {searchType === "voice"
+                  ? "آوازی تلاش"
+                  : searchType === "image"
+                  ? "تصویری تلاش"
+                  : searchType === "fuzzy"
+                  ? "قریبی تلاش"
+                  : searchType}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {results.map((poem, index) => (
+          <Card
+            key={poem._id || poem.id || index}
+            className="p-6 hover:shadow-lg transition-shadow cursor-pointer border border-gray-200 hover:border-amber-300"
+            onClick={() => onPoemClick(poem)}
+          >
+            <div className="space-y-4">
+              {/* Title and Author */}
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <h3
+                    className="text-xl font-bold text-gray-900 mb-2 urdu-text-local"
+                    dir="rtl"
+                  >
+                    {poem.title || "بے نام"}
+                  </h3>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAuthorClick(poem.author || poem.poet?.name);
+                    }}
+                    className="text-amber-600 hover:text-amber-700 font-medium flex items-center gap-2"
+                  >
+                    <User className="w-4 h-4" />
+                    {poem.author ||
+                      poem.poet?.name ||
+                      poem.author?.username ||
+                      poem.author?.profile?.fullName ||
+                      "نامعلوم شاعر"}
+                  </button>
+                </div>
+
+                {/* Stats */}
+                <div className="flex flex-col items-end gap-2 text-sm text-gray-500">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1">
+                      <Eye className="w-4 h-4" />
+                      {poem.views || 0}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Star className="w-4 h-4 text-yellow-500" />
+                      {poem.rating || poem.averageRating || 0}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content Snippet */}
+              <div className="bg-gray-50 p-4 rounded-lg border-r-4 border-amber-500">
+                <p
+                  className="text-gray-700 leading-relaxed urdu-text-local"
+                  dir="rtl"
+                >
+                  {poem.snippet ||
+                    poem.excerpt ||
+                    poem.content?.substring(0, 150) + "..." ||
+                    "محتوا دستیاب نہیں"}
+                </p>
+              </div>
+
+              {/* Metadata */}
+              <div className="flex flex-wrap gap-3 text-xs">
+                {poem.category && (
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full flex items-center gap-1">
+                    <Tag className="w-3 h-3" />
+                    {poem.category}
+                  </span>
+                )}
+                {poem.mood && (
+                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">
+                    {poem.mood}
+                  </span>
+                )}
+                {poem.theme && (
+                  <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
+                    {poem.theme}
+                  </span>
+                )}
+                {poem.language && (
+                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
+                    {poem.language}
+                  </span>
+                )}
+                {(poem.createdAt || poem.publishedAt) && (
+                  <span className="px-2 py-1 bg-gray-100 text-gray-500 rounded-full flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    {new Date(
+                      poem.createdAt || poem.publishedAt
+                    ).toLocaleDateString("ur-PK")}
+                  </span>
+                )}
+              </div>
+
+              {/* Search-specific metadata */}
+              {searchType === "fuzzy" && poem.fuzzyScore && (
+                <div className="text-xs text-gray-500">
+                  مماثلت: {Math.round((1 - poem.fuzzyScore) * 100)}%
+                </div>
+              )}
+
+              {searchType === "voice" && poem.confidence && (
+                <div className="text-xs text-gray-500">
+                  آواز کی وضاحت: {Math.round(poem.confidence * 100)}%
+                </div>
+              )}
+
+              {poem.score && (
+                <div className="text-xs text-gray-500">
+                  ریلیونس اسکور: {Math.round((1 - poem.score) * 100)}%
+                </div>
+              )}
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Pagination */}
+      {pagination && pagination.pages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-8">
+          <span className="text-sm text-gray-600">
+            صفحہ {pagination.page} از {pagination.pages}
+          </span>
+          <div className="text-xs text-gray-500">
+            کل {pagination.total} نتائج
+          </div>
         </div>
       )}
 

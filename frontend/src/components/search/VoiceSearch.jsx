@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Mic, MicOff, Volume2, VolumeX, Play, Square } from "lucide-react";
 import { Button } from "../ui/Button";
+import { LoadingSpinner } from "../ui/LoadingSpinner";
+import api from "../../services/api";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
@@ -9,6 +11,9 @@ const VoiceSearch = ({ onSearch, loading = false }) => {
   const [isListening, setIsListening] = useState(false);
   const [hasRecorded, setHasRecorded] = useState(false);
   const [confidence, setConfidence] = useState(0);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState("");
   const audioRef = useRef(null);
 
   const {
@@ -22,24 +27,76 @@ const VoiceSearch = ({ onSearch, loading = false }) => {
       {
         command: "search *",
         callback: (spokenText) => {
-          handleVoiceSearch(spokenText);
+          handleVoiceSearch(spokenText, 0.9);
         },
       },
     ],
   });
 
+  // Handle dynamic voice search with live MongoDB data
+  const handleVoiceSearch = async (transcript, confidence = 0.8) => {
+    if (!transcript || transcript.trim().length === 0) {
+      console.warn("No transcript to search");
+      return;
+    }
+
+    setSearchLoading(true);
+    try {
+      console.log("🎤 Voice search:", transcript, "Confidence:", confidence);
+
+      const response = await api.search.voice(transcript, confidence, {
+        language: "ur",
+        useAI: true,
+        sortBy: "relevance",
+      });
+
+      if (response.data.success) {
+        setSearchResults(response.data.results || []);
+
+        // Call parent onSearch callback
+        if (onSearch) {
+          onSearch({
+            query: transcript,
+            searchType: "voice",
+            confidence: confidence,
+            results: response.data.results || [],
+          });
+        }
+      }
+    } catch (error) {
+      console.error("❌ Voice search error:", error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (finalTranscript && !listening) {
       setHasRecorded(true);
+      setLiveTranscript(finalTranscript);
+
       // Auto-search when speech recognition completes
-      handleVoiceSearch(finalTranscript);
+      const estimatedConfidence = finalTranscript.length > 10 ? 0.8 : 0.6;
+      setConfidence(estimatedConfidence);
+      handleVoiceSearch(finalTranscript, estimatedConfidence);
     }
   }, [finalTranscript, listening]);
+
+  // Update live transcript during listening
+  useEffect(() => {
+    if (listening && transcript) {
+      setLiveTranscript(transcript);
+    }
+  }, [transcript, listening]);
 
   const startListening = () => {
     resetTranscript();
     setHasRecorded(false);
     setIsListening(true);
+    setLiveTranscript("");
+    setSearchResults([]);
+
     SpeechRecognition.startListening({
       continuous: true,
       language: "ur-PK", // Urdu Pakistan
@@ -49,20 +106,6 @@ const VoiceSearch = ({ onSearch, loading = false }) => {
   const stopListening = () => {
     setIsListening(false);
     SpeechRecognition.stopListening();
-  };
-
-  const handleVoiceSearch = (text) => {
-    if (text && text.trim()) {
-      // Calculate confidence based on speech recognition quality
-      const calculatedConfidence = text.length > 10 ? 0.8 : 0.6;
-      setConfidence(calculatedConfidence);
-
-      onSearch({
-        transcribedText: text.trim(),
-        confidence: calculatedConfidence,
-        searchType: "voice",
-      });
-    }
   };
 
   const handleManualSearch = () => {
