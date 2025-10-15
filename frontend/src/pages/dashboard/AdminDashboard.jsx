@@ -49,7 +49,6 @@ import {
   getStatusColor,
   getStatusTextUrdu,
   getRoleColor,
-  getRoleTextUrdu,
   getRoleIcon,
   formatDateUrdu,
 } from "../../services/dashboardAPI";
@@ -72,23 +71,6 @@ const AdminDashboard = () => {
   const [userPage, setUserPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-
-  // Helper function for formatting time ago
-  const formatTimeAgo = (date) => {
-    const now = new Date();
-    const diffInHours = Math.floor((now - new Date(date)) / (1000 * 60 * 60));
-
-    if (diffInHours < 1) return "ابھی";
-    if (diffInHours < 24) return `${diffInHours} گھنٹے پہلے`;
-
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays === 1) return "کل";
-    if (diffInDays < 7) return `${diffInDays} دن پہلے`;
-
-    const diffInWeeks = Math.floor(diffInDays / 7);
-    if (diffInWeeks === 1) return "1 ہفتہ پہلے";
-    return `${diffInWeeks} ہفتے پہلے`;
-  };
 
   // Handle logout
   const handleLogout = () => {
@@ -1994,76 +1976,6 @@ const formatNumber = (num) => {
     return (num / 1000).toFixed(1) + "K";
   }
   return num?.toLocaleString() || "0";
-};
-
-const formatTimeAgo = (dateString) => {
-  if (!dateString) return "نامعلوم";
-
-  const now = new Date();
-  const date = new Date(dateString);
-  const diffMs = now - date;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-
-  if (diffDays > 0) {
-    return `${diffDays} دن پہلے`;
-  } else if (diffHours > 0) {
-    return `${diffHours} گھنٹے پہلے`;
-  } else if (diffMinutes > 0) {
-    return `${diffMinutes} منٹ پہلے`;
-  } else {
-    return "ابھی";
-  }
-};
-
-const getRoleTextUrdu = (role) => {
-  const roleMap = {
-    admin: "ایڈمن",
-    poet: "شاعر",
-    reader: "قاری",
-    moderator: "نگران",
-  };
-  return roleMap[role?.toLowerCase()] || role;
-};
-
-const getStatusTextUrdu = (status) => {
-  const statusMap = {
-    active: "فعال",
-    inactive: "غیر فعال",
-    pending: "زیر التواء",
-    approved: "منظور شدہ",
-    rejected: "مسترد",
-    blocked: "بلاک شدہ",
-  };
-  return statusMap[status?.toLowerCase()] || status;
-};
-
-const formatDateUrdu = (dateString) => {
-  if (!dateString) return "نامعلوم";
-
-  const date = new Date(dateString);
-  const options = {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  };
-
-  return new Intl.DateTimeFormat("ur-PK", options).format(date);
-};
-
-const getStatusColor = (status) => {
-  const colors = {
-    active: "bg-green-100 text-green-800 border-green-200",
-    inactive: "bg-gray-100 text-gray-800 border-gray-200",
-    pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    approved: "bg-green-100 text-green-800 border-green-200",
-    rejected: "bg-red-100 text-red-800 border-red-200",
-    blocked: "bg-red-100 text-red-800 border-red-200",
-  };
-  return (
-    colors[status?.toLowerCase()] || "bg-gray-100 text-gray-800 border-gray-200"
-  );
 };
 
 // Enhanced Stat Card Component - Matching Image Style

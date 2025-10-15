@@ -1,1821 +1,1090 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { poetryAPI, dashboardAPI } from "../../services/api";
-import { Card } from "../../components/ui/Card";
-import { Button } from "../../components/ui/Button";
-import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
+import React, { useState, useEffect } from "react";
 import {
-  PenTool,
-  BookOpen,
   Users,
+  FileText,
+  Award,
+  TrendingUp,
+  Settings,
+  BarChart3,
   Eye,
   Heart,
-  TrendingUp,
   Plus,
-  Edit,
-  BarChart,
-  Award,
-  MessageCircle,
-  Share2,
-  Calendar,
-  Target,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  RefreshCw,
-  Upload,
-  Settings,
   Star,
-  Filter,
-  Search,
-  Bookmark,
-  Download,
-  MoreVertical,
-  Trash2,
-  Archive,
-  ExternalLink,
-  Copy,
-  Camera,
-  Save,
-  X,
-  Lock,
-  Unlock,
-  Globe,
-  ChevronUp,
-  ChevronDown,
-  Activity,
-  PieChart,
-  BarChart3,
-  TrendingDown,
-  UserPlus,
-  UserMinus,
-  Zap,
-  FileText,
-  ImageIcon,
-  Tag,
-  MapPin,
-  Phone,
-  Mail,
-  Link as LinkIcon,
-  Facebook,
-  Twitter,
-  Instagram,
-  Youtube,
-  Shield,
+  BookOpen,
+  Crown,
+  RefreshCw,
   LogOut,
   User,
+  Edit,
+  Trash2,
+  Upload,
+  Camera,
+  Download,
+  MessageCircle,
+  Sparkles,
+  Brain,
+  Globe,
+  Calendar,
+  Clock,
+  Target,
+  PieChart,
+  Activity,
 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { toast } from "react-hot-toast";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+
+// Stats Card Component
+const StatsCard = ({ title, value, change, icon: Icon, color, trend }) => (
+  <div
+    className={`bg-gradient-to-br ${color} rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300`}
+  >
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-white/80 text-sm font-medium mb-1">{title}</p>
+        <p className="text-4xl font-bold mb-2">{value}</p>
+        {change && (
+          <div className="flex items-center space-x-1">
+            <TrendingUp
+              className={`w-4 h-4 ${
+                trend === "up" ? "text-green-300" : "text-red-300"
+              }`}
+            />
+            <p className="text-white/80 text-xs">{change}</p>
+          </div>
+        )}
+      </div>
+      <div className="relative">
+        <div className="absolute inset-0 bg-white/20 rounded-full animate-pulse"></div>
+        <Icon className="w-12 h-12 text-white/80 relative z-10" />
+      </div>
+    </div>
+  </div>
+);
+
+// Poem Card Component
+const PoemCard = ({ poem, onEdit, onDelete, onView }) => (
+  <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-100 hover:shadow-2xl transition-all duration-300">
+    <div className="flex justify-between items-start mb-4">
+      <div className="flex-1">
+        <h3 className="text-xl font-bold text-gray-800 mb-2 line-clamp-1">
+          {poem.title}
+        </h3>
+        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+          {poem.content?.substring(0, 100)}...
+        </p>
+        <div className="flex items-center space-x-4 text-sm text-gray-500">
+          <span className="flex items-center">
+            <Eye className="w-4 h-4 mr-1" />
+            {poem.stats?.views || 0}
+          </span>
+          <span className="flex items-center">
+            <Heart className="w-4 h-4 mr-1" />
+            {poem.stats?.favorites || 0}
+          </span>
+          <span
+            className={`px-2 py-1 rounded-full text-xs ${
+              poem.status === "published"
+                ? "bg-green-100 text-green-800"
+                : poem.status === "pending"
+                ? "bg-yellow-100 text-yellow-800"
+                : "bg-red-100 text-red-800"
+            }`}
+          >
+            {poem.status === "published"
+              ? "شائع شدہ"
+              : poem.status === "pending"
+              ? "زیر نظر"
+              : "مسترد"}
+          </span>
+        </div>
+      </div>
+      <div className="flex space-x-2">
+        <button
+          onClick={() => onEdit(poem)}
+          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+        >
+          <Edit className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => onDelete(poem._id)}
+          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+    <div className="flex justify-between items-center">
+      <span className="text-xs text-gray-400">
+        {new Date(poem.createdAt).toLocaleDateString("ur-PK")}
+      </span>
+      <button
+        onClick={() => onView(poem)}
+        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+      >
+        تفصیل دیکھیں
+      </button>
+    </div>
+  </div>
+);
+
+// Poem Form Modal Component
+const PoemFormModal = ({ isOpen, onClose, poem, onSave }) => {
+  const [formData, setFormData] = useState({
+    title: "",
+    content: "",
+    category: "",
+    language: "urdu",
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (poem) {
+      setFormData({
+        title: poem.title || "",
+        content: poem.content || "",
+        category: poem.category || "",
+        language: poem.language || "urdu",
+      });
+    } else {
+      setFormData({
+        title: "",
+        content: "",
+        category: "",
+        language: "urdu",
+      });
+    }
+  }, [poem]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await onSave(formData);
+      onClose();
+    } catch (error) {
+      console.error("Error saving poem:", error);
+    }
+    setLoading(false);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 text-right">
+          {poem ? "نظم میں تبدیلی" : "نئی نظم"}
+        </h2>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+              عنوان
+            </label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
+              className="w-full p-4 border-2 border-gray-200 rounded-xl text-right focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+              required
+              dir="rtl"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+              نظم
+            </label>
+            <textarea
+              value={formData.content}
+              onChange={(e) =>
+                setFormData({ ...formData, content: e.target.value })
+              }
+              rows="8"
+              className="w-full p-4 border-2 border-gray-200 rounded-xl text-right focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all resize-none"
+              required
+              dir="rtl"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                قسم
+              </label>
+              <select
+                value={formData.category}
+                onChange={(e) =>
+                  setFormData({ ...formData, category: e.target.value })
+                }
+                className="w-full p-4 border-2 border-gray-200 rounded-xl text-right focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                required
+                dir="rtl"
+              >
+                <option value="">قسم منتخب کریں</option>
+                <option value="غزل">غزل</option>
+                <option value="نظم">نظم</option>
+                <option value="قطعہ">قطعہ</option>
+                <option value="رباعی">رباعی</option>
+                <option value="حمد">حمد</option>
+                <option value="نعت">نعت</option>
+                <option value="مرثیہ">مرثیہ</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                زبان
+              </label>
+              <select
+                value={formData.language}
+                onChange={(e) =>
+                  setFormData({ ...formData, language: e.target.value })
+                }
+                className="w-full p-4 border-2 border-gray-200 rounded-xl text-right focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                dir="rtl"
+              >
+                <option value="urdu">اردو</option>
+                <option value="english">انگریزی</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-4 pt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-3 text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+            >
+              منسوخ
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all disabled:opacity-50"
+            >
+              {loading ? "محفوظ ہو رہا ہے..." : "محفوظ کریں"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 const PoetDashboard = () => {
-  const { user, updateUser, logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
-
-  // Module 2: Poet Biographies Management State
-  const [myBiography, setMyBiography] = useState(null);
-  const [biographyStatus, setBiographyStatus] = useState("not_created"); // not_created, pending, approved, rejected
-  const [poeticStyle, setPoeticStyle] = useState("");
-  const [genres, setGenres] = useState([]);
-  const [schoolOfThought, setSchoolOfThought] = useState("");
-
-  // Module 3: Achievements Works Showcase State
-  const [myAchievements, setMyAchievements] = useState([]);
-  const [myWorks, setMyWorks] = useState([]);
-  const [famousWorks, setFamousWorks] = useState([]);
-  const [awards, setAwards] = useState([]);
-  const [publications, setPublications] = useState([]);
-
-  // Poetry Management State
-  const [myPoems, setMyPoems] = useState([]);
-  const [pendingPoems, setPendingPoems] = useState([]);
-  const [rejectedPoems, setRejectedPoems] = useState([]);
-  const [publishedPoems, setPublishedPoems] = useState([]);
-  const [drafts, setDrafts] = useState([]);
-
-  // Contest and Submission State
-  const [contests, setContests] = useState([]);
-  const [submissions, setSubmissions] = useState([]);
-
-  // Recommendations State
-  const [recommendations, setRecommendations] = useState([]);
-
-  // Followers and Following State
-  const [followers, setFollowers] = useState([]);
-  const [following, setFollowing] = useState([]);
-
-  // Profile Management State
-  const [profileData, setProfileData] = useState({
-    name: user?.name || "",
-    penName: "",
-    fullName: "",
-    email: user?.email || "",
-    phone: "",
-    address: "",
-    bio: user?.bio || "",
-    biography: "",
-    shortBio: "",
-    dateOfBirth: "",
-    birthPlace: "",
-    location: user?.location || "",
-    website: user?.website || "",
-    nationality: "",
-    languages: [],
-    era: "contemporary",
-    influences: [],
-    socialMedia: {
-      website: "",
-      facebook: "",
-      twitter: "",
-      instagram: "",
-      youtube: "",
-    },
-    socialLinks: user?.socialLinks || {
-      facebook: "",
-      twitter: "",
-      instagram: "",
-      youtube: "",
-    },
-    isPrivate: user?.isPrivate || false,
-    profilePicture: user?.profilePicture || "",
-  });
-
-  // Statistics and Analytics
-  const [analytics, setAnalytics] = useState({
-    totalPoems: 0,
-    totalViews: 0,
-    totalLikes: 0,
-    followers: 0,
-    following: 0,
-    engagementRate: 0,
-    monthlyGrowth: 0,
-    shares: 0,
-    weeklyViews: [],
-    topPerformingPoems: [],
-    topPoems: [],
-    recentActivity: [],
-    monthlyStats: {
-      views: 0,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-    },
-  });
-
-  // UI state
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [sortBy, setSortBy] = useState("newest");
-  const [viewMode, setViewMode] = useState("grid");
-
-  // Profile editing state
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileLoading, setProfileLoading] = useState(false);
-
-  // Success and error messages
-  const [message, setMessage] = useState({ type: "", text: "" });
-
-  // Advanced filters
-  const [dateRange, setDateRange] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [poems, setPoems] = useState([]);
+  const [selectedPoem, setSelectedPoem] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [analytics, setAnalytics] = useState(null);
+  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
-    fetchPoetData();
-    fetchFollowersData();
+    loadDashboardData();
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      setProfileData({
-        name: user.name || "",
-        bio: user.bio || "",
-        location: user.location || "",
-        website: user.website || "",
-        socialLinks: user.socialLinks || {
-          facebook: "",
-          twitter: "",
-          instagram: "",
-          youtube: "",
-        },
-        isPrivate: user.isPrivate || false,
-        profilePicture: user.profilePicture || "",
-      });
-    }
-  }, [user]);
-
-  const showMessage = (type, text) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage({ type: "", text: "" }), 5000);
-  };
-
-  const fetchFollowersData = async () => {
-    try {
-      // These endpoints may not exist yet, so handle gracefully
-      try {
-        const followersResponse = await dashboardAPI.getFollowers();
-        if (followersResponse.data.success) {
-          setFollowers(followersResponse.data.followers || []);
-        }
-      } catch (error) {
-        if (error.response?.status !== 404) {
-          console.error("Error fetching followers:", error);
-        }
-        // Set default empty array for followers
-        setFollowers([]);
-      }
-
-      try {
-        const followingResponse = await dashboardAPI.getFollowing();
-        if (followingResponse.data.success) {
-          setFollowing(followingResponse.data.following || []);
-        }
-      } catch (error) {
-        if (error.response?.status !== 404) {
-          console.error("Error fetching following:", error);
-        }
-        // Set default empty array for following
-        setFollowing([]);
-      }
-    } catch (error) {
-      console.error("Error in fetchFollowersData:", error);
-    }
-  };
-  const refreshData = async () => {
-    setRefreshing(true);
-    await Promise.all([
-      fetchPoetData(),
-      fetchFollowersData(),
-      fetchRecommendations(),
-    ]);
-    setRefreshing(false);
-    showMessage("success", "ڈیٹا کامیابی سے اپڈیٹ ہو گیا");
-  };
-
-  const fetchPoetData = async () => {
+  const loadDashboardData = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem("token");
 
-      // Use the new dashboard API
-      const response = await dashboardAPI.getPoetDashboard();
+      const [overviewRes, poemsRes, analyticsRes, profileRes] =
+        await Promise.all([
+          axios.get("/api/poet-dashboard/overview", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios.get("/api/poet-dashboard/poems?limit=20", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios.get("/api/poet-dashboard/analytics?period=month", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios.get("/api/poet-dashboard/profile", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
 
-      if (response.data.success) {
-        const {
-          poems,
-          pendingPoems,
-          rejectedPoems,
-          drafts,
-          contests,
-          submissions,
-          analytics,
-        } = response.data.data;
-
-        // Combine all poems for main display
-        const allPoems = [
-          ...(poems || []),
-          ...(pendingPoems || []),
-          ...(rejectedPoems || []),
-        ];
-
-        setMyPoems(allPoems);
-        setPendingPoems(pendingPoems || []);
-        setRejectedPoems(rejectedPoems || []);
-        setDrafts(drafts || []);
-        setContests(contests || []);
-        setSubmissions(submissions || []);
-        setAnalytics({
-          ...analytics,
-          totalPoems: allPoems.length,
-          totalViews: analytics?.totalViews || 0,
-          totalLikes: analytics?.totalLikes || 0,
-          followers: analytics?.followers || 45,
-          following: analytics?.following || 12,
-          engagementRate: analytics?.engagementRate || 7.3,
-          monthlyGrowth: analytics?.monthlyGrowth || 12,
-          weeklyViews: analytics?.weeklyViews || [12, 19, 3, 5, 2, 3, 9],
-          topPoems: analytics?.topPoems || [],
-          recentActivity: analytics?.recentActivity || [],
-          monthlyStats: analytics?.monthlyStats || {
-            views: 245,
-            likes: 18,
-            comments: 5,
-            shares: 3,
-          },
-        });
-      }
+      setDashboardData(overviewRes.data.data);
+      setPoems(poemsRes.data.data.poems);
+      setAnalytics(analyticsRes.data.data);
+      setProfile(profileRes.data.data);
     } catch (error) {
-      console.error("Error fetching poet data:", error);
-
-      // Enhanced fallback data matching the image
-      const fallbackPoems = [
-        {
-          id: "1",
-          title: "محبت کا گیت",
-          category: "Romance",
-          content: "یہ ایک خوبصورت محبت کا گیت ہے...",
-          createdAt: "2024-01-15T10:00:00Z",
-          status: "published",
-          viewsCount: 245,
-          likesCount: 18,
-          commentsCount: 5,
-          isPrivate: false,
-          tags: ["محبت", "رومانس", "جذبات"],
-        },
-      ];
-
-      setMyPoems(fallbackPoems);
-      setAnalytics({
-        totalViews: 0,
-        totalLikes: 0,
-        totalPoems: 1,
-        followers: 45,
-        following: 12,
-        engagementRate: 7.3,
-        monthlyGrowth: 12,
-        weeklyViews: [12, 19, 3, 5, 2, 3, 9],
-        topPoems: fallbackPoems.slice(0, 3),
-        recentActivity: [
-          {
-            action: "poem_published",
-            title: "محبت کا گیت",
-            date: "2024-01-15",
-          },
-          { action: "like_received", count: 5, date: "2024-01-14" },
-          { action: "follower_gained", name: "احمد علی", date: "2024-01-13" },
-        ],
-        monthlyStats: {
-          views: 0,
-          likes: 0,
-          comments: 0,
-          shares: 0,
-        },
-      });
+      console.error("Error loading dashboard:", error);
+      toast.error("ڈیش بورڈ لوڈ کرنے میں خرابی");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreatePoem = () => {
-    navigate("/poems/create");
+  const handleLogout = () => {
+    if (window.confirm("کیا آپ واقعی لاگ آؤٹ کرنا چاہتے ہیں؟")) {
+      logout();
+      navigate("/auth");
+    }
   };
 
-  const handleEditPoem = (poemId) => {
-    navigate(`/poems/${poemId}/edit`);
-  };
+  const handleSavePoem = async (poemData) => {
+    try {
+      const token = localStorage.getItem("token");
 
-  const handleViewPoem = (poemId) => {
-    navigate(`/poems/${poemId}`);
+      if (selectedPoem) {
+        // Update existing poem
+        await axios.put(
+          `/api/poet-dashboard/poems/${selectedPoem._id}`,
+          poemData,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        toast.success("نظم کامیابی سے اپ ڈیٹ ہوئی");
+      } else {
+        // Create new poem
+        await axios.post("/api/poet-dashboard/poems", poemData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        toast.success("نظم کامیابی سے جمع ہوئی");
+      }
+
+      loadDashboardData(); // Reload data
+      setSelectedPoem(null);
+    } catch (error) {
+      console.error("Error saving poem:", error);
+      toast.error("نظم محفوظ کرنے میں خرابی");
+    }
   };
 
   const handleDeletePoem = async (poemId) => {
-    if (!window.confirm("کیا آپ واقعی اس شاعری کو حذف کرنا چاہتے ہیں؟")) {
-      return;
-    }
+    if (!window.confirm("کیا آپ واقعی اس نظم کو حذف کرنا چاہتے ہیں؟")) return;
 
     try {
-      const response = await poetryAPI.deletePoem(poemId);
-      if (response.data.success) {
-        setMyPoems((poems) => poems.filter((p) => p.id !== poemId));
-        showMessage("success", "شاعری کامیابی سے حذف ہو گئی");
-      }
+      const token = localStorage.getItem("token");
+      await axios.delete(`/api/poet-dashboard/poems/${poemId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      toast.success("نظم کامیابی سے حذف ہوئی");
+      loadDashboardData(); // Reload data
     } catch (error) {
       console.error("Error deleting poem:", error);
-      showMessage("error", "شاعری حذف کرنے میں خرابی");
+      toast.error("نظم حذف کرنے میں خرابی");
     }
-  };
-
-  const handleTogglePrivacy = async (poemId) => {
-    try {
-      const response = await poetryAPI.togglePrivacy(poemId);
-      if (response.data.success) {
-        setMyPoems((poems) =>
-          poems.map((p) =>
-            p.id === poemId ? { ...p, isPrivate: !p.isPrivate } : p
-          )
-        );
-        showMessage("success", "پرائیویسی سیٹنگ اپڈیٹ ہو گئی");
-      }
-    } catch (error) {
-      console.error("Error toggling privacy:", error);
-      showMessage("error", "پرائیویسی سیٹنگ اپڈیٹ نہیں ہو سکی");
-    }
-  };
-
-  const handleProfilePictureChange = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    // Check file size (limit to 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      showMessage("error", "فائل کا سائز 5MB سے زیادہ نہیں ہونا چاہیے");
-      return;
-    }
-
-    // Check file type
-    if (!file.type.startsWith("image/")) {
-      showMessage("error", "صرف تصاویر اپ لوڈ کر سکتے ہیں");
-      return;
-    }
-
-    try {
-      setProfileLoading(true);
-
-      // For now, create a local URL preview since backend doesn't support image upload yet
-      const imageUrl = URL.createObjectURL(file);
-
-      setProfileData((prev) => ({
-        ...prev,
-        profilePicture: imageUrl,
-      }));
-
-      // In a real implementation, we would upload to a service like Cloudinary
-      // For now, we'll just show a success message
-      showMessage(
-        "success",
-        "تصویر کا پیش منظر اپڈیٹ ہو گیا (مکمل فیچر جلد آئے گا)"
-      );
-    } catch (error) {
-      console.error("Error handling profile picture:", error);
-      showMessage("error", "تصویر اپڈیٹ نہیں ہو سکی");
-    } finally {
-      setProfileLoading(false);
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    try {
-      setProfileLoading(true);
-
-      // Prepare data for the backend (excluding profilePicture for now)
-      const { profilePicture, ...dataToSend } = profileData;
-
-      const response = await dashboardAPI.updateProfile(dataToSend);
-
-      if (response.data.success) {
-        updateUser({ ...user, ...dataToSend });
-        setIsEditingProfile(false);
-        showMessage("success", "پروفائل کامیابی سے اپڈیٹ ہو گیا");
-      }
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      if (error.response?.status === 404) {
-        showMessage("error", "صارف نہیں ملا، دوبارہ لاگ ان کریں");
-      } else if (error.response?.status === 400) {
-        showMessage("error", "غلط معلومات، براہ کرم چیک کریں");
-      } else {
-        showMessage("error", "پروفائل اپڈیٹ نہیں ہو سکا");
-      }
-    } finally {
-      setProfileLoading(false);
-    }
-  };
-
-  const handleExportData = async () => {
-    try {
-      // For now, create a mock export since the backend endpoint doesn't exist yet
-      const exportData = {
-        profile: {
-          name: user?.name,
-          email: user?.email,
-          role: user?.role,
-          createdAt: user?.createdAt,
-        },
-        poems: myPoems.map((poem) => ({
-          title: poem.title,
-          content: poem.content,
-          category: poem.category,
-          status: poem.status,
-          createdAt: poem.createdAt,
-          viewsCount: poem.viewsCount || 0,
-          likesCount: poem.likesCount || 0,
-          commentsCount: poem.commentsCount || 0,
-        })),
-        analytics: analytics,
-        exportDate: new Date().toISOString(),
-      };
-
-      // Create blob and download
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-        type: "application/json",
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `poet-data-${user?.name || "user"}-${
-        new Date().toISOString().split("T")[0]
-      }.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      showMessage("success", "ڈیٹا کامیابی سے ڈاؤن لوڈ ہو گیا");
-    } catch (error) {
-      console.error("Error exporting data:", error);
-      showMessage("error", "ڈیٹا ایکسپورٹ نہیں ہو سکا");
-    }
-  };
-
-  const fetchRecommendations = async () => {
-    try {
-      setRecommendationsLoading(true);
-      const response = await poetryAPI.getRecommendations({ limit: 10 });
-
-      if (response.data.success) {
-        setRecommendations(response.data.poems || []);
-      }
-    } catch (error) {
-      console.error("Error fetching recommendations:", error);
-    } finally {
-      setRecommendationsLoading(false);
-    }
-  };
-
-  const handleBookmark = async (poemId) => {
-    try {
-      const response = await poetryAPI.toggleBookmark(poemId);
-
-      if (response.data.success) {
-        // Refresh recommendations to update bookmark status
-        fetchRecommendations();
-      }
-    } catch (error) {
-      console.error("Bookmark error:", error);
-    }
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("ur-PK", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "published":
-      case "approved":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "draft":
-        return "bg-gray-100 text-gray-800";
-      case "under_review":
-        return "bg-blue-100 text-blue-800";
-      case "rejected":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getStatusText = (status) => {
-    switch (status) {
-      case "published":
-      case "approved":
-        return "شائع شدہ";
-      case "pending":
-        return "منتظر منظوری";
-      case "draft":
-        return "مسودہ";
-      case "under_review":
-        return "زیر نظر";
-      case "rejected":
-        return "مسترد";
-      default:
-        return status;
-    }
-  };
-
-  // Recommendations Section Component
-  const RecommendationsSection = () => {
-    if (recommendationsLoading) {
-      return (
-        <div className="flex justify-center py-8">
-          <LoadingSpinner />
-        </div>
-      );
-    }
-
-    if (recommendations.length === 0) {
-      return (
-        <div className="text-center py-12">
-          <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500 mb-4">ابھی کوئی تجاویز دستیاب نہیں ہیں</p>
-          <Button onClick={fetchRecommendations}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            تجاویز حاصل کریں
-          </Button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="grid gap-4">
-        {recommendations.map((poem) => (
-          <div
-            key={poem._id}
-            className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h4 className="font-medium text-urdu-brown mb-2">
-                  {poem.title}
-                </h4>
-                <p className="text-sm text-gray-600 mb-2">
-                  by {poem.author?.name || poem.poet?.name}
-                </p>
-                <p className="text-sm text-urdu-maroon mb-3 line-clamp-2">
-                  {poem.content.substring(0, 100)}...
-                </p>
-                <div className="flex items-center space-x-4 text-xs text-gray-500">
-                  <span>{poem.category}</span>
-                  {poem.averageRating > 0 && (
-                    <div className="flex items-center space-x-1">
-                      <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                      <span>{poem.averageRating.toFixed(1)}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleBookmark(poem._id)}
-                >
-                  <Bookmark className="w-4 h-4" />
-                </Button>
-                <Link to={`/poems/${poem._id}`}>
-                  <Button size="sm">پڑھیں</Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen cultural-bg flex items-center justify-center">
-        <LoadingSpinner size="xl" />
+      <div
+        className="min-h-screen bg-gradient-to-br from-amber-50 via-rose-50 to-purple-50 flex items-center justify-center"
+        dir="rtl"
+      >
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">ڈیش بورڈ لوڈ ہو رہا ہے...</p>
+        </div>
       </div>
     );
   }
-
   return (
-    <div className="min-h-screen cultural-bg py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Success/Error Messages */}
-        {message.text && (
-          <div
-            className={`mb-6 p-4 rounded-lg border-l-4 ${
-              message.type === "success"
-                ? "bg-green-50 border-green-400 text-green-700"
-                : "bg-red-50 border-red-400 text-red-700"
-            }`}
-          >
-            <div className="flex items-center">
-              {message.type === "success" ? (
-                <CheckCircle className="w-5 h-5 mr-2" />
-              ) : (
-                <AlertCircle className="w-5 h-5 mr-2" />
-              )}
-              <span>{message.text}</span>
+    <div
+      className="min-h-screen bg-gradient-to-br from-amber-50 via-rose-50 to-purple-50"
+      dir="rtl"
+    >
+      {/* Enhanced Header with Beautiful Gradient */}
+      <div className="relative bg-gradient-to-r from-amber-100 via-rose-100 to-purple-100 shadow-xl border-b border-amber-200">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-100/20 to-rose-100/20"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-8">
+            <button
+              onClick={handleLogout}
+              className="text-red-600 hover:text-red-800 flex items-center space-x-2 bg-white/70 px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="font-medium">لاگ آؤٹ</span>
+            </button>
+
+            <div className="text-center urdu-text-local">
+              <h1 className="text-4xl font-bold text-amber-900 mb-2 tracking-wide">
+                <Crown className="inline w-8 h-8 ml-3 text-amber-600" />
+                شاعر ڈیش بورڈ
+              </h1>
+              <p className="text-lg text-amber-700 font-medium">
+                آپ کی شاعری کی تخلیقی دنیا
+              </p>
+              <p className="text-sm text-amber-600 mt-1">
+                خوش آمدید، {profile?.name || user?.name} - آج کا دن شاعری کے لیے
+                مبارک ہو
+              </p>
             </div>
-          </div>
-        )}
 
-        {/* Header with Profile Section */}
-        <div className="mb-8 bg-white rounded-2xl shadow-lg p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
-              {/* Profile Picture */}
-              <div className="relative">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-urdu-brown via-urdu-maroon to-urdu-gold flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
-                  {profileData.profilePicture ? (
-                    <img
-                      src={profileData.profilePicture}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    user?.name?.charAt(0) || "ش"
-                  )}
-                </div>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 w-8 h-8 bg-urdu-gold rounded-full flex items-center justify-center text-white hover:bg-urdu-maroon transition-colors"
-                >
-                  <Camera className="w-4 h-4" />
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleProfilePictureChange}
-                  className="hidden"
-                />
-              </div>
-
-              {/* Profile Info */}
-              <div>
-                <h1 className="text-3xl font-bold text-urdu-brown mb-1 nastaleeq-heading">
-                  شاعر ڈیش بورڈ
-                </h1>
-                <p className="text-urdu-maroon text-lg nastaleeq-primary">
-                  خوش آمدید، {user?.name || "شاعر"}
+            <div className="flex items-center space-x-4">
+              <div className="text-right">
+                <p className="text-sm text-amber-800 font-medium">
+                  {profile?.name || user?.name}
                 </p>
-                {profileData.bio && (
-                  <p className="text-gray-600 text-sm mt-1">
-                    {profileData.bio}
-                  </p>
-                )}
+                <p className="text-xs text-amber-600">شاعر</p>
               </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center space-x-3">
-              <Button
-                onClick={() => navigate("/profile")}
-                variant="outline"
-                size="sm"
-                className="nastaleeq-primary"
-              >
-                <User className="w-4 h-4 mr-2" />
-                پروفائل
-              </Button>
-              <Button
-                onClick={() => {
-                  if (window.confirm("کیا آپ واقعی لاگ آؤٹ کرنا چاہتے ہیں؟")) {
-                    logout();
-                    navigate("/auth");
-                  }
-                }}
-                variant="outline"
-                size="sm"
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 nastaleeq-primary"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                لاگ آؤٹ
-              </Button>
-              <Button
-                onClick={handleCreatePoem}
-                className="flex items-center nastaleeq-primary"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                نئی شاعری
-              </Button>
+              <div className="w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                {(profile?.name || user?.name)?.charAt(0) || "ش"}
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Enhanced Analytics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="p-6 bg-gradient-to-br from-white to-blue-50 border-l-4 border-blue-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1 nastaleeq-primary">
-                  کل شاعری
-                </p>
-                <p className="text-2xl font-bold text-urdu-brown">
-                  {analytics.totalPoems}
-                </p>
-                <p className="text-xs text-blue-600 mt-1">
-                  +{pendingPoems.length} منتظر منظوری
-                </p>
-              </div>
-              <BookOpen className="w-8 h-8 text-blue-500" />
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-white to-purple-50 border-l-4 border-purple-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1 nastaleeq-primary">
-                  کل views
-                </p>
-                <p className="text-2xl font-bold text-urdu-brown">
-                  {analytics.totalViews}
-                </p>
-                <p className="text-xs text-purple-600 mt-1">
-                  +{analytics.monthlyStats.views} اس ماہ
-                </p>
-              </div>
-              <Eye className="w-8 h-8 text-purple-500" />
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-white to-red-50 border-l-4 border-red-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1 nastaleeq-primary">
-                  کل پسند
-                </p>
-                <p className="text-2xl font-bold text-urdu-brown">
-                  {analytics.totalLikes}
-                </p>
-                <p className="text-xs text-red-600 mt-1">
-                  +{analytics.monthlyStats.likes} اس ماہ
-                </p>
-              </div>
-              <Heart className="w-8 h-8 text-red-500" />
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-white to-green-50 border-l-4 border-green-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">فالوورز</p>
-                <p className="text-2xl font-bold text-urdu-brown">
-                  {analytics.followers}
-                </p>
-                <p className="text-xs text-green-600 mt-1">
-                  +{analytics.monthlyGrowth}% اضافہ
-                </p>
-              </div>
-              <Users className="w-8 h-8 text-green-500" />
-            </div>
-          </Card>
-        </div>
-
-        {/* Tab Navigation matching the modules */}
-        <div className="bg-white rounded-xl shadow-lg mb-6">
-          <div className="flex border-b border-gray-200">
+      {/* Enhanced Navigation Tabs */}
+      <div className="bg-white/80 backdrop-blur-sm border-b border-amber-200 shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav className="flex space-x-1 py-2">
             {[
-              { id: "overview", label: "تجزیات", icon: BarChart },
               {
-                id: "biography-management",
-                label: "سوانح کا انتظام",
+                id: "overview",
+                label: "جائزہ",
+                icon: BarChart3,
+                color: "from-blue-500 to-purple-600",
+              },
+              {
+                id: "poems",
+                label: "نظمیں",
                 icon: BookOpen,
+                color: "from-green-500 to-teal-600",
               },
               {
-                id: "achievements-showcase",
-                label: "کامیابیوں کی نمائش",
-                icon: Award,
+                id: "analytics",
+                label: "تجزیات",
+                icon: TrendingUp,
+                color: "from-orange-500 to-red-600",
               },
-              { id: "poetry-works", label: "شاعری کا ذخیرہ", icon: PenTool },
               {
-                id: "profile-settings",
-                label: "پروفائل ترتیبات",
+                id: "profile",
+                label: "پروفائل",
+                icon: User,
+                color: "from-purple-500 to-pink-600",
+              },
+              {
+                id: "ai",
+                label: "AI مدد",
+                icon: Brain,
+                color: "from-indigo-500 to-blue-600",
+              },
+              {
+                id: "settings",
+                label: "ترتیبات",
                 icon: Settings,
+                color: "from-gray-500 to-gray-700",
               },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center px-6 py-4 text-sm font-medium transition-all nastaleeq-primary ${
-                  activeTab === tab.id
-                    ? "bg-urdu-brown text-white border-b-2 border-urdu-gold"
-                    : "text-gray-600 hover:text-urdu-brown hover:bg-gray-50"
-                }`}
-              >
-                <tab.icon className="w-4 h-4 mr-2" />
-                {tab.label}
-              </button>
-            ))}
-          </div>
+            ].map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center space-x-2 py-3 px-6 rounded-t-lg font-medium text-sm transition-all duration-300 ${
+                    activeTab === tab.id
+                      ? `bg-gradient-to-r ${tab.color} text-white shadow-lg transform -translate-y-1`
+                      : "text-gray-600 hover:text-gray-800 hover:bg-gray-100 bg-transparent"
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
+      </div>
 
-        {/* Tab Content */}
-        {/* MODULE: Overview/Analytics */}
-        {activeTab === "overview" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Performance Analytics */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-urdu-brown mb-4 flex items-center">
-                <Activity className="w-5 h-5 mr-2" />
-                حالیہ کارکردگی
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                  <span className="text-gray-700">مہینے کی ترقی</span>
-                  <span className="text-green-600 font-bold flex items-center">
-                    <TrendingUp className="w-4 h-4 mr-1" />+
-                    {analytics.monthlyGrowth}%
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                  <span className="text-gray-700">مشغولیت کی شرح</span>
-                  <span className="text-blue-600 font-bold">
-                    {analytics.engagementRate}%
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                  <span className="text-gray-700">اوسط لائکس فی پوسٹ</span>
-                  <span className="text-purple-600 font-bold">
-                    {analytics.totalPoems > 0
-                      ? Math.round(analytics.totalLikes / analytics.totalPoems)
-                      : 0}
-                  </span>
-                </div>
-              </div>
-            </Card>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Overview Tab */}
+        {activeTab === "overview" && dashboardData && (
+          <div className="space-y-8 urdu-text-local">
+            {/* Enhanced Statistics Cards with Real Data */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <StatsCard
+                title="کل نظمیں"
+                value={dashboardData.overview?.totalPoems || 0}
+                change={`+${
+                  dashboardData.overview?.newPoemsThisMonth || 0
+                } اس مہینے`}
+                icon={FileText}
+                color="from-blue-500 via-purple-600 to-indigo-700"
+                trend="up"
+              />
 
-            {/* Recent Activity */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-urdu-brown mb-4 flex items-center">
-                <Clock className="w-5 h-5 mr-2" />
-                حالیہ سرگرمی
-              </h3>
-              <div className="space-y-3">
-                {analytics.recentActivity.length > 0 ? (
-                  analytics.recentActivity.map((activity, index) => (
+              <StatsCard
+                title="کل نظارات"
+                value={dashboardData.overview?.totalViews || 0}
+                change={`+${
+                  dashboardData.overview?.newViewsThisMonth || 0
+                } اس مہینے`}
+                icon={Eye}
+                color="from-green-500 via-teal-600 to-emerald-700"
+                trend="up"
+              />
+
+              <StatsCard
+                title="پسندیدہ"
+                value={dashboardData.overview?.totalFavorites || 0}
+                change={`${
+                  dashboardData.overview?.engagementRate || 0
+                }% مشغولیت`}
+                icon={Heart}
+                color="from-pink-500 via-red-600 to-rose-700"
+                trend="up"
+              />
+
+              <StatsCard
+                title="شائع شدہ"
+                value={dashboardData.overview?.publishedPoems || 0}
+                change={`${dashboardData.overview?.pendingPoems || 0} زیر نظر`}
+                icon={Award}
+                color="from-orange-500 via-yellow-600 to-amber-700"
+                trend="up"
+              />
+            </div>
+
+            {/* Recent Poems and Top Performers */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Recent Poems */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                  <Clock className="w-6 h-6 ml-3 text-blue-600" />
+                  حالیہ نظمیں
+                </h3>
+                <div className="space-y-4">
+                  {dashboardData.recentPoems?.slice(0, 5).map((poem, index) => (
                     <div
-                      key={index}
-                      className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
+                      key={poem._id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                     >
-                      <div className="w-8 h-8 bg-urdu-gold rounded-full flex items-center justify-center">
-                        {activity.action === "poem_published" && (
-                          <BookOpen className="w-4 h-4 text-white" />
-                        )}
-                        {activity.action === "like_received" && (
-                          <Heart className="w-4 h-4 text-white" />
-                        )}
-                        {activity.action === "follower_gained" && (
-                          <UserPlus className="w-4 h-4 text-white" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-700">
-                          {activity.action === "poem_published" &&
-                            `"${activity.title}" شائع ہوئی`}
-                          {activity.action === "like_received" &&
-                            `${activity.count} نئے لائکس ملے`}
-                          {activity.action === "follower_gained" &&
-                            `${activity.name} نے فالو کیا`}
+                      <div>
+                        <h4 className="font-medium text-gray-800">
+                          {poem.title}
+                        </h4>
+                        <p className="text-sm text-gray-500">
+                          {new Date(poem.createdAt).toLocaleDateString("ur-PK")}
                         </p>
-                        <p className="text-xs text-gray-500">{activity.date}</p>
                       </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-center py-6">
-                    کوئی حالیہ سرگرمی نہیں
-                  </p>
-                )}
-              </div>
-            </Card>
-
-            {/* Monthly Statistics */}
-            <Card className="p-6 lg:col-span-2">
-              <h3 className="text-lg font-semibold text-urdu-brown mb-4 flex items-center nastaleeq-heading">
-                <BarChart3 className="w-5 h-5 mr-2" />
-                ماہانہ اعداد و شمار
-              </h3>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <Eye className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-blue-600">
-                    {analytics.monthlyStats.views}
-                  </p>
-                  <p className="text-sm text-gray-600">Views</p>
-                </div>
-                <div className="text-center p-4 bg-red-50 rounded-lg">
-                  <Heart className="w-8 h-8 text-red-500 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-red-600">
-                    {analytics.monthlyStats.likes}
-                  </p>
-                  <p className="text-sm text-gray-600">Likes</p>
-                </div>
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <MessageCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-green-600">
-                    {analytics.monthlyStats.comments}
-                  </p>
-                  <p className="text-sm text-gray-600">Comments</p>
-                </div>
-                <div className="text-center p-4 bg-purple-50 rounded-lg">
-                  <Share2 className="w-8 h-8 text-purple-500 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-purple-600">
-                    {analytics.monthlyStats.shares}
-                  </p>
-                  <p className="text-sm text-gray-600">Shares</p>
-                </div>
-              </div>
-            </Card>
-          </div>
-        )}
-
-        {/* MODULE: Biography Management */}
-        {activeTab === "biography-management" && (
-          <div className="space-y-6">
-            {/* Advanced Filters */}
-            <Card className="p-4">
-              <div className="flex flex-col lg:flex-row gap-4 items-center">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="شاعری تلاش کریں..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown focus:border-transparent"
-                  />
-                </div>
-
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown nastaleeq-primary"
-                >
-                  <option value="all">تمام حالات</option>
-                  <option value="published">شائع شدہ</option>
-                  <option value="pending">منتظر منظوری</option>
-                  <option value="draft">مسودہ</option>
-                  <option value="rejected">مسترد</option>
-                </select>
-
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown nastaleeq-primary"
-                >
-                  <option value="newest">نیا پہلے</option>
-                  <option value="oldest">پرانا پہلے</option>
-                  <option value="popular">مقبول ترین</option>
-                  <option value="views">زیادہ دیکھا گیا</option>
-                </select>
-
-                <Button
-                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Filter className="w-4 h-4 mr-2" />
-                  {showAdvancedFilters ? "کم فلٹرز" : "زیادہ فلٹرز"}
-                </Button>
-              </div>
-
-              {showAdvancedFilters && (
-                <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <select
-                    value={dateRange}
-                    onChange={(e) => setDateRange(e.target.value)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg"
-                  >
-                    <option value="all">تمام اوقات</option>
-                    <option value="today">آج</option>
-                    <option value="week">اس ہفتے</option>
-                    <option value="month">اس ماہ</option>
-                    <option value="year">اس سال</option>
-                  </select>
-
-                  <select
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg"
-                  >
-                    <option value="all">تمام اقسام</option>
-                    <option value="Romance">رومانس</option>
-                    <option value="Ghazal">غزل</option>
-                    <option value="Nazm">نظم</option>
-                    <option value="Qita">قطعہ</option>
-                  </select>
-
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="privateOnly"
-                      className="rounded border-gray-300"
-                    />
-                    <label
-                      htmlFor="privateOnly"
-                      className="text-sm text-gray-700"
-                    >
-                      صرف پرائیویٹ شاعری
-                    </label>
-                  </div>
-                </div>
-              )}
-            </Card>
-
-            {/* Poems Grid */}
-            <div className="grid gap-6">
-              {myPoems.length === 0 ? (
-                <Card className="p-12 text-center">
-                  <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                    ابھی کوئی شاعری نہیں ہے
-                  </h3>
-                  <p className="text-gray-500 mb-6">
-                    اپنی پہلی شاعری لکھ کر شروعات کریں
-                  </p>
-                  <Button onClick={handleCreatePoem} size="lg">
-                    <Plus className="w-5 h-5 mr-2" />
-                    پہلی شاعری لکھیں
-                  </Button>
-                </Card>
-              ) : (
-                myPoems
-                  .filter((poem) => {
-                    const matchesSearch = poem.title
-                      .toLowerCase()
-                      .includes(searchTerm.toLowerCase());
-                    const matchesFilter =
-                      filterStatus === "all" || poem.status === filterStatus;
-                    return matchesSearch && matchesFilter;
-                  })
-                  .map((poem) => (
-                    <Card
-                      key={poem.id}
-                      className="p-6 hover:shadow-lg transition-shadow"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-3">
-                            <h3 className="text-xl font-semibold text-urdu-brown">
-                              {poem.title}
-                            </h3>
-                            <span
-                              className={`px-3 py-1 text-xs rounded-full ${getStatusColor(
-                                poem.status
-                              )}`}
-                            >
-                              {getStatusText(poem.status)}
-                            </span>
-                            {poem.isPrivate && (
-                              <Lock className="w-4 h-4 text-gray-500" />
-                            )}
-                          </div>
-
-                          <p className="text-gray-600 mb-2">{poem.category}</p>
-
-                          {poem.content && (
-                            <p className="text-urdu-maroon mb-3 line-clamp-2">
-                              {poem.content.substring(0, 100)}...
-                            </p>
-                          )}
-
-                          <div className="flex items-center space-x-6 text-sm text-gray-500 mb-3">
-                            <span className="flex items-center">
-                              <Eye className="w-4 h-4 mr-1" />
-                              {poem.viewsCount || 0}
-                            </span>
-                            <span className="flex items-center">
-                              <Heart className="w-4 h-4 mr-1" />
-                              {poem.likesCount || 0}
-                            </span>
-                            <span className="flex items-center">
-                              <MessageCircle className="w-4 h-4 mr-1" />
-                              {poem.commentsCount || 0}
-                            </span>
-                            <span className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-1" />
-                              {formatDate(poem.createdAt)}
-                            </span>
-                          </div>
-
-                          {poem.tags && poem.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {poem.tags.map((tag, index) => (
-                                <span
-                                  key={index}
-                                  className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full"
-                                >
-                                  #{tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleViewPoem(poem.id)}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEditPoem(poem.id)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleTogglePrivacy(poem.id)}
-                          >
-                            {poem.isPrivate ? (
-                              <Unlock className="w-4 h-4" />
-                            ) : (
-                              <Lock className="w-4 h-4" />
-                            )}
-                          </Button>
-                          <div className="relative">
-                            <Button size="sm" variant="outline">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* MODULE: Achievements Showcase */}
-        {activeTab === "achievements-showcase" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Profile Editing */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-urdu-brown mb-6 flex items-center">
-                <Edit className="w-5 h-5 mr-2" />
-                پروفائل کی تبدیلی
-              </h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    نام
-                  </label>
-                  <input
-                    type="text"
-                    value={profileData.name}
-                    onChange={(e) =>
-                      setProfileData((prev) => ({
-                        ...prev,
-                        name: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown"
-                    placeholder="اپنا نام درج کریں"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    تعارف
-                  </label>
-                  <textarea
-                    value={profileData.bio}
-                    onChange={(e) =>
-                      setProfileData((prev) => ({
-                        ...prev,
-                        bio: e.target.value,
-                      }))
-                    }
-                    rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown"
-                    placeholder="اپنا مختصر تعارف لکھیں"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    مقام
-                  </label>
-                  <input
-                    type="text"
-                    value={profileData.location}
-                    onChange={(e) =>
-                      setProfileData((prev) => ({
-                        ...prev,
-                        location: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown"
-                    placeholder="آپ کا شہر/ملک"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    ویب سائٹ
-                  </label>
-                  <input
-                    type="url"
-                    value={profileData.website}
-                    onChange={(e) =>
-                      setProfileData((prev) => ({
-                        ...prev,
-                        website: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown"
-                    placeholder="https://your-website.com"
-                  />
-                </div>
-
-                <div className="pt-4">
-                  <Button
-                    onClick={handleSaveProfile}
-                    disabled={profileLoading}
-                    className="w-full"
-                  >
-                    {profileLoading ? (
-                      <LoadingSpinner className="w-4 h-4 mr-2" />
-                    ) : (
-                      <Save className="w-4 h-4 mr-2" />
-                    )}
-                    تبدیلیاں محفوظ کریں
-                  </Button>
-                </div>
-              </div>
-            </Card>
-
-            {/* Social Media Links */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-urdu-brown mb-6 flex items-center">
-                <LinkIcon className="w-5 h-5 mr-2" />
-                سماجی روابط
-              </h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                    <Facebook className="w-4 h-4 mr-2 text-blue-600" />
-                    Facebook
-                  </label>
-                  <input
-                    type="url"
-                    value={profileData.socialLinks.facebook}
-                    onChange={(e) =>
-                      setProfileData((prev) => ({
-                        ...prev,
-                        socialLinks: {
-                          ...prev.socialLinks,
-                          facebook: e.target.value,
-                        },
-                      }))
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown"
-                    placeholder="Facebook profile URL"
-                  />
-                </div>
-
-                <div>
-                  <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                    <Twitter className="w-4 h-4 mr-2 text-blue-400" />
-                    Twitter
-                  </label>
-                  <input
-                    type="url"
-                    value={profileData.socialLinks.twitter}
-                    onChange={(e) =>
-                      setProfileData((prev) => ({
-                        ...prev,
-                        socialLinks: {
-                          ...prev.socialLinks,
-                          twitter: e.target.value,
-                        },
-                      }))
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown"
-                    placeholder="Twitter profile URL"
-                  />
-                </div>
-
-                <div>
-                  <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                    <Instagram className="w-4 h-4 mr-2 text-pink-600" />
-                    Instagram
-                  </label>
-                  <input
-                    type="url"
-                    value={profileData.socialLinks.instagram}
-                    onChange={(e) =>
-                      setProfileData((prev) => ({
-                        ...prev,
-                        socialLinks: {
-                          ...prev.socialLinks,
-                          instagram: e.target.value,
-                        },
-                      }))
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown"
-                    placeholder="Instagram profile URL"
-                  />
-                </div>
-
-                <div>
-                  <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                    <Youtube className="w-4 h-4 mr-2 text-red-600" />
-                    YouTube
-                  </label>
-                  <input
-                    type="url"
-                    value={profileData.socialLinks.youtube}
-                    onChange={(e) =>
-                      setProfileData((prev) => ({
-                        ...prev,
-                        socialLinks: {
-                          ...prev.socialLinks,
-                          youtube: e.target.value,
-                        },
-                      }))
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown"
-                    placeholder="YouTube channel URL"
-                  />
-                </div>
-              </div>
-            </Card>
-
-            {/* Account Actions */}
-            <Card className="p-6 lg:col-span-2">
-              <h3 className="text-lg font-semibold text-urdu-brown mb-6 flex items-center">
-                <Settings className="w-5 h-5 mr-2" />
-                اکاؤنٹ کی ترتیبات
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h4 className="font-medium text-gray-900">
-                        ڈیٹا ایکسپورٹ
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        اپنی تمام شاعری ڈاؤن لوڈ کریں
-                      </p>
-                    </div>
-                    <Button
-                      onClick={handleExportData}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      ڈاؤن لوڈ
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h4 className="font-medium text-gray-900">
-                        اکاؤنٹ کی تصدیق
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        اپنا اکاؤنٹ ویریفائی کریں
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      تصدیق کریں
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h4 className="font-medium text-gray-900">
-                        فالوورز کی فہرست
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        {analytics.followers} فالوورز
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      <Users className="w-4 h-4 mr-2" />
-                      دیکھیں
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h4 className="font-medium text-gray-900">
-                        فالونگ کی فہرست
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        {analytics.following} فالونگ
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      <Users className="w-4 h-4 mr-2" />
-                      دیکھیں
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
-        )}
-
-        {/* MODULE: Poetry Works Showcase */}
-        {activeTab === "poetry-works" && (
-          <div className="space-y-6">
-            {/* Privacy Settings */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-urdu-brown mb-6 flex items-center">
-                <Lock className="w-5 h-5 mr-2" />
-                پرائیویسی کی ترتیبات
-              </h3>
-
-              <div className="space-y-6">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-900">
-                      پرائیویٹ اکاؤنٹ
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      صرف فالوورز آپ کی شاعری دیکھ سکیں گے
-                    </p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={profileData.isPrivate}
-                      onChange={(e) =>
-                        setProfileData((prev) => ({
-                          ...prev,
-                          isPrivate: e.target.checked,
-                        }))
-                      }
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-urdu-brown/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-urdu-brown"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-900">
-                      پروفائل تصویر کی رسائی
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      کون آپ کی پروفائل تصویر دیکھ سکتا ہے
-                    </p>
-                  </div>
-                  <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    <option value="public">عوامی</option>
-                    <option value="followers">فالوورز</option>
-                    <option value="none">کوئی نہیں</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-900">آن لائن سٹیٹس</h4>
-                    <p className="text-sm text-gray-600">
-                      دوسرے دیکھ سکیں کہ آپ آن لائن ہیں
-                    </p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-urdu-brown/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-urdu-brown"></div>
-                  </label>
-                </div>
-              </div>
-            </Card>
-
-            {/* Blocked Users */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-urdu-brown mb-6 flex items-center">
-                <UserMinus className="w-5 h-5 mr-2" />
-                بلاک شدہ صارفین
-              </h3>
-
-              <div className="text-center py-8">
-                <UserMinus className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">کوئی بلاک شدہ صارف نہیں</p>
-              </div>
-            </Card>
-
-            {/* Data & Privacy */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-urdu-brown mb-6 flex items-center">
-                <Shield className="w-5 h-5 mr-2" />
-                ڈیٹا اور پرائیویسی
-              </h3>
-
-              <div className="space-y-4">
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="flex items-start">
-                    <AlertCircle className="w-5 h-5 text-yellow-600 mr-3 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-yellow-800">
-                        ڈیٹا کا استعمال
-                      </h4>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        ہم آپ کی معلومات کو محفوظ رکھتے ہیں اور کبھی تیسرے فریق
-                        کے ساتھ شیئر نہیں کرتے
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Button variant="outline" className="justify-start">
-                    <FileText className="w-4 h-4 mr-2" />
-                    پرائیویسی پالیسی
-                  </Button>
-                  <Button variant="outline" className="justify-start">
-                    <FileText className="w-4 h-4 mr-2" />
-                    شرائط و ضوابط
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          </div>
-        )}
-
-        {activeTab === "recommendations" && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-urdu-brown">
-                آپ کے لیے تجاویز
-              </h2>
-              <Button
-                onClick={fetchRecommendations}
-                disabled={recommendationsLoading}
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                تجاویز لوڈ کریں
-              </Button>
-            </div>
-            <RecommendationsSection />
-          </div>
-        )}
-
-        {activeTab === "contests" && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-urdu-brown nastaleeq-heading">
-              شاعری کے مقابلے
-            </h2>
-            {contests.length === 0 ? (
-              <div className="text-center py-12">
-                <Award className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">ابھی کوئی مقابلہ دستیاب نہیں</p>
-              </div>
-            ) : (
-              <div className="grid gap-6">
-                {contests.map((contest) => (
-                  <Card key={contest.id} className="p-6">
-                    <h3 className="text-lg font-semibold text-urdu-brown mb-2">
-                      {contest.title}
-                    </h3>
-                    <p className="text-gray-600 mb-4">{contest.description}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-500">
-                        آخری تاریخ: {formatDate(contest.deadline)}
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs ${
+                          poem.status === "published"
+                            ? "bg-green-100 text-green-800"
+                            : poem.status === "pending"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {poem.status === "published"
+                          ? "شائع"
+                          : poem.status === "pending"
+                          ? "زیر نظر"
+                          : "مسترد"}
                       </span>
-                      <Button size="sm">شرکت کریں</Button>
                     </div>
-                  </Card>
-                ))}
+                  ))}
+                </div>
+              </div>
+
+              {/* Top Performing Poems */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                  <Target className="w-6 h-6 ml-3 text-green-600" />
+                  بہترین نظمیں
+                </h3>
+                <div className="space-y-4">
+                  {dashboardData.topPoems?.slice(0, 5).map((poem, index) => (
+                    <div
+                      key={poem._id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                            index === 0
+                              ? "bg-yellow-500"
+                              : index === 1
+                              ? "bg-gray-400"
+                              : index === 2
+                              ? "bg-amber-600"
+                              : "bg-blue-500"
+                          }`}
+                        >
+                          {index + 1}
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-800">
+                            {poem.title}
+                          </h4>
+                          <div className="flex items-center space-x-4 text-sm text-gray-500">
+                            <span className="flex items-center">
+                              <Eye className="w-3 h-3 mr-1" />
+                              {poem.views}
+                            </span>
+                            <span className="flex items-center">
+                              <Heart className="w-3 h-3 mr-1" />
+                              {poem.favorites}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Analytics Chart */}
+            {analytics && (
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                  <Activity className="w-6 h-6 ml-3 text-purple-600" />
+                  ماہانہ کارکردگی
+                </h3>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analytics.viewsOverTime}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="_id" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="views"
+                        stroke="#8884d8"
+                        strokeWidth={2}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             )}
           </div>
         )}
 
-        {/* MODULE: Profile Settings */}
-        {activeTab === "profile-settings" && (
-          <div className="space-y-6">
-            <Card className="p-6">
-              <h3 className="text-xl font-semibold text-urdu-brown mb-6">
-                پروفائل کی ترتیبات
+        {/* Poems Management Tab */}
+        {activeTab === "poems" && (
+          <div className="space-y-8">
+            <div className="flex justify-between items-center">
+              <h2 className="text-3xl font-bold text-gray-800 flex items-center">
+                <BookOpen className="w-8 h-8 ml-3 text-green-600" />
+                نظموں کا انتظام
+              </h2>
+              <button
+                onClick={() => {
+                  setSelectedPoem(null);
+                  setIsModalOpen(true);
+                }}
+                className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white px-6 py-3 rounded-xl flex items-center space-x-2 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+              >
+                <Plus className="w-5 h-5" />
+                <span className="font-medium">نئی نظم</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {poems.map((poem) => (
+                <PoemCard
+                  key={poem._id}
+                  poem={poem}
+                  onEdit={(poem) => {
+                    setSelectedPoem(poem);
+                    setIsModalOpen(true);
+                  }}
+                  onDelete={handleDeletePoem}
+                  onView={(poem) => {
+                    // Navigate to poem detail or open view modal
+                    console.log("View poem:", poem);
+                  }}
+                />
+              ))}
+            </div>
+
+            {poems.length === 0 && (
+              <div className="text-center py-12">
+                <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-medium text-gray-500 mb-2">
+                  ابھی کوئی نظم نہیں
+                </h3>
+                <p className="text-gray-400 mb-4">اپنی پہلی نظم شامل کریں</p>
+                <button
+                  onClick={() => {
+                    setSelectedPoem(null);
+                    setIsModalOpen(true);
+                  }}
+                  className="bg-gradient-to-r from-green-500 to-teal-600 text-white px-6 py-3 rounded-xl"
+                >
+                  نئی نظم لکھیں
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Analytics Tab */}
+        {activeTab === "analytics" && analytics && (
+          <div className="space-y-8">
+            <h2 className="text-3xl font-bold text-gray-800 flex items-center">
+              <TrendingUp className="w-8 h-8 ml-3 text-orange-600" />
+              تفصیلی تجزیات
+            </h2>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Views Over Time */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">
+                  نظارات کا رجحان
+                </h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analytics.viewsOverTime}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="_id" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line
+                        type="monotone"
+                        dataKey="views"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Category Distribution */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">
+                  اقسام کی تقسیم
+                </h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie
+                        data={analytics.categoryDistribution}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) =>
+                          `${name} ${(percent * 100).toFixed(0)}%`
+                        }
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="count"
+                      >
+                        {analytics.categoryDistribution?.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={`hsl(${index * 45}, 70%, 60%)`}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Top Performing Poems Table */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-100">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">
+                بہترین کارکردگی
               </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-right py-3 px-4">نظم</th>
+                      <th className="text-right py-3 px-4">نظارات</th>
+                      <th className="text-right py-3 px-4">پسندیدہ</th>
+                      <th className="text-right py-3 px-4">تبصرے</th>
+                      <th className="text-right py-3 px-4">اسکور</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analytics.topPerformingPoems?.map((poem, index) => (
+                      <tr key={index} className="border-b border-gray-100">
+                        <td className="py-3 px-4 font-medium">{poem.title}</td>
+                        <td className="py-3 px-4">{poem.views}</td>
+                        <td className="py-3 px-4">{poem.favorites}</td>
+                        <td className="py-3 px-4">{poem.comments}</td>
+                        <td className="py-3 px-4">
+                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">
+                            {poem.score}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Profile Tab */}
+        {activeTab === "profile" && profile && (
+          <div className="space-y-8">
+            <h2 className="text-3xl font-bold text-gray-800 flex items-center">
+              <User className="w-8 h-8 ml-3 text-purple-600" />
+              پروفائل کا انتظام
+            </h2>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Profile Picture */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">
+                  پروفائل تصویر
+                </h3>
+                <div className="text-center">
+                  <div className="w-32 h-32 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-4xl mx-auto mb-4">
+                    {profile.name?.charAt(0) || "ش"}
+                  </div>
+                  <button className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 mx-auto">
+                    <Camera className="w-4 h-4" />
+                    <span>تصویر اپ لوڈ کریں</span>
+                  </button>
+                </div>
+              </div>
 
               {/* Profile Information */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h4 className="text-lg font-medium text-urdu-brown">
-                    بنیادی معلومات
-                  </h4>
-
+              <div className="lg:col-span-2 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-800 mb-6">
+                  ذاتی معلومات
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 text-right mb-2">
                       نام
                     </label>
                     <input
                       type="text"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      defaultValue={user?.name || ""}
+                      defaultValue={profile.name || ""}
+                      className="w-full p-3 border border-gray-300 rounded-lg text-right"
+                      dir="rtl"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      تخلص / قلمی نام
+                    <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                      ای میل
                     </label>
                     <input
-                      type="text"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      placeholder="آپ کا شاعرانہ نام"
+                      type="email"
+                      defaultValue={profile.email || ""}
+                      className="w-full p-3 border border-gray-300 rounded-lg text-right"
+                      dir="rtl"
                     />
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      شاعری کا مکتب
-                    </label>
-                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                      <option>کلاسیکی شاعری</option>
-                      <option>جدید شاعری</option>
-                      <option>نظم نگاری</option>
-                      <option>غزل گوئی</option>
-                      <option>مزاحیہ شاعری</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      مقام
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      placeholder="آپ کا شہر"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="text-lg font-medium text-urdu-brown">
-                    شاعرانہ سوانح
-                  </h4>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      مختصر تعارف
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                      تعارف
                     </label>
                     <textarea
-                      rows={4}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      placeholder="اپنے بارے میں کچھ لکھیں..."
-                    ></textarea>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      شاعری کی ابتدا
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      rows="4"
+                      defaultValue={profile.profile?.bio || ""}
+                      className="w-full p-3 border border-gray-300 rounded-lg text-right"
+                      placeholder="اپنے بارے میں کچھ بتائیں..."
+                      dir="rtl"
                     />
                   </div>
+                </div>
+                <div className="mt-6">
+                  <button className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-lg">
+                    تبدیلیاں محفوظ کریں
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
+        {/* AI Assistance Tab */}
+        {activeTab === "ai" && (
+          <div className="space-y-8">
+            <h2 className="text-3xl font-bold text-gray-800 flex items-center">
+              <Brain className="w-8 h-8 ml-3 text-indigo-600" />
+              AI شاعری مدد گار
+            </h2>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Poem Suggestions */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                  <Sparkles className="w-5 h-5 ml-2 text-yellow-500" />
+                  نظم کی بہتری
+                </h3>
+                <textarea
+                  rows="6"
+                  className="w-full p-4 border border-gray-300 rounded-lg text-right mb-4"
+                  placeholder="اپنی نظم یہاں لکھیں تاکہ AI آپ کو مشورے دے سکے..."
+                  dir="rtl"
+                />
+                <button className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-6 py-3 rounded-lg w-full">
+                  AI سے مشورہ لیں
+                </button>
+              </div>
+
+              {/* Translation */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                  <Globe className="w-5 h-5 ml-2 text-blue-500" />
+                  ترجمہ
+                </h3>
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      پسندیدہ اصناف
+                    <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                      اصل نظم
                     </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {["غزل", "نظم", "قطعہ", "رباعی", "مثنوی", "قصیدہ"].map(
-                        (genre) => (
-                          <label key={genre} className="flex items-center">
-                            <input type="checkbox" className="mr-2" />
-                            <span className="text-sm">{genre}</span>
-                          </label>
-                        )
-                      )}
+                    <textarea
+                      rows="4"
+                      className="w-full p-3 border border-gray-300 rounded-lg text-right"
+                      placeholder="ترجمے کے لیے نظم لکھیں..."
+                      dir="rtl"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <select
+                      className="p-3 border border-gray-300 rounded-lg text-right"
+                      dir="rtl"
+                    >
+                      <option>اردو سے</option>
+                      <option>انگریزی سے</option>
+                    </select>
+                    <select
+                      className="p-3 border border-gray-300 rounded-lg text-right"
+                      dir="rtl"
+                    >
+                      <option>انگریزی میں</option>
+                      <option>اردو میں</option>
+                    </select>
+                  </div>
+                  <button className="bg-gradient-to-r from-green-500 to-teal-600 text-white px-6 py-3 rounded-lg w-full">
+                    ترجمہ کریں
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Settings Tab */}
+        {activeTab === "settings" && (
+          <div className="space-y-8">
+            <h2 className="text-3xl font-bold text-gray-800 flex items-center">
+              <Settings className="w-8 h-8 ml-3 text-gray-600" />
+              ترتیبات
+            </h2>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Notification Settings */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-800 mb-6">
+                  اطلاعات کی ترتیبات
+                </h3>
+                <div className="space-y-4">
+                  {[
+                    { label: "نئے پیروکار", enabled: true },
+                    { label: "نظم پر تبصرے", enabled: true },
+                    { label: "نظم کو پسند", enabled: false },
+                    { label: "ای میل اطلاعات", enabled: true },
+                  ].map((setting, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between"
+                    >
+                      <span className="text-gray-700 font-medium">
+                        {setting.label}
+                      </span>
+                      <div
+                        className={`w-12 h-6 ${
+                          setting.enabled ? "bg-green-500" : "bg-gray-300"
+                        } rounded-full relative cursor-pointer transition-colors`}
+                      >
+                        <div
+                          className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
+                            setting.enabled
+                              ? "translate-x-6"
+                              : "translate-x-0.5"
+                          }`}
+                        ></div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Literary Achievements */}
-              <div className="mt-8">
-                <h4 className="text-lg font-medium text-urdu-brown mb-4">
-                  ادبی کامیابیاں
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      منشور شدہ کتابیں
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      placeholder="کتابوں کے نام (کاما سے الگ کریں)"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      ایوارڈز اور اعزازات
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      placeholder="ایوارڈز کے نام"
-                    />
-                  </div>
+              {/* Privacy Settings */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-800 mb-6">
+                  پرائیویسی
+                </h3>
+                <div className="space-y-4">
+                  {[
+                    { label: "پروفائل عوامی ہے", enabled: true },
+                    { label: "نظمیں عوامی ہیں", enabled: true },
+                    { label: "پیروکاروں کی فہرست چھپائیں", enabled: false },
+                    { label: "تجزیات چھپائیں", enabled: false },
+                  ].map((setting, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between"
+                    >
+                      <span className="text-gray-700 font-medium">
+                        {setting.label}
+                      </span>
+                      <div
+                        className={`w-12 h-6 ${
+                          setting.enabled ? "bg-green-500" : "bg-gray-300"
+                        } rounded-full relative cursor-pointer transition-colors`}
+                      >
+                        <div
+                          className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
+                            setting.enabled
+                              ? "translate-x-6"
+                              : "translate-x-0.5"
+                          }`}
+                        ></div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              <div className="flex justify-end pt-6">
-                <Button className="bg-urdu-brown hover:bg-urdu-brown/90">
-                  تبدیلیاں محفوظ کریں
-                </Button>
-              </div>
-            </Card>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Poem Form Modal */}
+      <PoemFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        poem={selectedPoem}
+        onSave={handleSavePoem}
+      />
     </div>
   );
 };
