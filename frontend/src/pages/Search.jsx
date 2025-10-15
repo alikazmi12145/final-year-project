@@ -13,7 +13,7 @@ import TextSearch from "../components/search/TextSearch.jsx";
 import VoiceSearch from "../components/search/VoiceSearch.jsx";
 import ImageSearch from "../components/search/ImageSearch.jsx";
 import SearchResults from "../components/search/SearchResults.jsx";
-import { searchAPI } from "../services/api";
+import api from "../services/api";
 
 const Search = () => {
   const [activeTab, setActiveTab] = useState("text");
@@ -23,6 +23,8 @@ const Search = () => {
   const [searchHistory, setSearchHistory] = useState([]);
   const [smartSuggestions, setSmartSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [currentQuery, setCurrentQuery] = useState("");
+  const [currentSearchType, setCurrentSearchType] = useState("text");
 
   const searchTabs = [
     {
@@ -61,6 +63,7 @@ const Search = () => {
     setSearchHistory(history.slice(0, 10)); // Keep last 10 searches
   }, []);
 
+  // Enhanced search suggestions with dynamic API
   const getSmartSuggestions = async (partialQuery) => {
     if (!partialQuery || partialQuery.length < 2) {
       setSmartSuggestions([]);
@@ -69,7 +72,7 @@ const Search = () => {
     }
 
     try {
-      const response = await searchAPI.getSmartSuggestions(partialQuery.trim());
+      const response = await api.search.suggestions(partialQuery.trim());
 
       if (response.data.success) {
         setSmartSuggestions([
@@ -80,8 +83,13 @@ const Search = () => {
       }
     } catch (error) {
       console.error("Failed to get suggestions:", error);
-      setSmartSuggestions([]);
-      setShowSuggestions(false);
+      // Fallback to basic suggestions
+      setSmartSuggestions([
+        `${partialQuery} کی شاعری`,
+        `${partialQuery} کے اشعار`,
+        `${partialQuery} کی غزلیں`,
+      ]);
+      setShowSuggestions(true);
     }
   };
 
@@ -100,10 +108,18 @@ const Search = () => {
     localStorage.setItem("searchHistory", JSON.stringify(newHistory));
   };
 
+  // Enhanced unified search handler for all search types
   const handleSearch = async (searchData) => {
     setIsSearching(true);
     setSearchResults([]);
     setSearchMeta({});
+    setCurrentQuery(
+      searchData.query ||
+        searchData.transcript ||
+        searchData.extractedText ||
+        ""
+    );
+    setCurrentSearchType(searchData.searchType);
 
     try {
       let response;
@@ -112,64 +128,70 @@ const Search = () => {
       // Save to history
       saveSearchToHistory(searchData);
 
+      console.log("🔍 Performing search:", searchType, searchData);
+
       switch (searchType) {
         case "text":
-          response = await searchAPI.textSearch(searchData.query, {
-            filters: searchData.filters,
-            limit: searchData.limit || 20,
+          response = await api.search.text(searchData.query, {
+            ...searchData.filters,
             page: searchData.page || 1,
-            useAI: searchData.filters?.useAI || true,
+            limit: searchData.limit || 20,
           });
           break;
 
         case "voice":
-          response = await searchAPI.voiceSearch(
-            searchData.transcribedText,
-            searchData.confidence
+          response = await api.search.voice(
+            searchData.query || searchData.transcript,
+            searchData.confidence || 0.8,
+            searchData.filters || {}
           );
           break;
 
         case "image":
-          response = await searchAPI.imageSearch(searchData.image);
-          setSearchMeta((prev) => ({
-            ...prev,
-            extractedText: response.data.extractedText,
-            ocrConfidence: response.data.ocrConfidence,
-            textAnalysis: response.data.textAnalysis,
-          }));
-          break;
-
-        case "fuzzy":
-          response = await searchAPI.fuzzySearch(
-            searchData.query,
-            searchData.limit || 30
+          response = await api.search.image(
+            searchData.extractedText || searchData.query,
+            searchData.ocrConfidence || 0.8,
+            searchData.filters || {}
           );
           break;
 
-        case "advanced":
-          response = await searchAPI.advancedSearch(searchData);
+        case "fuzzy":
+          response = await api.search.fuzzy(
+            searchData.query,
+            searchData.threshold || 0.4,
+            searchData.filters || {}
+          );
           break;
 
         default:
-          throw new Error("Invalid search type");
+          // Fallback to text search
+          response = await api.search.text(searchData.query, {
+            page: 1,
+            limit: 20,
+          });
       }
 
-      setSearchResults(response.data.results || []);
-      setSearchMeta({
-        ...searchMeta,
-        totalResults: response.data.results?.length || 0,
-        searchType: searchType,
-        query: searchData.query || searchData.transcribedText,
-        searchTime: Date.now(),
-        pagination: response.data.pagination,
-        aiEnhancement: response.data.aiEnhancement,
-        improvementData: response.data.improvementData,
-        textAnalysis: response.data.textAnalysis,
-        searchTermsUsed: response.data.searchTermsUsed,
-        ...response.data.searchMeta,
-      });
+      if (response.data.success) {
+        setSearchResults(response.data.results || []);
+        setSearchMeta({
+          totalResults: response.data.results?.length || 0,
+          searchType: searchType,
+          query:
+            searchData.query ||
+            searchData.transcript ||
+            searchData.extractedText,
+          searchTime: Date.now(),
+          pagination: response.data.pagination,
+          voiceData: response.data.voiceData,
+          imageData: response.data.imageData,
+          stats: response.data.stats,
+          ...response.data,
+        });
+      } else {
+        throw new Error(response.data.message || "Search failed");
+      }
     } catch (error) {
-      console.error("Search error:", error);
+      console.error("❌ Search error:", error);
       setSearchResults([]);
       setSearchMeta({
         error:
@@ -187,6 +209,20 @@ const Search = () => {
       ...searchData,
       searchType: "fuzzy",
     });
+  };
+
+  // Handle poem click to navigate to detail
+  const handlePoemClick = (poem) => {
+    console.log("Poem clicked:", poem);
+    // Navigate to poem detail page
+    // You can implement navigation here
+  };
+
+  // Handle author click to navigate to poet profile
+  const handleAuthorClick = (author) => {
+    console.log("Author clicked:", author);
+    // Navigate to poet profile page
+    // You can implement navigation here
   };
 
   const clearResults = () => {
@@ -368,6 +404,11 @@ const Search = () => {
           results={searchResults}
           loading={isSearching}
           searchMeta={searchMeta}
+          searchType={currentSearchType}
+          query={currentQuery}
+          pagination={searchMeta.pagination}
+          onPoemClick={handlePoemClick}
+          onAuthorClick={handleAuthorClick}
         />
 
         {/* Error Display */}

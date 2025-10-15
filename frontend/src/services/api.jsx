@@ -3,7 +3,7 @@ import axios from "axios";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
-const api = axios.create({
+const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
@@ -12,7 +12,7 @@ const api = axios.create({
 });
 
 // Request interceptor
-api.interceptors.request.use(
+axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -26,7 +26,7 @@ api.interceptors.request.use(
 );
 
 // Response interceptor
-api.interceptors.response.use(
+axiosInstance.interceptors.response.use(
   (response) => {
     console.log("✅ API Response:", response.config.url, response.data);
     return response;
@@ -58,24 +58,161 @@ api.interceptors.response.use(
 );
 
 //
-// 🔹 Auth API
+// 🔹 Enhanced API Structure with separate namespaces
+//
+const api = {
+  // Authentication endpoints
+  auth: {
+    login: (credentials) => axiosInstance.post("/auth/login", credentials),
+    register: (userData) => axiosInstance.post("/auth/register", userData),
+    getMe: () => axiosInstance.get("/auth/me"),
+    logout: () => {
+      localStorage.removeItem("token");
+      return Promise.resolve({ data: { success: true } });
+    },
+
+    // Token Management
+    refreshToken: (refreshToken) =>
+      axiosInstance.post("/auth/refresh", { refreshToken }),
+
+    // Password Recovery
+    forgotPassword: (email) =>
+      axiosInstance.post("/auth/forgot-password", { email }),
+    resetPassword: (data) => axiosInstance.post("/auth/reset-password", data),
+
+    // Email Verification
+    verifyEmail: (token) => axiosInstance.post("/auth/verify-email", { token }),
+    resendVerification: (email) =>
+      axiosInstance.post("/auth/resend-verification", { email }),
+
+    // Social Login
+    googleLogin: () => (window.location.href = `${API_BASE_URL}/auth/google`),
+    facebookLogin: () =>
+      (window.location.href = `${API_BASE_URL}/auth/facebook`),
+    githubLogin: () => (window.location.href = `${API_BASE_URL}/auth/github`),
+  },
+
+  // User management endpoints
+  users: {
+    getProfile: () => axiosInstance.get("/users/me"),
+    updateProfile: (data) => axiosInstance.put("/users/me", data),
+    uploadAvatar: (formData) =>
+      axiosInstance.post("/users/avatar", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      }),
+    changePassword: (data) => axiosInstance.put("/users/password", data),
+    getFollowers: (userId) => axiosInstance.get(`/users/${userId}/followers`),
+    getFollowing: (userId) => axiosInstance.get(`/users/${userId}/following`),
+    followUser: (userId) => axiosInstance.post(`/users/${userId}/follow`),
+    unfollowUser: (userId) => axiosInstance.delete(`/users/${userId}/follow`),
+    getFavorites: () => axiosInstance.get("/users/favorites"),
+    addFavorite: (poemId) => axiosInstance.post(`/users/favorites/${poemId}`),
+    removeFavorite: (poemId) =>
+      axiosInstance.delete(`/users/favorites/${poemId}`),
+  },
+
+  // Admin endpoints
+  admin: {
+    getStats: () => axiosInstance.get("/admin/stats"),
+    getAllUsers: (params = {}) => axiosInstance.get("/admin/users", { params }),
+    updateUserRole: (userId, role) =>
+      axiosInstance.put(`/admin/users/${userId}/role`, { role }),
+    deleteUser: (userId) => axiosInstance.delete(`/admin/users/${userId}`),
+    getPendingPoems: (params = {}) =>
+      axiosInstance.get("/admin/poems/pending", { params }),
+    approvePoem: (poemId) =>
+      axiosInstance.put(`/admin/poems/${poemId}/approve`),
+    rejectPoem: (poemId, reason) =>
+      axiosInstance.put(`/admin/poems/${poemId}/reject`, { reason }),
+    getReports: (params = {}) =>
+      axiosInstance.get("/admin/reports", { params }),
+    handleReport: (reportId, action) =>
+      axiosInstance.put(`/admin/reports/${reportId}`, { action }),
+  },
+
+  // Search endpoints
+  search: {
+    // Unified search endpoint
+    unified: (searchData) => axiosInstance.post("/search", searchData),
+
+    // Text search with filters
+    text: (query, filters = {}) =>
+      axiosInstance.post("/search", {
+        mode: "text",
+        query,
+        ...filters,
+      }),
+
+    // Voice search
+    voice: (transcript, confidence, filters = {}) =>
+      axiosInstance.post("/search", {
+        mode: "voice",
+        transcript,
+        confidence,
+        ...filters,
+      }),
+
+    // Image search with OCR
+    image: (extractedText, ocrConfidence, filters = {}) =>
+      axiosInstance.post("/search", {
+        mode: "image",
+        extractedText,
+        ocrConfidence,
+        ...filters,
+      }),
+
+    // Fuzzy search for typos
+    fuzzy: (query, threshold = 0.4, filters = {}) =>
+      axiosInstance.post("/search", {
+        mode: "fuzzy",
+        query,
+        threshold,
+        ...filters,
+      }),
+
+    // Get search suggestions
+    suggestions: (query) =>
+      axiosInstance.get("/search/suggestions", {
+        params: { query },
+      }),
+  },
+
+  // Poets endpoints
+  poets: {
+    getAll: (params = {}) => axiosInstance.get("/poets", { params }),
+    getById: (id) => axiosInstance.get(`/poets/${id}`),
+    create: (poetData) => axiosInstance.post("/poets", poetData),
+    update: (id, poetData) => axiosInstance.put(`/poets/${id}`, poetData),
+    delete: (id) => axiosInstance.delete(`/poets/${id}`),
+    getByGenre: (genre) => axiosInstance.get(`/poets/genre/${genre}`),
+    getWorks: (poetId, params = {}) =>
+      axiosInstance.get(`/poets/${poetId}/works`, { params }),
+    getAchievements: (poetId) =>
+      axiosInstance.get(`/poets/${poetId}/achievements`),
+  },
+};
+
+//
+// 🔹 Auth API (Legacy - kept for backward compatibility)
 //
 export const authAPI = {
-  login: (credentials) => api.post("/auth/login", credentials),
-  register: (userData) => api.post("/auth/register", userData),
-  getMe: () => api.get("/auth/me"),
+  login: (credentials) => axiosInstance.post("/auth/login", credentials),
+  register: (userData) => axiosInstance.post("/auth/register", userData),
+  getMe: () => axiosInstance.get("/auth/me"),
 
   // Token Management
-  refreshToken: (refreshToken) => api.post("/auth/refresh", { refreshToken }),
+  refreshToken: (refreshToken) =>
+    axiosInstance.post("/auth/refresh", { refreshToken }),
 
   // Password Recovery
-  forgotPassword: (email) => api.post("/auth/forgot-password", { email }),
-  resetPassword: (data) => api.post("/auth/reset-password", data),
+  forgotPassword: (email) =>
+    axiosInstance.post("/auth/forgot-password", { email }),
+  resetPassword: (data) => axiosInstance.post("/auth/reset-password", data),
 
   // Email Verification
-  verifyEmail: (token) => api.post("/auth/verify-email", { token }),
+  verifyEmail: (token) => axiosInstance.post("/auth/verify-email", { token }),
   resendVerification: (email) =>
-    api.post("/auth/resend-verification", { email }),
+    axiosInstance.post("/auth/resend-verification", { email }),
 
   // Social Login (handled by redirects to backend OAuth endpoints)
   googleLogin: () => (window.location.href = `${API_BASE_URL}/auth/google`),
@@ -84,7 +221,7 @@ export const authAPI = {
 
   // Server Health Check
   healthCheck: () =>
-    api.get("/health").catch(() => ({
+    axiosInstance.get("/health").catch(() => ({
       data: { success: false, message: "Server not responding" },
     })),
 };
@@ -94,51 +231,103 @@ export const authAPI = {
 //
 export const poetryAPI = {
   // Poem CRUD operations
-  getAllPoems: (params = {}) => api.get("/poems", { params }),
-  getMyPoems: (params = {}) => api.get("/poems/my-poems", { params }),
-  getPoemById: (id) => api.get(`/poems/${id}`),
-  createPoem: (poemData) => api.post("/poems", poemData),
-  updatePoem: (id, poemData) => api.put(`/poems/${id}`, poemData),
-  deletePoem: (id) => api.delete(`/poems/${id}`),
+  getAllPoems: (params = {}) => axiosInstance.get("/poems", { params }),
+  getMyPoems: (params = {}) => axiosInstance.get("/poems/my-poems", { params }),
+  getPoemById: (id) => axiosInstance.get(`/poems/${id}`),
+  createPoem: (poemData) => axiosInstance.post("/poems", poemData),
+  updatePoem: (id, poemData) => axiosInstance.put(`/poems/${id}`, poemData),
+  deletePoem: (id) => axiosInstance.delete(`/poems/${id}`),
 
   // Poem interactions
-  likePoem: (id) => api.post(`/poems/${id}/like`),
+  likePoem: (id) => axiosInstance.post(`/poems/${id}/like`),
   addComment: (id, commentData) =>
-    api.post(`/poems/${id}/comments`, commentData),
+    axiosInstance.post(`/poems/${id}/comments`, commentData),
 
   // Search and filters
   searchPoems: (query, filters = {}) =>
-    api.get("/poems", {
+    axiosInstance.get("/poems", {
       params: { search: query, ...filters },
     }),
 
+  // Enhanced search operations
+  search: {
+    // Unified search endpoint
+    unified: (searchData) => axiosInstance.post("/search", searchData),
+
+    // Text search with filters
+    text: (query, filters = {}) =>
+      axiosInstance.post("/search", {
+        mode: "text",
+        query,
+        ...filters,
+      }),
+
+    // Voice search
+    voice: (transcript, confidence, filters = {}) =>
+      axiosInstance.post("/search", {
+        mode: "voice",
+        transcript,
+        confidence,
+        ...filters,
+      }),
+
+    // Image search with OCR
+    image: (extractedText, ocrConfidence, filters = {}) =>
+      axiosInstance.post("/search", {
+        mode: "image",
+        extractedText,
+        ocrConfidence,
+        ...filters,
+      }),
+
+    // Fuzzy search for typos
+    fuzzy: (query, threshold = 0.4, filters = {}) =>
+      axiosInstance.post("/search", {
+        mode: "fuzzy",
+        query,
+        threshold,
+        ...filters,
+      }),
+
+    // Get search suggestions
+    suggestions: (query) =>
+      axiosInstance.get("/search/suggestions", {
+        params: { query },
+      }),
+  },
+
   // Poet operations
-  getAllPoets: () => api.get("/poets"),
-  getPoetById: (id) => api.get(`/poets/${id}`),
-  createPoet: (poetData) => api.post("/poets", poetData),
+  getAllPoets: () => axiosInstance.get("/poets"),
+  getPoetById: (id) => axiosInstance.get(`/poets/${id}`),
+  createPoet: (poetData) => axiosInstance.post("/poets", poetData),
 
   // Categories and metadata
-  getCategories: () => api.get("/categories"),
-  getPoemStats: () => api.get("/poems/stats"),
+  getCategories: () => axiosInstance.get("/categories"),
+  getPoemStats: () => axiosInstance.get("/poems/stats"),
 
   // Missing functions for dashboard
-  getSubmissions: (params = {}) => api.get("/poems/submissions", { params }),
-  getContests: (params = {}) => api.get("/contests", { params }),
+  getSubmissions: (params = {}) =>
+    axiosInstance.get("/poems/submissions", { params }),
+  getContests: (params = {}) => axiosInstance.get("/contests", { params }),
 
   // Admin approval functions
-  getPendingPoems: (params = {}) => api.get("/poems/pending", { params }),
-  approvePoem: (id) => api.put(`/poems/${id}/approve`),
-  rejectPoem: (id, reason) => api.put(`/poems/${id}/reject`, { reason }),
+  getPendingPoems: (params = {}) =>
+    axiosInstance.get("/poems/pending", { params }),
+  approvePoem: (id) => axiosInstance.put(`/poems/${id}/approve`),
+  rejectPoem: (id, reason) =>
+    axiosInstance.put(`/poems/${id}/reject`, { reason }),
 
   // Rating and review functions
-  addRating: (id, ratingData) => api.post(`/poems/${id}/rating`, ratingData),
-  getRatings: (id, params = {}) => api.get(`/poems/${id}/ratings`, { params }),
+  addRating: (id, ratingData) =>
+    axiosInstance.post(`/poems/${id}/rating`, ratingData),
+  getRatings: (id, params = {}) =>
+    axiosInstance.get(`/poems/${id}/ratings`, { params }),
 
   // Bookmark/Favorites functions
-  toggleBookmark: (id) => api.post(`/poems/${id}/bookmark`),
+  toggleBookmark: (id) => axiosInstance.post(`/poems/${id}/bookmark`),
   getBookmarkedPoems: async (params = {}) => {
     try {
-      return await api.get("/poems/bookmarks", { params });
+      return await axiosInstance.get("/poems/bookmarks", { params });
     } catch (error) {
       // Handle 500 error gracefully for bookmarks endpoint
       if (error.response?.status === 500) {
@@ -158,14 +347,14 @@ export const poetryAPI = {
   },
 
   // View tracking
-  incrementView: (id) => api.post(`/poems/${id}/view`),
+  incrementView: (id) => axiosInstance.post(`/poems/${id}/view`),
 
   // Privacy functions
-  togglePrivacy: (id) => api.patch(`/poems/${id}/privacy`),
+  togglePrivacy: (id) => axiosInstance.patch(`/poems/${id}/privacy`),
 
   // Recommendations
   getRecommendations: (params = {}) =>
-    api.get("/poems/recommendations", { params }),
+    axiosInstance.get("/poems/recommendations", { params }),
 };
 
 //
@@ -173,14 +362,15 @@ export const poetryAPI = {
 //
 export const poetAPI = {
   // Get all poets with filtering and pagination
-  getAllPoets: (params = {}) => api.get("/poets", { params }),
-  getPoetById: (id) => api.get(`/poets/${id}`),
-  getPoetProfile: (id) => api.get(`/poets/${id}/profile`),
-  getPoetPoems: (id, params = {}) => api.get(`/poets/${id}/poems`, { params }),
+  getAllPoets: (params = {}) => axiosInstance.get("/poets", { params }),
+  getPoetById: (id) => axiosInstance.get(`/poets/${id}`),
+  getPoetProfile: (id) => axiosInstance.get(`/poets/${id}/profile`),
+  getPoetPoems: (id, params = {}) =>
+    axiosInstance.get(`/poets/${id}/poems`, { params }),
 
   // Search poets
   searchPoets: (query, filters = {}) =>
-    api.get("/poets", {
+    axiosInstance.get("/poets", {
       params: { search: query, ...filters },
     }),
 };
@@ -192,7 +382,7 @@ export const searchAPI = {
   // Text Search with AI enhancement
   textSearch: async (query, filters = {}) => {
     try {
-      return await api.post("/search/text", {
+      return await axiosInstance.post("/search/text", {
         query,
         useAI: true, // Enable AI enhancement
         limit: 50,
@@ -202,7 +392,7 @@ export const searchAPI = {
     } catch (error) {
       console.warn("🔍 Text search failed, trying basic search");
       // Fallback to basic search without AI
-      return await api.post("/search/text", {
+      return await axiosInstance.post("/search/text", {
         query,
         useAI: false,
         limit: 50,
@@ -214,7 +404,7 @@ export const searchAPI = {
 
   // Fuzzy Search for misspellings
   fuzzySearch: (query, limit = 30) =>
-    api.post("/search/fuzzy", {
+    axiosInstance.post("/search/fuzzy", {
       query,
       limit,
     }),
@@ -222,14 +412,14 @@ export const searchAPI = {
   // Voice Search with transcription improvement
   voiceSearch: async (transcribedText, confidence = 0) => {
     try {
-      return await api.post("/search/voice", {
+      return await axiosInstance.post("/search/voice", {
         transcribedText,
         confidence,
       });
     } catch (error) {
       console.warn("🎤 Voice search failed, falling back to text search");
       // Fallback to text search
-      return await api.post("/search/text", {
+      return await axiosInstance.post("/search/text", {
         query: transcribedText,
         useAI: false,
         limit: 30,
@@ -240,7 +430,7 @@ export const searchAPI = {
   // Image Search with OCR and text analysis
   imageSearch: async (image) => {
     try {
-      return await api.post("/search/image", { image });
+      return await axiosInstance.post("/search/image", { image });
     } catch (error) {
       console.error("📷 Image search failed:", error);
       throw error;
@@ -248,12 +438,13 @@ export const searchAPI = {
   },
 
   // Advanced Search with multiple filters
-  advancedSearch: (searchParams) => api.post("/search/advanced", searchParams),
+  advancedSearch: (searchParams) =>
+    axiosInstance.post("/search/advanced", searchParams),
 
   // AI-powered Smart Suggestions
   getSmartSuggestions: async (partialQuery) => {
     try {
-      return await api.post("/search/suggestions", { partialQuery });
+      return await axiosInstance.post("/search/suggestions", { partialQuery });
     } catch (error) {
       console.warn("💡 Smart suggestions failed");
       return { data: { success: false, suggestions: [] } };
@@ -262,7 +453,7 @@ export const searchAPI = {
 
   // Legacy text search (for backward compatibility)
   searchPoems: (query, filters = {}) =>
-    api.get("/poems", {
+    axiosInstance.get("/poems", {
       params: { search: query, ...filters },
     }),
 };
@@ -272,26 +463,29 @@ export const searchAPI = {
 //
 export const contestAPI = {
   // Contest CRUD
-  getAllContests: (params = {}) => api.get("/contests", { params }),
-  getContestById: (id) => api.get(`/contests/${id}`),
-  createContest: (contestData) => api.post("/contests", contestData),
-  updateContest: (id, contestData) => api.put(`/contests/${id}`, contestData),
-  deleteContest: (id) => api.delete(`/contests/${id}`),
+  getAllContests: (params = {}) => axiosInstance.get("/contests", { params }),
+  getContestById: (id) => axiosInstance.get(`/contests/${id}`),
+  createContest: (contestData) => axiosInstance.post("/contests", contestData),
+  updateContest: (id, contestData) =>
+    axiosInstance.put(`/contests/${id}`, contestData),
+  deleteContest: (id) => axiosInstance.delete(`/contests/${id}`),
 
   // Contest Management
   participateInContest: (id, poemId) =>
-    api.post(`/contests/${id}/participate`, { poemId }),
+    axiosInstance.post(`/contests/${id}/participate`, { poemId }),
   voteForSubmission: (id, participantId, rating) =>
-    api.post(`/contests/${id}/vote`, { participantId, rating }),
-  getContestLeaderboard: (id) => api.get(`/contests/${id}/leaderboard`),
-  getContestParticipants: (id) => api.get(`/contests/${id}/participants`),
+    axiosInstance.post(`/contests/${id}/vote`, { participantId, rating }),
+  getContestLeaderboard: (id) =>
+    axiosInstance.get(`/contests/${id}/leaderboard`),
+  getContestParticipants: (id) =>
+    axiosInstance.get(`/contests/${id}/participants`),
 
   // Contest Status Management (Admin)
-  activateContest: (id) => api.put(`/contests/${id}/activate`),
-  completeContest: (id) => api.put(`/contests/${id}/complete`),
-  cancelContest: (id) => api.put(`/contests/${id}/cancel`),
+  activateContest: (id) => axiosInstance.put(`/contests/${id}/activate`),
+  completeContest: (id) => axiosInstance.put(`/contests/${id}/complete`),
+  cancelContest: (id) => axiosInstance.put(`/contests/${id}/cancel`),
   announceWinners: (id, winners) =>
-    api.put(`/contests/${id}/winners`, { winners }),
+    axiosInstance.put(`/contests/${id}/winners`, { winners }),
 };
 
 //
@@ -299,109 +493,116 @@ export const contestAPI = {
 //
 export const adminAPI = {
   // Dashboard
-  getDashboardStats: () => api.get("/admin/dashboard/stats"),
+  getDashboardStats: () => axiosInstance.get("/admin/dashboard/stats"),
   getAnalytics: (period = "30d") =>
-    api.get(`/admin/analytics?period=${period}`),
+    axiosInstance.get(`/admin/analytics?period=${period}`),
 
   // Users Management
-  getAllUsers: (params = {}) => api.get("/admin/users", { params }),
-  getUserById: (id) => api.get(`/admin/users/${id}`),
-  updateUser: (id, userData) => api.put(`/admin/users/${id}`, userData),
-  deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  getAllUsers: (params = {}) => axiosInstance.get("/admin/users", { params }),
+  getUserById: (id) => axiosInstance.get(`/admin/users/${id}`),
+  updateUser: (id, userData) =>
+    axiosInstance.put(`/admin/users/${id}`, userData),
+  deleteUser: (id) => axiosInstance.delete(`/admin/users/${id}`),
   bulkUpdateUsers: (userIds, updateData) =>
-    api.put("/admin/users/bulk", { userIds, updateData }),
+    axiosInstance.put("/admin/users/bulk", { userIds, updateData }),
   exportUsers: (format = "csv", filters = {}) =>
-    api.get("/admin/users/export", {
+    axiosInstance.get("/admin/users/export", {
       params: { format, ...filters },
       responseType: "blob",
     }),
 
   // User Approval System
   approveUser: (id, approvalData = {}) =>
-    api.put(`/admin/users/${id}/approve`, {
+    axiosInstance.put(`/admin/users/${id}/approve`, {
       status: "active",
       approvedAt: new Date().toISOString(),
       ...approvalData,
     }),
   rejectUser: (id, rejectionData = {}) =>
-    api.put(`/admin/users/${id}/reject`, {
+    axiosInstance.put(`/admin/users/${id}/reject`, {
       status: "rejected",
       rejectedAt: new Date().toISOString(),
       ...rejectionData,
     }),
   suspendUser: (id, suspensionData = {}) =>
-    api.put(`/admin/users/${id}/suspend`, {
+    axiosInstance.put(`/admin/users/${id}/suspend`, {
       status: "suspended",
       suspendedAt: new Date().toISOString(),
       ...suspensionData,
     }),
-  getPendingUsers: (params = {}) => api.get("/admin/users/pending", { params }),
+  getPendingUsers: (params = {}) =>
+    axiosInstance.get("/admin/users/pending", { params }),
   bulkApproveUsers: (userIds) =>
-    api.put("/admin/users/bulk-approve", { userIds }),
+    axiosInstance.put("/admin/users/bulk-approve", { userIds }),
 
   // Poet Verification
-  getPendingPoets: () => api.get("/admin/poets/pending"),
+  getPendingPoets: () => axiosInstance.get("/admin/poets/pending"),
   verifyPoet: (id, action, reviewNotes) =>
-    api.put(`/admin/poets/${id}/verify`, {
+    axiosInstance.put(`/admin/poets/${id}/verify`, {
       action,
       reviewNotes,
     }),
 
   // Content Moderation
   getFlaggedContent: (type = "all") =>
-    api.get(`/admin/content/flagged?type=${type}`),
+    axiosInstance.get(`/admin/content/flagged?type=${type}`),
   moderateContent: (type, id, action, moderationNotes) =>
-    api.put(`/admin/content/${type}/${id}/moderate`, {
+    axiosInstance.put(`/admin/content/${type}/${id}/moderate`, {
       action,
       moderationNotes,
     }),
   bulkModerateContent: (items, action) =>
-    api.put("/admin/content/bulk-moderate", { items, action }),
+    axiosInstance.put("/admin/content/bulk-moderate", { items, action }),
 
   // System Settings
-  getSettings: () => api.get("/admin/settings"),
-  updateSettings: (settings) => api.put("/admin/settings", settings),
-  getSystemHealth: () => api.get("/admin/system/health"),
-  performBackup: () => api.post("/admin/system/backup"),
-  getBackupHistory: () => api.get("/admin/system/backups"),
+  getSettings: () => axiosInstance.get("/admin/settings"),
+  updateSettings: (settings) => axiosInstance.put("/admin/settings", settings),
+  getSystemHealth: () => axiosInstance.get("/admin/system/health"),
+  performBackup: () => axiosInstance.post("/admin/system/backup"),
+  getBackupHistory: () => axiosInstance.get("/admin/system/backups"),
 
   // Advanced Analytics
   getUserAnalytics: (period = "30d") =>
-    api.get(`/admin/analytics/users?period=${period}`),
+    axiosInstance.get(`/admin/analytics/users?period=${period}`),
   getContentAnalytics: (period = "30d") =>
-    api.get(`/admin/analytics/content?period=${period}`),
+    axiosInstance.get(`/admin/analytics/content?period=${period}`),
   getEngagementAnalytics: (period = "30d") =>
-    api.get(`/admin/analytics/engagement?period=${period}`),
+    axiosInstance.get(`/admin/analytics/engagement?period=${period}`),
   exportAnalytics: (type, period = "30d", format = "csv") =>
-    api.get(`/admin/analytics/${type}/export`, {
+    axiosInstance.get(`/admin/analytics/${type}/export`, {
       params: { period, format },
       responseType: "blob",
     }),
 
   // Contest Management
-  getAllContests: (params = {}) => api.get("/admin/contests", { params }),
+  getAllContests: (params = {}) =>
+    axiosInstance.get("/admin/contests", { params }),
   updateContestStatus: (id, status) =>
-    api.put(`/admin/contests/${id}/status`, { status }),
-  getContestAnalytics: (id) => api.get(`/admin/contests/${id}/analytics`),
+    axiosInstance.put(`/admin/contests/${id}/status`, { status }),
+  getContestAnalytics: (id) =>
+    axiosInstance.get(`/admin/contests/${id}/analytics`),
   exportContestData: (id, format = "csv") =>
-    api.get(`/admin/contests/${id}/export`, {
+    axiosInstance.get(`/admin/contests/${id}/export`, {
       params: { format },
       responseType: "blob",
     }),
 
   // Notification Management
   sendBulkNotification: (recipients, notification) =>
-    api.post("/admin/notifications/bulk", { recipients, notification }),
+    axiosInstance.post("/admin/notifications/bulk", {
+      recipients,
+      notification,
+    }),
   getNotificationHistory: (params = {}) =>
-    api.get("/admin/notifications/history", { params }),
+    axiosInstance.get("/admin/notifications/history", { params }),
 
   // Legacy (for backward compatibility)
-  getStats: () => api.get("/admin/dashboard/stats"),
-  getAllPoems: () => api.get("/admin/poems"),
-  approvePoem: (id) => api.put(`/admin/poems/${id}/approve`),
-  deletePoem: (id) => api.delete(`/admin/poems/${id}`),
-  getAllPoets: () => api.get("/admin/poets"),
-  approvePoet: (id) => api.put(`/admin/poets/${id}/approve`),
+  getStats: () => axiosInstance.get("/admin/dashboard/stats"),
+  getAllPoems: () => axiosInstance.get("/admin/poems"),
+  approvePoem: (id) => axiosInstance.put(`/admin/poems/${id}/approve`),
+  deletePoem: (id) => axiosInstance.delete(`/admin/poems/${id}`),
+  getAllPoets: () => axiosInstance.get("/admin/poets"),
+  approvePoet: (id) => axiosInstance.put(`/admin/poets/${id}/approve`),
 };
 
 //
@@ -409,38 +610,66 @@ export const adminAPI = {
 //
 export const dashboardAPI = {
   // Poet Dashboard
-  getPoetDashboard: () => api.get("/dashboard/poet"),
-  getFollowers: () => api.get("/dashboard/followers"),
-  getFollowing: () => api.get("/dashboard/following"),
-  updateProfile: (profileData) => api.put("/auth/profile", profileData),
+  getPoetDashboard: () => axiosInstance.get("/dashboard/poet"),
+  getFollowers: () => axiosInstance.get("/dashboard/followers"),
+  getFollowing: () => axiosInstance.get("/dashboard/following"),
+  updateProfile: (profileData) =>
+    axiosInstance.put("/auth/profile", profileData),
   uploadProfileImage: (formData) =>
-    api.post("/auth/profile/upload-image", formData, {
+    axiosInstance.post("/auth/profile/upload-image", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
     }),
-  exportPoetData: () => api.get("/dashboard/export"),
+  exportPoetData: () => axiosInstance.get("/dashboard/export"),
 
   // Notification Settings
   updateNotificationSettings: (notificationSettings) =>
-    api.put("/auth/profile/notifications", { notificationSettings }),
-  sendTestEmail: () => api.post("/auth/profile/test-email"),
+    axiosInstance.put("/auth/profile/notifications", { notificationSettings }),
+  sendTestEmail: () => axiosInstance.post("/auth/profile/test-email"),
 
   // Admin Dashboard
-  getAdminDashboard: () => api.get("/dashboard/admin"),
-  approvePoem: (id) => api.patch(`/dashboard/admin/poems/${id}/approve`),
+  getAdminDashboard: () => axiosInstance.get("/dashboard/admin"),
+  approvePoem: (id) =>
+    axiosInstance.patch(`/dashboard/admin/poems/${id}/approve`),
   rejectPoem: (id, reason) =>
-    api.patch(`/dashboard/admin/poems/${id}/reject`, { reason }),
+    axiosInstance.patch(`/dashboard/admin/poems/${id}/reject`, { reason }),
   toggleUserStatus: (id) =>
-    api.patch(`/dashboard/admin/users/${id}/toggle-status`),
+    axiosInstance.patch(`/dashboard/admin/users/${id}/toggle-status`),
+};
+
+//
+// 🔹 Rekhta API (External Classical Poets)
+//
+export const rekhtaAPI = {
+  // Get list of supported classical poets
+  getSupportedPoets: () => axiosInstance.get("/rekhta/poets"),
+
+  // Get poems by poet from Rekhta
+  getPoetPoems: (poetSlug, params = {}) =>
+    axiosInstance.get(`/rekhta/${poetSlug}`, { params }),
+
+  // Get poet biography from Rekhta
+  getPoetBiography: (poetSlug) =>
+    axiosInstance.get(`/rekhta/${poetSlug}/biography`),
+
+  // Search poems in Rekhta
+  searchPoems: (query, params = {}) =>
+    axiosInstance.get("/rekhta/search", {
+      params: { q: query, ...params },
+    }),
+
+  // Get poem details from Rekhta
+  getPoemDetails: (poetSlug, poemId) =>
+    axiosInstance.get(`/rekhta/${poetSlug}/poems/${poemId}`),
 };
 
 //
 // 🔹 Test API Connection
 //
-export const testConnection = async () => {
+export const checkAPIStatus = async () => {
   try {
-    const response = await api.get("/health");
+    const response = await axiosInstance.get("/health");
     return { success: true, data: response.data };
   } catch (error) {
     return { success: false, error: error.message };
@@ -448,6 +677,6 @@ export const testConnection = async () => {
 };
 
 //
-// 🔹 Default export (axios instance if needed)
+// 🔹 Default export (main API object)
 //
 export default api;

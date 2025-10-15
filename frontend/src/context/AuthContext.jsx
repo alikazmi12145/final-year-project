@@ -336,6 +336,49 @@ export const AuthProvider = ({ children }) => {
     setUser((prev) => ({ ...prev, ...updatedData }));
   };
 
+  const updateProfile = async (profileData) => {
+    try {
+      console.log("🔄 Profile update attempt:", profileData);
+      setError("");
+      setLoading(true);
+
+      // Use the users API endpoint for profile updates
+      const response = await authAPI.getMe(); // Get current user first
+      const updatedResponse = await fetch(
+        `${
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
+        }/api/users/me`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify(profileData),
+        }
+      );
+
+      const result = await updatedResponse.json();
+      console.log("📡 Profile update response:", result);
+
+      if (result.success) {
+        setUser(result.user);
+        console.log("✅ Profile updated successfully");
+        return { success: true, user: result.user };
+      } else {
+        setError(result.message || "Profile update failed");
+        return { success: false, message: result.message };
+      }
+    } catch (error) {
+      console.error("💥 Profile update error:", error);
+      const message = error.response?.data?.message || "Profile update failed";
+      setError(message);
+      return { success: false, message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -345,6 +388,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateUser,
+    updateProfile,
     socialLogin,
     forgotPassword,
     resetPassword,

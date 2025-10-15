@@ -21,6 +21,40 @@ import {
 
 const router = express.Router();
 
+// Unified Search endpoint for all search types
+router.post("/", searchLimit, async (req, res) => {
+  try {
+    const { mode = "text", ...searchParams } = req.body;
+
+    console.log(`🔍 Unified search request - Mode: ${mode}`, searchParams);
+
+    switch (mode) {
+      case "text":
+        return await textSearch(req, res);
+      case "voice":
+        return await voiceSearch(req, res);
+      case "image":
+        return await imageSearch(req, res);
+      case "fuzzy":
+        return await fuzzySearch(req, res);
+      case "advanced":
+        return await advancedSearch(req, res);
+      default:
+        return res.status(400).json({
+          success: false,
+          message: `Invalid search mode: ${mode}. Valid modes: text, voice, image, fuzzy, advanced`,
+        });
+    }
+  } catch (error) {
+    console.error("❌ Unified search error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Search service error",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+});
+
 // Health check endpoint for search service
 router.get("/health", (req, res) => {
   res.json({

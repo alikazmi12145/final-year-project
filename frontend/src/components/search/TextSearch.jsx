@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Search,
   Filter,
@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
+import { LoadingSpinner } from "../ui/LoadingSpinner";
+import api from "../../services/api";
 
 const TextSearch = ({
   onSearch,
@@ -29,6 +31,9 @@ const TextSearch = ({
   });
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [debounceTimer, setDebounceTimer] = useState(null);
 
   const categories = [
     { value: "all", label: "تمام اقسام" },
@@ -71,14 +76,55 @@ const TextSearch = ({
     { value: "topRated", label: "بہترین ریٹنگ" },
   ];
 
+  // Dynamic search function with MongoDB integration
+  const performDynamicSearch = useCallback(
+    async (searchQuery, searchFilters) => {
+      if (!searchQuery.trim() || searchQuery.length < 2) {
+        setSearchResults([]);
+        return;
+      }
+
+      setSearchLoading(true);
+      try {
+        console.log(
+          "🔍 Performing dynamic text search:",
+          searchQuery,
+          searchFilters
+        );
+
+        const response = await api.search.text(searchQuery, {
+          ...searchFilters,
+          page: 1,
+          limit: 20,
+        });
+
+        if (response.data.success) {
+          setSearchResults(response.data.results || []);
+
+          // Also call parent onSearch callback
+          if (onSearch) {
+            onSearch({
+              query: searchQuery,
+              filters: searchFilters,
+              searchType: "text",
+              results: response.data.results || [],
+            });
+          }
+        }
+      } catch (error) {
+        console.error("❌ Dynamic search error:", error);
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    },
+    [onSearch]
+  );
+
   const handleSearch = (e) => {
     e.preventDefault();
     if (query.trim()) {
-      onSearch({
-        query: query.trim(),
-        filters,
-        searchType: "text",
-      });
+      performDynamicSearch(query.trim(), filters);
     }
   };
 
@@ -87,16 +133,44 @@ const TextSearch = ({
     setQuery(value);
     setIsTyping(true);
 
-    // Request suggestions after user stops typing
-    if (onSuggestionRequest) {
-      setTimeout(() => {
-        if (value.trim().length >= 2) {
+    // Clear previous debounce timer
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+
+    // Set new debounce timer for live search
+    const newTimer = setTimeout(() => {
+      setIsTyping(false);
+      if (value.trim().length >= 2) {
+        performDynamicSearch(value.trim(), filters);
+
+        // Request AI suggestions
+        if (onSuggestionRequest) {
           onSuggestionRequest(value.trim());
         }
-        setIsTyping(false);
-      }, 500);
-    }
+      } else {
+        setSearchResults([]);
+      }
+    }, 800); // 800ms debounce
+
+    setDebounceTimer(newTimer);
   };
+
+  // Update search when filters change
+  useEffect(() => {
+    if (query.trim().length >= 2) {
+      performDynamicSearch(query.trim(), filters);
+    }
+  }, [filters, performDynamicSearch]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+    };
+  }, [debounceTimer]);
 
   const handleSuggestionClick = (suggestion) => {
     setQuery(suggestion);
