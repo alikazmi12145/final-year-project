@@ -106,7 +106,7 @@ const startServer = async () => {
     const rekhtaRoutes = await import("./routes/rekhta.js");
     const adminDashboardRoutes = await import("./routes/adminDashboard.js");
     const poetDashboardRoutes = await import("./routes/poetDashboard.js");
-    const modulesRoutes = await import("./routes/modules.js");
+    // const modulesRoutes = await import("./routes/modules.js"); // Temporarily disabled
 
     // Apply routes
     app.use("/api/auth", authRoutes.default);
@@ -122,7 +122,7 @@ const startServer = async () => {
     app.use("/api/rekhta", rekhtaRoutes.default);
     app.use("/api/admin-dashboard", adminDashboardRoutes.default);
     app.use("/api/poet-dashboard", poetDashboardRoutes.default);
-    app.use("/api/modules", modulesRoutes.default);
+    // app.use("/api/modules", modulesRoutes.default); // Temporarily disabled
 
     console.log("✅ Routes loaded successfully");
   } catch (error) {

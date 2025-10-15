@@ -1,12 +1,12 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const searchService = require("../services/searchService");
-const profileService = require("../services/profileService");
-const poetBiographyService = require("../services/poetBiographyService");
-const poetryCollectionService = require("../services/poetryCollectionService");
-const openaiService = require("../services/openaiService");
-const rekhtaService = require("../services/rekhtaService");
-const auth = require("../middleware/auth");
+import searchService from "../services/searchService.js";
+import profileService from "../services/profileService.js";
+import poetBiographyService from "../services/poetBiographyService.js";
+import poetryCollectionService from "../services/poetryCollectionService.js";
+import openaiService from "../services/openaiService.js";
+import rekhtaService from "../services/rekhtaService.js";
+import { auth } from "../middleware/auth.js";
 
 // ============================
 // AI MULTI-MODAL SEARCH ROUTES
@@ -802,4 +802,4 @@ router.post("/analytics/clear-cache", auth, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
