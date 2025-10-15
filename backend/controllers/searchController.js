@@ -131,7 +131,7 @@ export const textSearch = async (req, res) => {
         sortOptions = { views: -1, rating: -1 };
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const skipCount1 = (parseInt(page) - 1) * parseInt(limit);
 
     console.log("🔍 MongoDB Query:", JSON.stringify(searchQuery, null, 2));
 
@@ -139,7 +139,7 @@ export const textSearch = async (req, res) => {
     const [poems, totalCount] = await Promise.all([
       Poem.find(searchQuery)
         .sort(sortOptions)
-        .skip(skip)
+        .skip(skipCount1)
         .limit(parseInt(limit))
         .populate("author", "name profile.penName")
         .lean(),
@@ -224,7 +224,7 @@ export const textSearch = async (req, res) => {
     });
 
     const processedQuery = processUrduText(query);
-    const skip = (page - 1) * limit;
+    const skipCount2 = (page - 1) * limit;
 
     console.log(
       `🔍 Text search for: "${query}" (processed: "${processedQuery}")`
@@ -334,7 +334,7 @@ export const textSearch = async (req, res) => {
       .populate("poet", "name bio profileImage")
       .populate("author", "username profile.fullName")
       .sort({ views: -1, averageRating: -1, publishedAt: -1 })
-      .skip(skip)
+      .skip(skipCount2)
       .limit(limit);
 
     console.log(`📊 Found ${results.length} poems in search results`);
@@ -738,9 +738,10 @@ export const imageSearch = async (req, res) => {
 // 5. Smart Search Suggestions - Simplified version without OpenAI dependency
 export const getSmartSuggestions = async (req, res) => {
   try {
-    const { partialQuery } = req.body;
+    // Handle both GET (query params) and POST (body) requests
+    const query = req.query.query || req.body.partialQuery || req.body.query;
 
-    if (!partialQuery || partialQuery.trim().length < 2) {
+    if (!query || query.trim().length < 2) {
       return res.json({
         success: true,
         suggestions: [],
@@ -769,9 +770,9 @@ export const getSmartSuggestions = async (req, res) => {
     // Filter suggestions based on partial query
     const filteredSuggestions = smartSuggestions.filter(
       (suggestion) =>
-        suggestion.includes(partialQuery) ||
-        partialQuery.includes(suggestion.split(" ")[0]) ||
-        partialQuery.length < 3
+        suggestion.includes(query) ||
+        query.includes(suggestion.split(" ")[0]) ||
+        query.length < 3
     );
 
     // Always return at least some suggestions
@@ -784,7 +785,7 @@ export const getSmartSuggestions = async (req, res) => {
       success: true,
       suggestions: finalSuggestions,
       totalSuggestions: finalSuggestions.length,
-      partialQuery: partialQuery,
+      query: query,
     });
   } catch (error) {
     console.error("Smart suggestions error:", error);
@@ -820,7 +821,7 @@ export const advancedSearch = async (req, res) => {
     } = req.body;
 
     let searchQuery = { status: "published" };
-    const skip = (page - 1) * limit;
+    const skipCount3 = (page - 1) * limit;
 
     // Text search
     if (query && query.trim().length > 0) {
@@ -900,7 +901,7 @@ export const advancedSearch = async (req, res) => {
       .populate("poet", "name bio profileImage")
       .populate("author", "username profile.fullName")
       .sort(sortOptions)
-      .skip(skip)
+      .skip(skipCount3)
       .limit(limit);
 
     const totalCount = await Poem.countDocuments(searchQuery);
@@ -917,7 +918,7 @@ export const advancedSearch = async (req, res) => {
         page,
         limit,
         total: totalCount,
-        hasNext: skip + results.length < totalCount,
+        hasNext: skipCount3 + results.length < totalCount,
         hasPrev: page > 1,
       },
       filters: {
