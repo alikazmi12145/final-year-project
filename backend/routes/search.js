@@ -21,6 +21,27 @@ import {
 
 const router = express.Router();
 
+// Rate limiting - moved to top to be available for all routes
+const searchLimit = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: "Too many search requests from this IP, please try again later.",
+});
+
+// Multer configuration for image uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed"), false);
+    }
+  },
+});
+
 // Unified Search endpoint for all search types
 router.post("/", searchLimit, async (req, res) => {
   try {
@@ -92,27 +113,6 @@ router.get("/debug", async (req, res) => {
       error: error.message,
     });
   }
-});
-
-// Rate limiting
-const searchLimit = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: "Too many search requests from this IP, please try again later.",
-});
-
-// Multer configuration for image uploads
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only image files are allowed"), false);
-    }
-  },
 });
 
 // Urdu stop words for better search
@@ -375,8 +375,8 @@ router.post(
 
       // Pagination
       const total = results.length;
-      const skip = (page - 1) * limit;
-      const paginatedResults = results.slice(skip, skip + limit);
+      const skipCount = (page - 1) * limit;
+      const paginatedResults = results.slice(skipCount, skipCount + limit);
 
       // Enhance results with snippets
       const enhancedResults = paginatedResults.map((poem) => ({
@@ -678,80 +678,7 @@ router.post(
 );
 
 // Search suggestions
-router.get("/suggestions", searchLimit, async (req, res) => {
-  try {
-    const { q } = req.query;
-
-    if (!q || q.length < 2) {
-      return res.json({
-        success: true,
-        suggestions: [],
-      });
-    }
-
-    // Get suggestions from poem titles and common search terms
-    const titleSuggestions = await Poem.aggregate([
-      {
-        $match: {
-          status: "published",
-          title: { $regex: q, $options: "i" },
-        },
-      },
-      {
-        $group: {
-          _id: "$title",
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $sort: { count: -1 },
-      },
-      {
-        $limit: 5,
-      },
-    ]);
-
-    // Get suggestions from popular search terms (you would track these in a separate collection)
-    const popularTerms = [
-      "محبت",
-      "دل",
-      "غم",
-      "خوشی",
-      "زندگی",
-      "موت",
-      "عشق",
-      "دوستی",
-      "غزل",
-      "نظم",
-      "رباعی",
-      "قسیدہ",
-      "مرثیہ",
-      "سلام",
-      "نعت",
-      "حمد",
-    ];
-
-    const termSuggestions = popularTerms
-      .filter((term) => term.includes(q) || q.includes(term))
-      .slice(0, 5);
-
-    const allSuggestions = [
-      ...titleSuggestions.map((s) => ({ text: s._id, type: "title" })),
-      ...termSuggestions.map((s) => ({ text: s, type: "term" })),
-    ];
-
-    res.json({
-      success: true,
-      suggestions: allSuggestions.slice(0, 10),
-    });
-  } catch (error) {
-    console.error("Search suggestions error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get search suggestions",
-    });
-  }
-});
+router.get("/suggestions", searchLimit, getSmartSuggestions);
 
 // Helper functions
 function calculateRelevanceScore(poem, query) {
