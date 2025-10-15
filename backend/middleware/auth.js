@@ -30,21 +30,21 @@ export const auth = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "Account suspended",
-        suspendedUntil: user.suspendedUntil
+        suspendedUntil: user.suspendedUntil,
       });
     }
 
     if (user.status === "banned") {
       return res.status(403).json({
         success: false,
-        message: "Account banned"
+        message: "Account banned",
       });
     }
 
     if (user.status === "pending" && user.role === "poet") {
       return res.status(403).json({
         success: false,
-        message: "Account pending approval"
+        message: "Account pending approval",
       });
     }
 
@@ -58,22 +58,22 @@ export const auth = async (req, res, next) => {
       role: user.role,
       isVerified: user.isVerified,
       status: user.status,
-      verificationBadge: user.verificationBadge
+      verificationBadge: user.verificationBadge,
     };
-    
+
     next();
   } catch (error) {
-    if (error.name === 'TokenExpiredError') {
+    if (error.name === "TokenExpiredError") {
       return res.status(401).json({
         success: false,
         message: "Token expired",
-        code: "TOKEN_EXPIRED"
+        code: "TOKEN_EXPIRED",
       });
     }
-    
+
     res.status(401).json({
       success: false,
-      message: "Invalid token"
+      message: "Invalid token",
     });
   }
 };
@@ -84,7 +84,7 @@ export const authorize = (...roles) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required"
+        message: "Authentication required",
       });
     }
 
@@ -93,34 +93,138 @@ export const authorize = (...roles) => {
         success: false,
         message: `Access denied. Required roles: ${roles.join(", ")}`,
         userRole: req.user.role,
-        requiredRoles: roles
+        requiredRoles: roles,
       });
     }
-    
+
     next();
   };
 };
 
 // Admin-only authorization
-export const adminAuth = [auth, authorize("admin")];
+export const adminAuth = async (req, res, next) => {
+  try {
+    const token = req.header("Authorization")?.replace("Bearer ", "");
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Access denied. No token provided.",
+      });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token or user not found.",
+      });
+    }
+
+    // Check if user is an admin
+    if (user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Admin role required.",
+      });
+    }
+
+    // Check if admin account is active
+    if (user.status !== "active") {
+      return res.status(403).json({
+        success: false,
+        message: "Admin account is not active",
+      });
+    }
+
+    // Update last active time
+    user.lastActive = new Date();
+    await user.save();
+
+    req.user = user;
+    next();
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        message: "Token expired",
+        code: "TOKEN_EXPIRED",
+      });
+    }
+
+    res.status(401).json({
+      success: false,
+      message: "Invalid token",
+    });
+  }
+};
 
 // Moderator or Admin authorization
 export const moderatorAuth = [auth, authorize("admin", "moderator")];
 
-// Poet authorization (verified poets only)
-export const poetAuth = [
-  auth,
-  authorize("poet"),
-  (req, res, next) => {
-    if (!req.user.isVerified) {
-      return res.status(403).json({
+// Poet authorization (approved poets only)
+export const poetAuth = async (req, res, next) => {
+  try {
+    const token = req.header("Authorization")?.replace("Bearer ", "");
+
+    if (!token) {
+      return res.status(401).json({
         success: false,
-        message: "Poet verification required"
+        message: "Access denied. No token provided.",
       });
     }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token or user not found.",
+      });
+    }
+
+    // Check if user is a poet
+    if (user.role !== "poet") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Poet role required.",
+      });
+    }
+
+    // Check if poet account is approved
+    if (!user.isApproved || user.status !== "active") {
+      return res.status(403).json({
+        success: false,
+        message: "Poet account is not approved or active",
+      });
+    }
+
+    // Update last active time
+    user.lastActive = new Date();
+    await user.save();
+
+    req.user = user;
     next();
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        message: "Token expired",
+        code: "TOKEN_EXPIRED",
+      });
+    }
+
+    res.status(401).json({
+      success: false,
+      message: "Invalid token",
+    });
   }
-];
+};
 
 // Optional authentication (doesn't fail if no token)
 export const optionalAuth = async (req, res, next) => {
@@ -130,14 +234,14 @@ export const optionalAuth = async (req, res, next) => {
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.userId);
-      
+
       if (user && user.status === "active") {
         req.user = {
           userId: user._id,
           email: user.email,
           role: user.role,
           isVerified: user.isVerified,
-          status: user.status
+          status: user.status,
         };
       }
     }
@@ -153,7 +257,7 @@ export const emailVerified = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       success: false,
-      message: "Authentication required"
+      message: "Authentication required",
     });
   }
 
@@ -162,7 +266,7 @@ export const emailVerified = (req, res, next) => {
     return res.status(403).json({
       success: false,
       message: "Email verification required",
-      code: "EMAIL_NOT_VERIFIED"
+      code: "EMAIL_NOT_VERIFIED",
     });
   }
 
@@ -174,7 +278,7 @@ export const activeAccount = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       success: false,
-      message: "Authentication required"
+      message: "Authentication required",
     });
   }
 
@@ -182,7 +286,7 @@ export const activeAccount = (req, res, next) => {
     return res.status(403).json({
       success: false,
       message: "Account not active",
-      status: req.user.status
+      status: req.user.status,
     });
   }
 
@@ -190,20 +294,24 @@ export const activeAccount = (req, res, next) => {
 };
 
 // Rate limiting middleware
-export const createRateLimit = (windowMs = 15 * 60 * 1000, max = 100, message = "Too many requests") => {
+export const createRateLimit = (
+  windowMs = 15 * 60 * 1000,
+  max = 100,
+  message = "Too many requests"
+) => {
   return rateLimit({
     windowMs,
     max,
     message: {
       success: false,
-      message
+      message,
     },
     standardHeaders: true,
     legacyHeaders: false,
     skip: (req) => {
       // Skip rate limiting for admin users
       return req.user && req.user.role === "admin";
-    }
+    },
   });
 };
 
@@ -238,36 +346,38 @@ export const canModerateContent = [
   auth,
   (req, res, next) => {
     const allowedRoles = ["admin", "moderator"];
-    const hasPermission = allowedRoles.includes(req.user.role) || 
-                         (req.user.role === "poet" && req.user.verificationBadge !== "none");
-    
+    const hasPermission =
+      allowedRoles.includes(req.user.role) ||
+      (req.user.role === "poet" && req.user.verificationBadge !== "none");
+
     if (!hasPermission) {
       return res.status(403).json({
         success: false,
-        message: "Insufficient permissions to moderate content"
+        message: "Insufficient permissions to moderate content",
       });
     }
-    
+
     next();
-  }
+  },
 ];
 
 export const canManageContests = [
   auth,
   (req, res, next) => {
     const allowedRoles = ["admin", "moderator"];
-    const hasPermission = allowedRoles.includes(req.user.role) || 
-                         (req.user.role === "poet" && req.user.verificationBadge === "gold");
-    
+    const hasPermission =
+      allowedRoles.includes(req.user.role) ||
+      (req.user.role === "poet" && req.user.verificationBadge === "gold");
+
     if (!hasPermission) {
       return res.status(403).json({
         success: false,
-        message: "Insufficient permissions to manage contests"
+        message: "Insufficient permissions to manage contests",
       });
     }
-    
+
     next();
-  }
+  },
 ];
 
 // Content ownership verification
@@ -276,22 +386,23 @@ export const verifyOwnership = (Model, param = "id") => {
     try {
       const resourceId = req.params[param];
       const resource = await Model.findById(resourceId);
-      
+
       if (!resource) {
         return res.status(404).json({
           success: false,
-          message: "Resource not found"
+          message: "Resource not found",
         });
       }
 
       // Check if user owns the resource or is admin/moderator
-      const isOwner = resource.author && resource.author.equals(req.user.userId);
+      const isOwner =
+        resource.author && resource.author.equals(req.user.userId);
       const canModify = ["admin", "moderator"].includes(req.user.role);
-      
+
       if (!isOwner && !canModify) {
         return res.status(403).json({
           success: false,
-          message: "Access denied. You don't own this resource."
+          message: "Access denied. You don't own this resource.",
         });
       }
 
@@ -300,7 +411,7 @@ export const verifyOwnership = (Model, param = "id") => {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: "Error verifying resource ownership"
+        message: "Error verifying resource ownership",
       });
     }
   };
@@ -310,22 +421,22 @@ export const verifyOwnership = (Model, param = "id") => {
 export const validateUserInput = (validations) => {
   return async (req, res, next) => {
     try {
-      await Promise.all(validations.map(validation => validation.run(req)));
-      
+      await Promise.all(validations.map((validation) => validation.run(req)));
+
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
           message: "Validation failed",
-          errors: errors.array()
+          errors: errors.array(),
         });
       }
-      
+
       next();
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: "Validation error"
+        message: "Validation error",
       });
     }
   };

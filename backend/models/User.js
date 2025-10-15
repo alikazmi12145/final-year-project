@@ -49,8 +49,8 @@ const userSchema = new mongoose.Schema(
     // Role & Verification
     role: {
       type: String,
-      enum: ["poet", "admin", "moderator"],
-      default: "poet",
+      enum: ["reader", "poet", "admin", "moderator"],
+      default: "reader",
     },
     isApproved: {
       type: Boolean,
