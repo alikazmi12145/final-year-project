@@ -1,9 +1,10 @@
-/* Enhanced Local Urdu Font Fallbacks with Nastaleeq Priority */
+/* Enhanced Local Urdu Font Fallbacks with Beautiful Nastaleeq Priority */
 @font-face {
   font-family: "LocalNastaleeq";
   src: local("Jameel Noori Nastaleeq"), local("Pak Nastaleeq"),
     local("InPage Nastaleeq"), local("Urdu Nastaleeq Unicode"),
-    local("Noto Nastaliq Urdu"), local("AlQalam Taj Nastaleeq");
+    local("Noto Nastaliq Urdu"), local("AlQalam Taj Nastaleeq"),
+    local("Faiz Lahori Nastaleeq");
   font-display: swap;
   font-weight: 400;
 }
@@ -11,7 +12,7 @@
 @font-face {
   font-family: "LocalNastaleeq";
   src: local("Jameel Noori Nastaleeq Bold"), local("Pak Nastaleeq Bold"),
-    local("Noto Nastaliq Urdu Bold");
+    local("Noto Nastaliq Urdu Bold"), local("Faiz Lahori Nastaleeq Bold");
   font-display: swap;
   font-weight: 700;
 }
@@ -19,31 +20,73 @@
 @font-face {
   font-family: "LocalUrduModern";
   src: local("Noto Sans Arabic"), local("Urdu Naskh Asiatype"),
-    local("Al Bayan"), local("Geeza Pro"), local("Arabic Typesetting");
+    local("Al Bayan"), local("Geeza Pro"), local("Arabic Typesetting"),
+    local("Tahoma"), local("Segoe UI");
   font-display: swap;
 }
 
-/* Enhanced local font classes */
+/* Enhanced local font classes with beautiful typography */
 .urdu-text-local {
   font-family: "LocalNastaleeq", "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq",
-    serif;
+    "Scheherazade New", serif;
   direction: rtl;
-  line-height: 2.1;
-  word-spacing: 0.15em;
-  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  line-height: 2.2;
+  word-spacing: 0.18em;
+  letter-spacing: 0.02em;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "dlig" 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .urdu-modern-local {
-  font-family: "LocalUrduModern", "Noto Sans Arabic", "Tajawal", sans-serif;
+  font-family: "LocalUrduModern", "Noto Sans Arabic", "Tajawal", "Tahoma",
+    sans-serif;
   direction: rtl;
-  line-height: 1.8;
+  line-height: 1.9;
+  letter-spacing: 0.01em;
   font-feature-settings: "kern" 1, "liga" 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 .nastaleeq-fallback {
   font-family: "LocalNastaleeq", "Noto Nastaliq Urdu", "Scheherazade New",
     "Times New Roman", serif;
   direction: rtl;
-  line-height: 2.2;
+  line-height: 2.3;
+  word-spacing: 0.22em;
+  letter-spacing: 0.03em;
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+/* Additional beautiful Urdu typography classes */
+.urdu-heading {
+  font-family: "LocalNastaleeq", "Noto Nastaliq Urdu", serif;
+  direction: rtl;
+  line-height: 1.8;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   word-spacing: 0.2em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.urdu-poetry {
+  font-family: "LocalNastaleeq", "Jameel Noori Nastaleeq", serif;
+  direction: rtl;
+  line-height: 2.5;
+  word-spacing: 0.25em;
+  letter-spacing: 0.04em;
+  font-style: italic;
+  text-align: center;
+}
+
+.urdu-elegant {
+  font-family: "LocalNastaleeq", "Noto Nastaliq Urdu", serif;
+  direction: rtl;
+  line-height: 2.1;
+  word-spacing: 0.2em;
+  font-weight: 500;
+  color: #1f2937;
+  text-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.05);
 }

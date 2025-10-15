@@ -19,13 +19,11 @@ import { useAuth } from "./context/AuthContext";
 // Poetry CRUD Pages
 import PoemsPage from "./pages/PoemsPage";
 import CreatePoemPage from "./pages/CreatePoemPage";
-import TestCreatePage from "./pages/TestCreatePage";
 import PoemDetailPage from "./pages/PoemDetailPage";
 import EditPoemPage from "./pages/EditPoemPage";
 
 // Poetry Collection Pages
 import PoetryCollectionPage from "./pages/PoetryCollectionPage";
-import PoemDetailPageNew from "./pages/PoemDetailPageNew";
 import CollectionsPage from "./pages/CollectionsPage";
 import RecommendationsPage from "./pages/RecommendationsPage";
 
@@ -64,7 +62,7 @@ function App() {
 
         {/* New Poetry Collection Routes */}
         <Route path="/poetry-collection" element={<PoetryCollectionPage />} />
-        <Route path="/poetry-collection/:id" element={<PoemDetailPageNew />} />
+        <Route path="/poetry-collection/:id" element={<PoemDetailPage />} />
         <Route
           path="/collections"
           element={

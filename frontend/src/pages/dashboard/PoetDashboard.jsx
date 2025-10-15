@@ -72,27 +72,86 @@ const PoetDashboard = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  // Core state
+  // Module 2: Poet Biographies Management State
+  const [myBiography, setMyBiography] = useState(null);
+  const [biographyStatus, setBiographyStatus] = useState("not_created"); // not_created, pending, approved, rejected
+  const [poeticStyle, setPoeticStyle] = useState("");
+  const [genres, setGenres] = useState([]);
+  const [schoolOfThought, setSchoolOfThought] = useState("");
+
+  // Module 3: Achievements Works Showcase State
+  const [myAchievements, setMyAchievements] = useState([]);
+  const [myWorks, setMyWorks] = useState([]);
+  const [famousWorks, setFamousWorks] = useState([]);
+  const [awards, setAwards] = useState([]);
+  const [publications, setPublications] = useState([]);
+
+  // Poetry Management State
   const [myPoems, setMyPoems] = useState([]);
   const [pendingPoems, setPendingPoems] = useState([]);
   const [rejectedPoems, setRejectedPoems] = useState([]);
+  const [publishedPoems, setPublishedPoems] = useState([]);
   const [drafts, setDrafts] = useState([]);
-  const [submissions, setSubmissions] = useState([]);
+
+  // Contest and Submission State
   const [contests, setContests] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+
+  // Recommendations State
   const [recommendations, setRecommendations] = useState([]);
+
+  // Followers and Following State
   const [followers, setFollowers] = useState([]);
   const [following, setFollowing] = useState([]);
 
-  // Analytics state
+  // Profile Management State
+  const [profileData, setProfileData] = useState({
+    name: user?.name || "",
+    penName: "",
+    fullName: "",
+    email: user?.email || "",
+    phone: "",
+    address: "",
+    bio: user?.bio || "",
+    biography: "",
+    shortBio: "",
+    dateOfBirth: "",
+    birthPlace: "",
+    location: user?.location || "",
+    website: user?.website || "",
+    nationality: "",
+    languages: [],
+    era: "contemporary",
+    influences: [],
+    socialMedia: {
+      website: "",
+      facebook: "",
+      twitter: "",
+      instagram: "",
+      youtube: "",
+    },
+    socialLinks: user?.socialLinks || {
+      facebook: "",
+      twitter: "",
+      instagram: "",
+      youtube: "",
+    },
+    isPrivate: user?.isPrivate || false,
+    profilePicture: user?.profilePicture || "",
+  });
+
+  // Statistics and Analytics
   const [analytics, setAnalytics] = useState({
+    totalPoems: 0,
     totalViews: 0,
     totalLikes: 0,
-    totalPoems: 0,
     followers: 0,
     following: 0,
     engagementRate: 0,
     monthlyGrowth: 0,
+    shares: 0,
     weeklyViews: [],
+    topPerformingPoems: [],
     topPoems: [],
     recentActivity: [],
     monthlyStats: {
@@ -107,7 +166,7 @@ const PoetDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("تجزیات");
+  const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
@@ -115,20 +174,6 @@ const PoetDashboard = () => {
 
   // Profile editing state
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileData, setProfileData] = useState({
-    name: user?.name || "",
-    bio: user?.bio || "",
-    location: user?.location || "",
-    website: user?.website || "",
-    socialLinks: user?.socialLinks || {
-      facebook: "",
-      twitter: "",
-      instagram: "",
-      youtube: "",
-    },
-    isPrivate: user?.isPrivate || false,
-    profilePicture: user?.profilePicture || "",
-  });
   const [profileLoading, setProfileLoading] = useState(false);
 
   // Success and error messages
@@ -801,14 +846,27 @@ const PoetDashboard = () => {
           </Card>
         </div>
 
-        {/* Tab Navigation matching the image */}
+        {/* Tab Navigation matching the modules */}
         <div className="bg-white rounded-xl shadow-lg mb-6">
           <div className="flex border-b border-gray-200">
             {[
-              { id: "تجزیات", label: "تجزیات", icon: BarChart },
-              { id: "منزری شاعری", label: "منزری شاعری", icon: BookOpen },
-              { id: "تبدیلی", label: "تبدیلی", icon: Settings },
-              { id: "مقفل", label: "مقفل", icon: Lock },
+              { id: "overview", label: "تجزیات", icon: BarChart },
+              {
+                id: "biography-management",
+                label: "سوانح کا انتظام",
+                icon: BookOpen,
+              },
+              {
+                id: "achievements-showcase",
+                label: "کامیابیوں کی نمائش",
+                icon: Award,
+              },
+              { id: "poetry-works", label: "شاعری کا ذخیرہ", icon: PenTool },
+              {
+                id: "profile-settings",
+                label: "پروفائل ترتیبات",
+                icon: Settings,
+              },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -827,7 +885,8 @@ const PoetDashboard = () => {
         </div>
 
         {/* Tab Content */}
-        {activeTab === "تجزیات" && (
+        {/* MODULE: Overview/Analytics */}
+        {activeTab === "overview" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Performance Analytics */}
             <Card className="p-6">
@@ -945,7 +1004,8 @@ const PoetDashboard = () => {
           </div>
         )}
 
-        {activeTab === "منزری شاعری" && (
+        {/* MODULE: Biography Management */}
+        {activeTab === "biography-management" && (
           <div className="space-y-6">
             {/* Advanced Filters */}
             <Card className="p-4">
@@ -1167,7 +1227,8 @@ const PoetDashboard = () => {
           </div>
         )}
 
-        {activeTab === "تبدیلی" && (
+        {/* MODULE: Achievements Showcase */}
+        {activeTab === "achievements-showcase" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Profile Editing */}
             <Card className="p-6">
@@ -1444,7 +1505,8 @@ const PoetDashboard = () => {
           </div>
         )}
 
-        {activeTab === "مقفل" && (
+        {/* MODULE: Poetry Works Showcase */}
+        {activeTab === "poetry-works" && (
           <div className="space-y-6">
             {/* Privacy Settings */}
             <Card className="p-6">
@@ -1607,6 +1669,150 @@ const PoetDashboard = () => {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* MODULE: Profile Settings */}
+        {activeTab === "profile-settings" && (
+          <div className="space-y-6">
+            <Card className="p-6">
+              <h3 className="text-xl font-semibold text-urdu-brown mb-6">
+                پروفائل کی ترتیبات
+              </h3>
+
+              {/* Profile Information */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="text-lg font-medium text-urdu-brown">
+                    بنیادی معلومات
+                  </h4>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      نام
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      defaultValue={user?.name || ""}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      تخلص / قلمی نام
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      placeholder="آپ کا شاعرانہ نام"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      شاعری کا مکتب
+                    </label>
+                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                      <option>کلاسیکی شاعری</option>
+                      <option>جدید شاعری</option>
+                      <option>نظم نگاری</option>
+                      <option>غزل گوئی</option>
+                      <option>مزاحیہ شاعری</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      مقام
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      placeholder="آپ کا شہر"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-lg font-medium text-urdu-brown">
+                    شاعرانہ سوانح
+                  </h4>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      مختصر تعارف
+                    </label>
+                    <textarea
+                      rows={4}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      placeholder="اپنے بارے میں کچھ لکھیں..."
+                    ></textarea>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      شاعری کی ابتدا
+                    </label>
+                    <input
+                      type="date"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      پسندیدہ اصناف
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {["غزل", "نظم", "قطعہ", "رباعی", "مثنوی", "قصیدہ"].map(
+                        (genre) => (
+                          <label key={genre} className="flex items-center">
+                            <input type="checkbox" className="mr-2" />
+                            <span className="text-sm">{genre}</span>
+                          </label>
+                        )
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Literary Achievements */}
+              <div className="mt-8">
+                <h4 className="text-lg font-medium text-urdu-brown mb-4">
+                  ادبی کامیابیاں
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      منشور شدہ کتابیں
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      placeholder="کتابوں کے نام (کاما سے الگ کریں)"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      ایوارڈز اور اعزازات
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      placeholder="ایوارڈز کے نام"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-6">
+                <Button className="bg-urdu-brown hover:bg-urdu-brown/90">
+                  تبدیلیاں محفوظ کریں
+                </Button>
+              </div>
+            </Card>
           </div>
         )}
       </div>

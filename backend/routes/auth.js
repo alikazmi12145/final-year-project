@@ -155,7 +155,7 @@ router.post(
     body("password")
       .isLength({ min: 6 })
       .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/),
-    body("role").optional().isIn(["poet", "admin", "moderator"]),
+    body("role").optional().isIn(["reader", "poet", "admin", "moderator"]),
     body("bio").optional().isLength({ max: 500 }).trim(),
     body("location.city").optional().trim(),
     body("location.country").optional().trim(),
@@ -172,7 +172,14 @@ router.post(
         });
       }
 
-      const { name, email, password, role = "poet", bio, location } = req.body;
+      const {
+        name,
+        email,
+        password,
+        role = "reader",
+        bio,
+        location,
+      } = req.body;
 
       // Check if user already exists
       let existingUser;
@@ -215,7 +222,7 @@ router.post(
           token: emailVerificationToken,
           expiresAt: emailVerificationExpiry,
         },
-        status: role === "poet" ? "pending" : "active", // Only poets need admin approval, readers are auto-approved
+        status: role === "reader" ? "active" : "pending", // Readers are auto-approved, poets need approval
         isApproved: role === "reader", // Auto-approve readers
       };
 
@@ -272,7 +279,9 @@ router.post(
       res.status(201).json({
         success: true,
         message:
-          role === "poet"
+          role === "reader"
+            ? "Account created successfully. Please verify your email."
+            : role === "poet"
             ? "Account created successfully. Please verify your email and wait for admin approval."
             : "Account created successfully. Please verify your email.",
         requiresApproval: role === "poet",
@@ -368,37 +377,49 @@ router.post(
         console.log(`🔧 Auto-creating reader account for: ${email}`);
         try {
           const hashedPassword = await bcrypt.hash(password, 12);
-          user = await User.create({
+
+          // Create user with minimal required fields first
+          const userData = {
             name:
               email.split("@")[0].charAt(0).toUpperCase() +
-              email.split("@")[0].slice(1), // Capitalize first letter
+              email.split("@")[0].slice(1),
             email: email,
             password: hashedPassword,
             role: "reader",
-            status: "active", // Readers are auto-approved
+            status: "active",
             isApproved: true,
             isVerified: true,
-            emailVerification: {
-              isVerified: true,
-            },
             bio: "Poetry enthusiast and reader",
-            preferences: {
-              language: "urdu",
-              theme: "cultural",
-              notifications: {
-                email: true,
-                push: false,
-                contests: true,
-                newPoetry: true,
-              },
+          };
+
+          // Create user object and set nested fields properly
+          user = new User(userData);
+
+          // Set emailVerification object
+          user.emailVerification = {
+            isVerified: true,
+          };
+
+          // Set preferences object
+          user.preferences = {
+            language: "urdu",
+            theme: "cultural",
+            notifications: {
+              email: true,
+              push: false,
+              contests: true,
+              newPoetry: true,
             },
-          });
+          };
+
+          await user.save();
           console.log(`✅ Reader account auto-created for: ${email}`);
         } catch (createError) {
           console.error(
             "❌ Failed to auto-create reader account:",
             createError
           );
+          console.error("❌ Error details:", createError.message);
           return res.status(500).json({
             success: false,
             message: "Failed to create reader account. Please try again.",

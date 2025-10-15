@@ -96,6 +96,7 @@ const startServer = async () => {
     const authRoutes = await import("./routes/auth.js");
     const adminRoutes = await import("./routes/admin.js");
     const poetRoutes = await import("./routes/poets.js");
+    const biographyRoutes = await import("./routes/biographies.js");
     const poemRoutes = await import("./routes/poems.js");
     const poetryCollectionRoutes = await import("./routes/poetryCollection.js");
     const contestRoutes = await import("./routes/contests.js");
@@ -103,11 +104,15 @@ const startServer = async () => {
     const searchRoutes = await import("./routes/search.js");
     const dashboardRoutes = await import("./routes/dashboard.js");
     const rekhtaRoutes = await import("./routes/rekhta.js");
+    const adminDashboardRoutes = await import("./routes/adminDashboard.js");
+    const poetDashboardRoutes = await import("./routes/poetDashboard.js");
+    const modulesRoutes = await import("./routes/modules.js");
 
     // Apply routes
     app.use("/api/auth", authRoutes.default);
     app.use("/api/admin", adminRoutes.default);
     app.use("/api/poets", poetRoutes.default);
+    app.use("/api/biographies", biographyRoutes.default);
     app.use("/api/poems", poemRoutes.default);
     app.use("/api/poetry", poetryCollectionRoutes.default);
     app.use("/api/contests", contestRoutes.default);
@@ -115,6 +120,9 @@ const startServer = async () => {
     app.use("/api/search", searchRoutes.default);
     app.use("/api/dashboard", dashboardRoutes.default);
     app.use("/api/rekhta", rekhtaRoutes.default);
+    app.use("/api/admin-dashboard", adminDashboardRoutes.default);
+    app.use("/api/poet-dashboard", poetDashboardRoutes.default);
+    app.use("/api/modules", modulesRoutes.default);
 
     console.log("✅ Routes loaded successfully");
   } catch (error) {
