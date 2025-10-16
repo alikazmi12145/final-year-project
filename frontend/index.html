@@ -5,6 +5,28 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>بزم سخن - Urdu Poetry Platform</title>
+
+    <!-- Simplified environment fix -->
+    <script>
+      // Simple env override to prevent loading issues
+      window.__VITE_IS_MODERN__ = true;
+
+      // Suppress unnecessary console warnings in development
+      if (typeof console !== "undefined") {
+        const originalWarn = console.warn;
+        console.warn = function (...args) {
+          const message = args.join(" ");
+          // Filter out known browser security warnings
+          if (
+            message.includes("Self-XSS") ||
+            message.includes("attackers to impersonate")
+          ) {
+            return;
+          }
+          originalWarn.apply(console, args);
+        };
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
