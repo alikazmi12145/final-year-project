@@ -13,63 +13,67 @@ const isGoogleConfigured =
 
 if (!isGoogleConfigured) {
   console.log('⚠️ Google OAuth not configured - using placeholder strategy');
+  console.log('🔧 To enable Google OAuth:');
+  console.log('   1. Go to https://console.cloud.google.com/');
+  console.log('   2. Create OAuth 2.0 Client ID');
+  console.log('   3. Add redirect URI: http://localhost:5000/api/auth/google/callback');
+  console.log('   4. Update GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env');
 }
 
-// OAuth Configuration - Google Strategy
+// OAuth Configuration
 if (isGoogleConfigured) {
   passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: "/api/auth/google/callback"
   }, async (accessToken, refreshToken, profile, done) => {
-    try {
-      // Check if user exists with this Google ID
-      let user = await User.findOne({ 'oauth.google.id': profile.id });
-      
-      if (user) {
-        return done(null, user);
-      }
-      
-      // Check if user exists with this email
-      user = await User.findOne({ email: profile.emails[0].value });
-      
-      if (user) {
-        // Link Google account to existing user
-        user.oauth.google = {
-          id: profile.id,
-          email: profile.emails[0].value
-        };
-        await user.save();
-        return done(null, user);
-      }
-      
-      // Create new user
-      user = new User({
-        name: profile.displayName,
-        email: profile.emails[0].value,
-        role: 'reader',
-        status: 'active',
-        isVerified: true, // Google emails are pre-verified
-        profileImage: profile.photos[0]?.value,
-        oauth: {
-          google: {
-            id: profile.id,
-            email: profile.emails[0].value
-          }
-        },
-        emailVerification: {
-          isVerified: true,
-          verifiedAt: new Date()
-        }
-      });
-      
+  try {
+    // Check if user exists with this Google ID
+    let user = await User.findOne({ 'oauth.google.id': profile.id });
+    
+    if (user) {
+      return done(null, user);
+    }
+    
+    // Check if user exists with this email
+    user = await User.findOne({ email: profile.emails[0].value });
+    
+    if (user) {
+      // Link Google account to existing user
+      user.oauth.google = {
+        id: profile.id,
+        email: profile.emails[0].value
+      };
       await user.save();
       return done(null, user);
-    } catch (error) {
-      return done(error, null);
     }
-  }));
-}
+    
+    // Create new user
+    user = new User({
+      name: profile.displayName,
+      email: profile.emails[0].value,
+      role: 'reader',
+      status: 'active',
+      isVerified: true, // Google emails are pre-verified
+      profileImage: profile.photos[0]?.value,
+      oauth: {
+        google: {
+          id: profile.id,
+          email: profile.emails[0].value
+        }
+      },
+      emailVerification: {
+        isVerified: true,
+        verifiedAt: new Date()
+      }
+    });
+    
+    await user.save();
+    return done(null, user);
+  } catch (error) {
+    return done(error, null);
+  }
+}));
 
 passport.use(new FacebookStrategy({
   clientID: process.env.FACEBOOK_APP_ID,

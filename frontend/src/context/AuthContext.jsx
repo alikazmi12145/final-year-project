@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { authAPI } from "../services/api";
 import { useNavigate, useLocation } from "react-router-dom";
+import { authAPI } from "../services/api";
 
 const AuthContext = createContext();
 
@@ -53,6 +53,10 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       console.log("🔄 Login attempt:", credentials.email);
+      console.log(
+        "🔄 API Base URL:",
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
+      );
 
       // Clear any existing tokens first
       localStorage.removeItem("token");
@@ -191,12 +195,51 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
 
       // Redirect to backend OAuth endpoint
-      window.location.href = `${
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
-      }/api/auth/${provider}`;
+      const baseURL =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+      // Remove any trailing /api if it exists, then add the full path
+      const cleanBaseURL = baseURL.replace(/\/api$/, "");
+      window.location.href = `${cleanBaseURL}/api/auth/${provider}`;
     } catch (error) {
       console.error(`💥 ${provider} login error:`, error);
       setError(`${provider} login failed. Please try again.`);
+      setLoading(false);
+    }
+  };
+
+  const loginWithTokens = async (accessToken, refreshToken) => {
+    try {
+      console.log("🔄 Login with tokens");
+      setError("");
+      setLoading(true);
+
+      // Store tokens
+      localStorage.setItem("token", accessToken);
+      if (refreshToken) {
+        localStorage.setItem("refreshToken", refreshToken);
+      }
+
+      // Get user profile
+      const response = await authAPI.getMe();
+      console.log("📡 OAuth user response:", response.data);
+
+      if (response.data.success) {
+        setUser(response.data.user);
+        console.log(
+          "✅ OAuth login successful, user role:",
+          response.data.user.role
+        );
+        return { success: true };
+      } else {
+        throw new Error(response.data.message || "Failed to get user profile");
+      }
+    } catch (error) {
+      console.error("💥 OAuth login error:", error);
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      setError("OAuth login failed. Please try again.");
+      return { success: false, message: "OAuth login failed" };
+    } finally {
       setLoading(false);
     }
   };
@@ -390,6 +433,7 @@ export const AuthProvider = ({ children }) => {
     updateUser,
     updateProfile,
     socialLogin,
+    loginWithTokens,
     forgotPassword,
     resetPassword,
     verifyEmail,

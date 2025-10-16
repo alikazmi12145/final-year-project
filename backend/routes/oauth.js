@@ -28,68 +28,92 @@ const generateTokens = (user) => {
   return { accessToken, refreshToken };
 };
 
-// Google OAuth routes
-router.get('/google', 
-  passport.authenticate('google', { 
-    scope: ['profile', 'email'] 
-  })
-);
+// Check if Google OAuth is configured
+const isGoogleConfigured =
+  process.env.GOOGLE_CLIENT_ID &&
+  process.env.GOOGLE_CLIENT_SECRET &&
+  process.env.GOOGLE_CLIENT_ID !== "your-google-client-id-from-console" &&
+  process.env.GOOGLE_CLIENT_SECRET !== "your-google-client-secret-from-console";
 
-router.get('/google/callback',
-  passport.authenticate('google', { session: false }),
+// Google OAuth routes
+router.get("/google", (req, res, next) => {
+  if (!isGoogleConfigured) {
+    return res.redirect(
+      `${process.env.CLIENT_URL}/auth?error=google_not_configured&message=Google OAuth is not configured. Please contact administrator.`
+    );
+  }
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+  })(req, res, next);
+});
+
+router.get(
+  "/google/callback",
+  (req, res, next) => {
+    if (!isGoogleConfigured) {
+      return res.redirect(
+        `${process.env.CLIENT_URL}/auth?error=google_not_configured`
+      );
+    }
+    passport.authenticate("google", { session: false })(req, res, next);
+  },
   (req, res) => {
     try {
       const { accessToken, refreshToken } = generateTokens(req.user);
-      
+
       // Redirect to frontend with tokens
       const redirectUrl = `${process.env.CLIENT_URL}/auth/success?token=${accessToken}&refresh=${refreshToken}`;
       res.redirect(redirectUrl);
     } catch (error) {
-      console.error('Google OAuth callback error:', error);
+      console.error("Google OAuth callback error:", error);
       res.redirect(`${process.env.CLIENT_URL}/auth?error=oauth_failed`);
     }
   }
 );
 
 // Facebook OAuth routes
-router.get('/facebook',
-  passport.authenticate('facebook', { 
-    scope: ['email'] 
+router.get(
+  "/facebook",
+  passport.authenticate("facebook", {
+    scope: ["email"],
   })
 );
 
-router.get('/facebook/callback',
-  passport.authenticate('facebook', { session: false }),
+router.get(
+  "/facebook/callback",
+  passport.authenticate("facebook", { session: false }),
   (req, res) => {
     try {
       const { accessToken, refreshToken } = generateTokens(req.user);
-      
+
       const redirectUrl = `${process.env.CLIENT_URL}/auth/success?token=${accessToken}&refresh=${refreshToken}`;
       res.redirect(redirectUrl);
     } catch (error) {
-      console.error('Facebook OAuth callback error:', error);
+      console.error("Facebook OAuth callback error:", error);
       res.redirect(`${process.env.CLIENT_URL}/auth?error=oauth_failed`);
     }
   }
 );
 
 // GitHub OAuth routes
-router.get('/github',
-  passport.authenticate('github', { 
-    scope: ['user:email'] 
+router.get(
+  "/github",
+  passport.authenticate("github", {
+    scope: ["user:email"],
   })
 );
 
-router.get('/github/callback',
-  passport.authenticate('github', { session: false }),
+router.get(
+  "/github/callback",
+  passport.authenticate("github", { session: false }),
   (req, res) => {
     try {
       const { accessToken, refreshToken } = generateTokens(req.user);
-      
+
       const redirectUrl = `${process.env.CLIENT_URL}/auth/success?token=${accessToken}&refresh=${refreshToken}`;
       res.redirect(redirectUrl);
     } catch (error) {
-      console.error('GitHub OAuth callback error:', error);
+      console.error("GitHub OAuth callback error:", error);
       res.redirect(`${process.env.CLIENT_URL}/auth?error=oauth_failed`);
     }
   }

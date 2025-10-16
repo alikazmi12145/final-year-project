@@ -17,6 +17,7 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 import connectDB from "./config/database.js";
+import passport from "passport";
 
 const app = express();
 
@@ -50,6 +51,9 @@ app.use(
 // Middleware
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+// Initialize passport
+app.use(passport.initialize());
 
 // Enhanced logging and monitoring
 app.use(requestLogger);
@@ -94,6 +98,7 @@ const startServer = async () => {
   try {
     // Load routes dynamically
     const authRoutes = await import("./routes/auth.js");
+    const oauthRoutes = await import("./routes/oauth.js");
     const adminRoutes = await import("./routes/admin.js");
     const poetRoutes = await import("./routes/poets.js");
     const biographyRoutes = await import("./routes/biographies.js");
@@ -110,6 +115,7 @@ const startServer = async () => {
 
     // Apply routes
     app.use("/api/auth", authRoutes.default);
+    app.use("/api/auth", oauthRoutes.default);
     app.use("/api/admin", adminRoutes.default);
     app.use("/api/poets", poetRoutes.default);
     app.use("/api/biographies", biographyRoutes.default);

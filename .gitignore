@@ -6,6 +6,7 @@ package-lock.json
 .env
 .env.local
 .env.production
+.env.example
 
 # Logs
 logs/
@@ -31,6 +32,14 @@ Thumbs.db
 
 # Uploads (local storage)
 backend/uploads/
+
+# Documentation (keep only main README)
+*.md
+!README.md
+
+# Temporary files
+*.tmp
+*.temp
 
 # Misc
 *.pem
