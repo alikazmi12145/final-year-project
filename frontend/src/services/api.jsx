@@ -517,15 +517,15 @@ export const adminAPI = {
   // User Approval System
   approveUser: (id, approvalData = {}) =>
     axiosInstance.put(`/admin/users/${id}/approve`, {
-      status: "active",
-      approvedAt: new Date().toISOString(),
-      ...approvalData,
+      approved: true,
+      approvedBy: approvalData.approvedBy,
+      approvedReason: approvalData.approvedReason,
     }),
   rejectUser: (id, rejectionData = {}) =>
     axiosInstance.put(`/admin/users/${id}/reject`, {
-      status: "rejected",
-      rejectedAt: new Date().toISOString(),
-      ...rejectionData,
+      rejected: true,
+      rejectedBy: rejectionData.rejectedBy,
+      rejectedReason: rejectionData.rejectedReason,
     }),
   suspendUser: (id, suspensionData = {}) =>
     axiosInstance.put(`/admin/users/${id}/suspend`, {

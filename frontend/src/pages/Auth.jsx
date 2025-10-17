@@ -862,10 +862,7 @@ const Auth = () => {
                     <div>
                       <button
                         type="button"
-                        onClick={() => {
-                          setIsForgotPassword(true);
-                          setIsLogin(false);
-                        }}
+                        onClick={() => navigate("/forgot-password")}
                         className="text-gray-500 hover:text-urdu-maroon text-sm transition-colors nastaleeq-primary"
                       >
                         پاس ورڈ بھول گئے؟ (Forgot Password?)

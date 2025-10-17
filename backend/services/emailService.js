@@ -448,7 +448,11 @@ export const emailService = {
 
   // Send password reset email
   async sendPasswordResetEmail(user, resetToken) {
-    const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+    const resetUrl = `${
+      process.env.CLIENT_URL ||
+      process.env.FRONTEND_URL ||
+      "http://localhost:3000"
+    }/reset-password?token=${resetToken}`;
     return this.sendEmail(user.email, "passwordReset", { user, url: resetUrl });
   },
 
