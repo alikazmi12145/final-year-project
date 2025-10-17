@@ -15,6 +15,7 @@ import {
   Users,
   BarChart3,
   Feather,
+  MessageCircle,
 } from "lucide-react";
 
 const Navbar = () => {
@@ -46,6 +47,17 @@ const Navbar = () => {
       label: "تجاویز",
       urduLabel: "تجاویز",
       icon: Feather,
+    },
+  ];
+
+  // Auth-only navigation items (shown only when logged in)
+  const authNavItems = [
+    {
+      path: "/chat",
+      label: "گفتگو",
+      urduLabel: "گفتگو",
+      icon: MessageCircle,
+      authRequired: true,
     },
   ];
 
@@ -85,6 +97,7 @@ const Navbar = () => {
 
           {/* Desktop Navigation - Cultural Urdu Design */}
           <div className="hidden md:flex items-center space-x-1 relative z-10">
+            {/* Regular navigation items */}
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -119,6 +132,43 @@ const Navbar = () => {
                 </Link>
               );
             })}
+
+            {/* Auth-only navigation items */}
+            {isAuthenticated &&
+              authNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path;
+
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-300 group relative overflow-hidden ${
+                      isActive
+                        ? "bg-gradient-to-r from-urdu-maroon to-urdu-brown text-white shadow-lg shadow-urdu-maroon/25 border border-urdu-gold/30"
+                        : "text-urdu-brown hover:bg-gradient-to-r hover:from-urdu-cream/30 hover:to-urdu-gold/20 hover:text-urdu-maroon hover:shadow-md"
+                    }`}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {/* Background pattern for active item */}
+                    {isActive && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-urdu-gold/10 via-transparent to-urdu-maroon/10 opacity-20"></div>
+                    )}
+                    <Icon size={16} className="relative z-10" />
+                    <span className="text-sm nastaleeq-primary font-semibold relative z-10">
+                      {item.urduLabel}
+                    </span>
+                    {/* Cultural decorative dot */}
+                    <div
+                      className={`w-1 h-1 rounded-full transition-all duration-300 ${
+                        isActive
+                          ? "bg-urdu-gold"
+                          : "bg-transparent group-hover:bg-urdu-maroon"
+                      }`}
+                    ></div>
+                  </Link>
+                );
+              })}
           </div>
 
           {/* Desktop Auth Section - Cultural Design */}
@@ -170,6 +220,14 @@ const Navbar = () => {
                     >
                       <BookOpen size={14} />
                       <span>میرے مجموعے</span>
+                    </Link>
+
+                    <Link
+                      to="/chat"
+                      className="flex items-center space-x-2 px-4 py-3 text-sm text-urdu-brown hover:bg-urdu-cream/30 hover:text-urdu-maroon transition-all nastaleeq-primary"
+                    >
+                      <MessageCircle size={14} />
+                      <span>گفتگو</span>
                     </Link>
 
                     {/* Dashboard Link */}
@@ -272,6 +330,42 @@ const Navbar = () => {
                 );
               })}
 
+              {/* Auth-only mobile navigation items */}
+              {isAuthenticated &&
+                authNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.path;
+
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-300 group relative overflow-hidden ${
+                        isActive
+                          ? "bg-gradient-to-r from-urdu-maroon to-urdu-brown text-white shadow-lg"
+                          : "text-urdu-brown hover:bg-gradient-to-r hover:from-urdu-cream/50 hover:to-urdu-gold/30 hover:text-urdu-maroon"
+                      }`}
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {isActive && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-urdu-gold/20 to-transparent opacity-30"></div>
+                      )}
+                      <Icon size={18} className="relative z-10" />
+                      <span className="font-medium nastaleeq-primary relative z-10">
+                        {item.urduLabel}
+                      </span>
+                      {/* Cultural decorative element */}
+                      <div
+                        className={`ml-auto w-2 h-2 rounded-full transition-all duration-300 ${
+                          isActive
+                            ? "bg-urdu-gold"
+                            : "bg-transparent group-hover:bg-urdu-maroon"
+                        }`}
+                      ></div>
+                    </Link>
+                  );
+                })}
+
               {/* Mobile Auth Section */}
               <div className="border-t-2 border-urdu-gold/30 pt-4 mt-4 bg-gradient-to-r from-urdu-cream/20 to-transparent rounded-xl p-3">
                 {isAuthenticated ? (
@@ -307,6 +401,15 @@ const Navbar = () => {
                     >
                       <BookOpen size={18} />
                       <span className="font-medium">میرے مجموعے</span>
+                    </Link>
+
+                    <Link
+                      to="/chat"
+                      className="flex items-center space-x-3 px-4 py-3 rounded-xl text-urdu-brown hover:bg-urdu-cream/40 hover:text-urdu-maroon transition-all nastaleeq-primary"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <MessageCircle size={18} />
+                      <span className="font-medium">گفتگو</span>
                     </Link>
 
                     {canAccessDashboard(user?.role) && (

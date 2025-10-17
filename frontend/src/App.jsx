@@ -32,6 +32,9 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import OAuthSuccessHandler from "./components/auth/OAuthSuccessHandler";
 
+// Chat Page
+import ChatPage from "./pages/ChatPage";
+
 function App() {
   return (
     <Layout>
@@ -121,6 +124,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <ChatPage />
             </ProtectedRoute>
           }
         />

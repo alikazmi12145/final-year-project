@@ -193,6 +193,126 @@ const api = {
     getAchievements: (poetId) =>
       axiosInstance.get(`/poets/${poetId}/achievements`),
   },
+
+  // Chat endpoints
+  chat: {
+    // Conversations
+    getConversations: (params = {}) =>
+      axiosInstance.get("/chat/conversations", { params }),
+    createConversation: (data) => {
+      // Route to appropriate endpoint based on chat type
+      if (data.type === "group") {
+        return axiosInstance.post("/chat/conversations/group", data);
+      } else {
+        return axiosInstance.post("/chat/conversations/direct", data);
+      }
+    },
+    getConversationById: (id) => axiosInstance.get(`/chat/conversations/${id}`),
+    updateConversation: (id, data) =>
+      axiosInstance.put(`/chat/conversations/${id}`, data),
+    deleteConversation: (id) =>
+      axiosInstance.delete(`/chat/conversations/${id}`),
+
+    // Messages
+    getMessages: (conversationId, params = {}) =>
+      axiosInstance.get(`/chat/conversations/${conversationId}/messages`, {
+        params,
+      }),
+    sendMessage: (conversationId, messageData) =>
+      axiosInstance.post(
+        `/chat/conversations/${conversationId}/messages`,
+        messageData
+      ),
+    sendMessageWithFile: (conversationId, formData) =>
+      axiosInstance.post(
+        `/chat/conversations/${conversationId}/messages/file`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      ),
+    updateMessage: (messageId, data) =>
+      axiosInstance.put(`/chat/messages/${messageId}`, data),
+    deleteMessage: (messageId) =>
+      axiosInstance.delete(`/chat/messages/${messageId}`),
+    markAsRead: (conversationId) =>
+      axiosInstance.put(`/chat/conversations/${conversationId}/read`),
+
+    // Reactions
+    addReaction: (messageId, emoji) =>
+      axiosInstance.post(`/chat/messages/${messageId}/reactions`, { emoji }),
+    removeReaction: (messageId, reactionId) =>
+      axiosInstance.delete(
+        `/chat/messages/${messageId}/reactions/${reactionId}`
+      ),
+
+    // Group Management
+    addMember: (conversationId, userId) =>
+      axiosInstance.post(`/chat/conversations/${conversationId}/members`, {
+        userId,
+      }),
+    removeMember: (conversationId, userId) =>
+      axiosInstance.delete(
+        `/chat/conversations/${conversationId}/members/${userId}`
+      ),
+    updateMemberRole: (conversationId, userId, role) =>
+      axiosInstance.put(
+        `/chat/conversations/${conversationId}/members/${userId}/role`,
+        { role }
+      ),
+    leaveGroup: (conversationId) =>
+      axiosInstance.delete(`/chat/conversations/${conversationId}/leave`),
+
+    // Chatbot
+    getChatbotResponse: (message) =>
+      axiosInstance.post("/chat/chatbot", { message }),
+    getChatbotHistory: () => axiosInstance.get("/chat/chatbot/history"),
+
+    // Search
+    searchConversations: (query) =>
+      axiosInstance.get("/chat/search/conversations", { params: { query } }),
+    searchMessages: (query, conversationId = null) =>
+      axiosInstance.get("/chat/search/messages", {
+        params: { query, conversationId },
+      }),
+
+    // User Search for new chats
+    searchUsers: (query) =>
+      axiosInstance.get("/chat/users/search", { params: { query } }),
+  },
+
+  // Support Ticket endpoints
+  support: {
+    getMyTickets: (params = {}) =>
+      axiosInstance.get("/chat/support/tickets", { params }),
+    createTicket: (ticketData) =>
+      axiosInstance.post("/chat/support/tickets", ticketData),
+    getTicketById: (id) => axiosInstance.get(`/chat/support/tickets/${id}`),
+    replyToTicket: (id, replyData) =>
+      axiosInstance.post(`/chat/support/tickets/${id}/replies`, replyData),
+    updateTicketStatus: (id, status) =>
+      axiosInstance.put(`/chat/support/tickets/${id}/status`, { status }),
+    attachFile: (id, formData) =>
+      axiosInstance.post(`/chat/support/tickets/${id}/attachments`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      }),
+
+    // Admin Support Management
+    getAllTickets: (params = {}) =>
+      axiosInstance.get("/chat/support/admin/tickets", { params }),
+    assignTicket: (id, agentId) =>
+      axiosInstance.put(`/chat/support/admin/tickets/${id}/assign`, {
+        agentId,
+      }),
+    escalateTicket: (id, priority) =>
+      axiosInstance.put(`/chat/support/admin/tickets/${id}/escalate`, {
+        priority,
+      }),
+    closeTicket: (id, resolution) =>
+      axiosInstance.put(`/chat/support/admin/tickets/${id}/close`, {
+        resolution,
+      }),
+  },
 };
 
 //

@@ -18,6 +18,10 @@ export const Button = ({
       "bg-gradient-to-r from-urdu-brown via-urdu-maroon to-urdu-brown bg-size-200 bg-pos-0 hover:bg-pos-100 text-white focus:ring-urdu-brown/50 shadow-urdu-brown/25 border-2 border-urdu-gold/30 nastaleeq-primary",
     secondary:
       "border-2 border-urdu-brown text-urdu-brown hover:bg-gradient-to-r hover:from-urdu-brown hover:to-urdu-maroon hover:text-white focus:ring-urdu-brown/50 bg-gradient-to-r from-white/90 to-urdu-cream/50 backdrop-blur-sm nastaleeq-primary",
+    outline:
+      "border-2 border-urdu-brown text-urdu-brown hover:bg-gradient-to-r hover:from-urdu-brown hover:to-urdu-maroon hover:text-white focus:ring-urdu-brown/50 bg-transparent nastaleeq-primary",
+    default:
+      "bg-gradient-to-r from-urdu-brown via-urdu-maroon to-urdu-brown bg-size-200 bg-pos-0 hover:bg-pos-100 text-white focus:ring-urdu-brown/50 shadow-urdu-brown/25 border-2 border-urdu-gold/30 nastaleeq-primary",
     cultural:
       "bg-gradient-to-r from-urdu-gold via-yellow-500 to-urdu-gold text-urdu-brown hover:from-yellow-500 hover:to-urdu-gold focus:ring-urdu-gold/50 shadow-urdu-gold/25 border-2 border-urdu-maroon/30 font-bold nastaleeq-primary urdu-text-shadow",
     success:
@@ -31,6 +35,7 @@ export const Button = ({
   };
 
   const sizes = {
+    sm: "px-3 py-1.5 text-sm",
     small: "px-4 py-2 text-sm",
     medium: "px-6 py-3 text-base",
     large: "px-8 py-4 text-lg",
