@@ -13,8 +13,7 @@ import Dashboard from "./pages/dashboard/Dashboard";
 import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { PublicOnlyRoute } from "./components/auth/ProtectedRoute";
-import PlaceholderPage from "./pages/PlaceholderPage"; // Add this import
-import { useAuth } from "./context/AuthContext";
+import PlaceholderPage from "./pages/PlaceholderPage";
 
 // Poetry CRUD Pages
 import PoemsPage from "./pages/PoemsPage";
@@ -29,8 +28,9 @@ import RecommendationsPage from "./pages/RecommendationsPage";
 
 // Email verification pages
 import VerifyEmail from "./pages/VerifyEmail";
-import ResetPassword from "./pages/ResetPassword";
-import OAuthSuccess from "./components/auth/OAuthSuccess";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import OAuthSuccessHandler from "./components/auth/OAuthSuccessHandler";
 
 function App() {
   return (
@@ -108,10 +108,12 @@ function App() {
           }
         />
         <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/auth/verify-email" element={<VerifyEmail />} />
-        <Route path="/auth/reset-password" element={<ResetPassword />} />
-        <Route path="/auth/success" element={<OAuthSuccess />} />
+        <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/auth/oauth-success" element={<OAuthSuccessHandler />} />
 
         {/* Protected Routes */}
         <Route
