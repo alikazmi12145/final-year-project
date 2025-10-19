@@ -54,7 +54,6 @@ const processUrduText = (text) => {
 // 1. Enhanced Text Search with dynamic MongoDB integration
 export const textSearch = async (req, res) => {
   try {
-    console.log("🔍 Text search request:", req.query || req.body);
     const {
       query,
       category,
@@ -133,8 +132,6 @@ export const textSearch = async (req, res) => {
 
     const skipCount1 = (parseInt(page) - 1) * parseInt(limit);
 
-    console.log("🔍 MongoDB Query:", JSON.stringify(searchQuery, null, 2));
-
     // Execute search with population
     const [poems, totalCount] = await Promise.all([
       Poem.find(searchQuery)
@@ -145,8 +142,6 @@ export const textSearch = async (req, res) => {
         .lean(),
       Poem.countDocuments(searchQuery),
     ]);
-
-    console.log(`📊 Found ${poems.length} poems out of ${totalCount} total`);
 
     // Process results for better presentation
     const processedResults = poems.map((poem) => ({
@@ -226,10 +221,6 @@ export const textSearch = async (req, res) => {
     const processedQuery = processUrduText(query);
     const skipCount2 = (page - 1) * limit;
 
-    console.log(
-      `🔍 Text search for: "${query}" (processed: "${processedQuery}")`
-    );
-
     // Build enhanced search strategies with poet name matching
     const searchStrategies = [];
 
@@ -242,11 +233,6 @@ export const textSearch = async (req, res) => {
         { urduName: { $regex: processedQuery, $options: "i" } },
       ],
     }).select("_id name urduName");
-
-    console.log(
-      `🎭 Found ${poetMatches.length} matching poets:`,
-      poetMatches.map((p) => p.name)
-    );
 
     // Primary search with original query including poet search
     const primarySearchConditions = [
@@ -271,11 +257,6 @@ export const textSearch = async (req, res) => {
     searchStrategies.push({
       $or: primarySearchConditions,
     });
-
-    console.log(
-      `📋 Search strategies:`,
-      JSON.stringify(searchStrategies, null, 2)
-    );
 
     // Enhanced search with AI-suggested terms
     if (enhancedData && enhancedData.success) {
@@ -337,11 +318,8 @@ export const textSearch = async (req, res) => {
       .skip(skipCount2)
       .limit(limit);
 
-    console.log(`📊 Found ${results.length} poems in search results`);
-
     // Check total count in database for debugging
     const totalPoems = await Poem.countDocuments({ status: "published" });
-    console.log(`📚 Total published poems in database: ${totalPoems}`);
 
     // Calculate enhanced relevance scores with AI context
     const scoredResults = results.map((poem) => {

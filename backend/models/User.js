@@ -173,11 +173,31 @@ const userSchema = new mongoose.Schema(
     // Account Status
     status: {
       type: String,
-      enum: ["active", "suspended", "banned", "pending"],
+      enum: ["active", "suspended", "banned", "pending", "rejected"],
       default: "pending",
     },
     suspensionReason: String,
     suspendedUntil: Date,
+
+    // Approval Tracking (for poets and moderators)
+    approvedAt: {
+      type: Date,
+    },
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    rejectedAt: {
+      type: Date,
+    },
+    rejectedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    rejectionReason: {
+      type: String,
+      maxlength: 500,
+    },
 
     // Verification Process
     verificationRequest: {

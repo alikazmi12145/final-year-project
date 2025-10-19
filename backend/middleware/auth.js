@@ -442,5 +442,66 @@ export const validateUserInput = (validations) => {
   };
 };
 
+// ============= APPROVAL CHECKING MIDDLEWARE =============
+
+/**
+ * Middleware to check if user is approved for dashboard access
+ * Applies to poets and moderators only
+ */
+export const requireApproval = async (req, res, next) => {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    // Check approval status for poets and moderators
+    if (user.role === "poet" || user.role === "moderator") {
+      if (!user.isApproved || user.status !== "active") {
+        return res.status(403).json({
+          success: false,
+          message:
+            user.role === "poet"
+              ? "آپ کا شاعر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں"
+              : "آپ کا موڈریٹر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+          code: "APPROVAL_REQUIRED",
+          role: user.role,
+          approvalStatus: {
+            isApproved: user.isApproved,
+            status: user.status,
+            canAccessDashboard: false,
+          },
+        });
+      }
+    }
+
+    // All other roles (reader, admin) or approved poets/moderators can proceed
+    next();
+  } catch (error) {
+    console.error("Approval check error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Approval verification failed",
+    });
+  }
+};
+
+/**
+ * Combined middleware: Authentication + Approval check
+ */
+export const authWithApproval = [auth, requireApproval];
+
+/**
+ * Dashboard access middleware for different roles
+ */
+export const poetDashboardAuth = [auth, requireApproval];
+export const moderatorDashboardAuth = [auth, requireApproval];
+export const readerDashboardAuth = [auth]; // Readers don't need approval
+export const adminDashboardAuth = [adminAuth]; // Admins use existing adminAuth
+
 // Legacy exports for backward compatibility
 export const authenticate = auth;

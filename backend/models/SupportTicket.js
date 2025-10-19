@@ -238,8 +238,7 @@ const supportTicketSchema = new mongoose.Schema(
   }
 );
 
-// Indexes
-supportTicketSchema.index({ ticketId: 1 });
+// Indexes (ticketId index is automatically created by unique: true)
 supportTicketSchema.index({ user: 1, status: 1 });
 supportTicketSchema.index({ assignedTo: 1, status: 1 });
 supportTicketSchema.index({ category: 1, priority: 1 });

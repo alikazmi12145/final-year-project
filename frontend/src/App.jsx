@@ -13,7 +13,8 @@ import Dashboard from "./pages/dashboard/Dashboard";
 import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { PublicOnlyRoute } from "./components/auth/ProtectedRoute";
-import PlaceholderPage from "./pages/PlaceholderPage";
+import RedirectToHome from "./components/RedirectToHome";
+import NotFoundPage from "./components/NotFoundPage";
 
 // Poetry CRUD Pages
 import PoemsPage from "./pages/PoemsPage";
@@ -77,29 +78,14 @@ function App() {
         />
         <Route path="/recommendations" element={<RecommendationsPage />} />
 
-        {/* Placeholder Pages for Footer Links */}
-        <Route
-          path="/guidelines"
-          element={<PlaceholderPage title="Community Guidelines" />}
-        />
-        <Route
-          path="/success"
-          element={<PlaceholderPage title="Success Stories" />}
-        />
-        <Route path="/help" element={<PlaceholderPage title="Help Center" />} />
-        <Route
-          path="/contact"
-          element={<PlaceholderPage title="Contact Us" />}
-        />
-        <Route
-          path="/privacy"
-          element={<PlaceholderPage title="Privacy Policy" />}
-        />
-        <Route
-          path="/terms"
-          element={<PlaceholderPage title="Terms of Service" />}
-        />
-        <Route path="/sitemap" element={<PlaceholderPage title="Sitemap" />} />
+        {/* Redirect unused pages to home */}
+        <Route path="/guidelines" element={<RedirectToHome />} />
+        <Route path="/success" element={<RedirectToHome />} />
+        <Route path="/help" element={<RedirectToHome />} />
+        <Route path="/contact" element={<RedirectToHome />} />
+        <Route path="/privacy" element={<RedirectToHome />} />
+        <Route path="/terms" element={<RedirectToHome />} />
+        <Route path="/sitemap" element={<RedirectToHome />} />
 
         {/* Auth Routes - Public Only */}
         <Route
@@ -172,15 +158,7 @@ function App() {
         />
 
         {/* Catch-all route for 404 errors */}
-        <Route
-          path="*"
-          element={
-            <PlaceholderPage
-              title="Page Not Found"
-              description="The page you're looking for doesn't exist."
-            />
-          }
-        />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Layout>
   );
