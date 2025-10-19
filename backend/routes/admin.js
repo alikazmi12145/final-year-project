@@ -7,6 +7,7 @@ import Contest from "../models/Contest.js";
 import Quiz from "../models/Quiz.js";
 import News from "../models/News.js";
 import LearningResource from "../models/LearningResource.js";
+import AdminController from "../controllers/adminController.js";
 import { adminAuth, moderatorAuth } from "../middleware/auth.js";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
@@ -358,7 +359,10 @@ router.delete("/users/:id", adminAuth, async (req, res) => {
     }
 
     // Don't allow deletion of other admins
-    if (user.role === "admin" && user._id.toString() !== req.user.userId) {
+    if (
+      user.role === "admin" &&
+      user._id.toString() !== req.user._id.toString()
+    ) {
       return res.status(403).json({
         success: false,
         message: "Cannot delete other admin accounts",
@@ -392,7 +396,7 @@ router.delete("/users/:id", adminAuth, async (req, res) => {
 // User Approval System
 router.put("/users/:id/approve", adminAuth, async (req, res) => {
   try {
-    const { approvedBy, approvedReason } = req.body;
+    const { approvedReason } = req.body;
     const user = await User.findById(req.params.id);
 
     if (!user) {
@@ -405,7 +409,7 @@ router.put("/users/:id/approve", adminAuth, async (req, res) => {
     // Update user status to active
     user.status = "active";
     user.isApproved = true;
-    user.approvedBy = approvedBy || req.user.userId;
+    user.approvedBy = req.user._id; // Use authenticated admin's ID
     user.approvedAt = new Date();
     user.approvedReason = approvedReason;
 
@@ -414,7 +418,7 @@ router.put("/users/:id/approve", adminAuth, async (req, res) => {
       const poet = await Poet.findOne({ user: user._id });
       if (poet) {
         poet.status = "active";
-        poet.approvedBy = approvedBy || req.user.userId;
+        poet.approvedBy = req.user._id; // Use authenticated admin's ID
         poet.approvedAt = new Date();
         await poet.save();
       }
@@ -497,7 +501,7 @@ router.put("/users/:id/reject", adminAuth, async (req, res) => {
     // Update user status to rejected
     user.status = "rejected";
     user.isApproved = false;
-    user.rejectedBy = rejectedBy || req.user.userId;
+    user.rejectedBy = rejectedBy || req.user._id;
     user.rejectedAt = new Date();
     user.rejectedReason = rejectedReason;
 
@@ -506,7 +510,7 @@ router.put("/users/:id/reject", adminAuth, async (req, res) => {
       const poet = await Poet.findOne({ user: user._id });
       if (poet) {
         poet.status = "rejected";
-        poet.rejectedBy = rejectedBy || req.user.userId;
+        poet.rejectedBy = rejectedBy || req.user._id;
         poet.rejectedAt = new Date();
         await poet.save();
       }
@@ -575,7 +579,7 @@ router.put("/users/:id/suspend", adminAuth, async (req, res) => {
 
     // Update user status to suspended
     user.status = "suspended";
-    user.suspendedBy = suspendedBy || req.user.userId;
+    user.suspendedBy = suspendedBy || req.user._id;
     user.suspendedAt = new Date();
     user.suspendedReason = suspendedReason;
     user.suspendedUntil = suspendedUntil ? new Date(suspendedUntil) : null;
@@ -651,7 +655,7 @@ router.put("/users/bulk-approve", adminAuth, async (req, res) => {
         $set: {
           status: "active",
           isApproved: true,
-          approvedBy: req.user.userId,
+          approvedBy: req.user._id,
           approvedAt: new Date(),
         },
       }
@@ -663,7 +667,7 @@ router.put("/users/bulk-approve", adminAuth, async (req, res) => {
       {
         $set: {
           status: "active",
-          approvedBy: req.user.userId,
+          approvedBy: req.user._id,
           approvedAt: new Date(),
         },
       }
@@ -760,7 +764,7 @@ router.put("/users/bulk", adminAuth, async (req, res) => {
     }
 
     // Add admin metadata
-    updateData.updatedBy = req.user.userId;
+    updateData.updatedBy = req.user._id;
     updateData.updatedAt = new Date();
 
     const updateResult = await User.updateMany(
@@ -828,7 +832,7 @@ router.put(
       // Update verification status
       user.verificationRequest.status =
         action === "approve" ? "approved" : "rejected";
-      user.verificationRequest.reviewedBy = req.user.userId;
+      user.verificationRequest.reviewedBy = req.user._id;
       user.verificationRequest.reviewedAt = new Date();
       user.verificationRequest.reviewNotes = reviewNotes;
 
@@ -841,7 +845,7 @@ router.put(
         const poet = await Poet.findOne({ user: user._id });
         if (poet) {
           poet.isVerified = true;
-          poet.verifiedBy = req.user.userId;
+          poet.verifiedBy = req.user._id;
           poet.verifiedAt = new Date();
           poet.status = "active";
           await poet.save();
@@ -981,13 +985,13 @@ router.put(
       // Update moderation status
       if (type === "poem") {
         content.status = action === "approve" ? "approved" : "rejected";
-        content.moderatedBy = req.user.userId;
+        content.moderatedBy = req.user._id;
         content.moderatedAt = new Date();
         content.moderationNotes = moderationNotes;
       } else if (type === "news") {
         content.moderationStatus =
           action === "approve" ? "approved" : "rejected";
-        content.moderatedBy = req.user.userId;
+        content.moderatedBy = req.user._id;
         content.moderatedAt = new Date();
         content.moderationNotes = moderationNotes;
       }
@@ -1117,5 +1121,16 @@ router.get("/analytics", adminAuth, async (req, res) => {
     });
   }
 });
+
+// ============= USER APPROVAL ROUTES =============
+
+// Get pending users awaiting approval
+router.get("/users/pending", adminAuth, AdminController.getPendingUsers);
+
+// Approve or reject a single user
+router.put("/users/:userId/approve", adminAuth, AdminController.approveUser);
+
+// Bulk approve/reject users
+router.put("/users/bulk-action", adminAuth, AdminController.bulkApproveUsers);
 
 export default router;

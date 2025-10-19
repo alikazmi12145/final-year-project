@@ -14,6 +14,7 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import fs from "fs";
 import emailService from "../services/emailService.js";
+import AuthController from "../controllers/authController.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -306,51 +307,11 @@ router.post(
   }
 );
 
-// Debug endpoint to check user status
-router.get("/debug/user/:email", async (req, res) => {
-  try {
-    const { email } = req.params;
-    const user = await User.findOne({ email }).select(
-      "name email role status isApproved isVerified createdAt"
-    );
-
-    if (!user) {
-      return res.json({
-        success: false,
-        message: "User not found",
-        email,
-      });
-    }
-
-    res.json({
-      success: true,
-      user: {
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-        isApproved: user.isApproved,
-        isVerified: user.isVerified,
-        createdAt: user.createdAt,
-      },
-    });
-  } catch (error) {
-    console.error("Debug user error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Debug failed",
-      error: error.message,
-    });
-  }
-});
-
 // Login endpoint
 router.post(
   "/login",
   [body("email").isEmail().normalizeEmail(), body("password").notEmpty()],
   async (req, res) => {
-    console.log("🚨 LOGIN ROUTE HIT! Raw request body:", req.body);
-
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -362,15 +323,12 @@ router.post(
       }
 
       const { email, password } = req.body;
-      console.log(`🔍 Login attempt for email: ${email}`);
 
       // Find user and populate poet info if applicable
       let user = await User.findOne({ email }).populate({
         path: "bookmarkedPoems",
         select: "title poet",
       });
-
-      console.log(`🔍 User lookup result: ${user ? "Found" : "Not found"}`);
 
       // Auto-create reader account for login attempts (simplified registration)
       if (!user && email && password) {
@@ -429,7 +387,6 @@ router.post(
 
       // Auto-create or fix admin account if trying to login with default admin credentials
       if (email === "admin@bazm-e-sukhan.com" && password === "Admin@123456") {
-        console.log("🔍 Admin login attempt detected");
         if (!user) {
           console.log("🔧 Auto-creating admin account on first login...");
 
@@ -489,9 +446,8 @@ router.post(
       }
 
       // Check password
-      console.log(`🔍 Checking password for user: ${user.email}`);
+
       const isPasswordValid = await bcrypt.compare(password, user.password);
-      console.log(`🔍 Password validation result: ${isPasswordValid}`);
 
       if (!isPasswordValid) {
         console.log("❌ Invalid password for user:", email);
@@ -1264,5 +1220,8 @@ router.post("/logout", auth, async (req, res) => {
     });
   }
 });
+
+// Create admin route
+router.post("/create-admin", AuthController.createAdmin);
 
 export default router;

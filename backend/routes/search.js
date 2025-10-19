@@ -88,33 +88,6 @@ router.get("/health", (req, res) => {
   });
 });
 
-// Debug endpoint to check database content
-router.get("/debug", async (req, res) => {
-  try {
-    const totalPoems = await Poem.countDocuments();
-    const publishedPoems = await Poem.countDocuments({ status: "published" });
-    const samplePoems = await Poem.find()
-      .limit(3)
-      .select("title content status author");
-
-    res.json({
-      success: true,
-      debug: {
-        totalPoems,
-        publishedPoems,
-        samplePoems,
-        message: "Database debug info",
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Debug query failed",
-      error: error.message,
-    });
-  }
-});
-
 // Urdu stop words for better search
 const urduStopWords = [
   "کا",

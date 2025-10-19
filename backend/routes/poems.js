@@ -191,132 +191,19 @@ router.get("/my-poems", auth, async (req, res) => {
   }
 });
 
-// Temporary fix endpoint to update inconsistent poem statuses
-router.post("/fix-statuses", optionalAuth, async (req, res) => {
-  try {
-    // For debugging, allow anyone to run this (in production, restrict to admin only)
-    // if (req.user?.role !== "admin") {
-    //   return res.status(403).json({ success: false, message: "Admin only" });
-    // }
-
-    console.log("🔧 Running poem status fix...");
-
-    // Find poems that should be published but aren't marked correctly
-    const inconsistentPoems = await Poem.find({
-      $or: [
-        // Poems that are approved but not published
-        { status: "approved", published: { $ne: true } },
-        // Poems that are published status but published field is false
-        { status: "published", published: { $ne: true } },
-        // Poems that have moderatedBy but aren't published
-        {
-          moderatedBy: { $exists: true },
-          moderatedAt: { $exists: true },
-          status: { $nin: ["rejected", "pending"] },
-          published: { $ne: true },
-        },
-      ],
-    });
-
-    console.log(
-      `Found ${inconsistentPoems.length} poems with inconsistent status`
-    );
-
-    // Log details of each problematic poem
-    inconsistentPoems.forEach((poem) => {
-      console.log(
-        `📝 Poem ${poem._id}: "${poem.title}" - status: ${
-          poem.status
-        }, published: ${poem.published}, moderatedBy: ${!!poem.moderatedBy}`
-      );
-    });
-
-    // Update them
-    const updateResults = await Poem.updateMany(
-      {
-        $or: [
-          { status: "approved", published: { $ne: true } },
-          { status: "published", published: { $ne: true } },
-          {
-            moderatedBy: { $exists: true },
-            moderatedAt: { $exists: true },
-            status: { $nin: ["rejected", "pending"] },
-            published: { $ne: true },
-          },
-        ],
-      },
-      {
-        $set: {
-          published: true,
-          status: "published",
-          publishedAt: new Date(),
-        },
-      }
-    );
-
-    console.log(`✅ Updated ${updateResults.modifiedCount} poems`);
-
-    res.json({
-      success: true,
-      message: `Fixed ${updateResults.modifiedCount} poems`,
-      found: inconsistentPoems.length,
-      updated: updateResults.modifiedCount,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Temporary debug endpoint to check poem status
-router.get("/debug/:id", async (req, res) => {
-  try {
-    const poem = await Poem.findById(req.params.id).lean();
-    if (!poem) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Poem not found" });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        id: poem._id,
-        title: poem.title,
-        published: poem.published,
-        status: poem.status,
-        author: poem.author,
-        createdAt: poem.createdAt,
-        publishedAt: poem.publishedAt,
-        moderatedAt: poem.moderatedAt,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 // Get user's bookmarked poems
 router.get("/bookmarks", auth, poemOperationLimit, async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
 
-    console.log("📚 Fetching bookmarks for user:", req.user.userId);
-
     const user = await User.findById(req.user.userId);
 
     if (!user) {
-      console.log("❌ User not found:", req.user.userId);
       return res.status(404).json({
         success: false,
         message: "User not found",
       });
     }
-
-    console.log(
-      "📖 User has",
-      user.bookmarkedPoems?.length || 0,
-      "bookmarked poems"
-    );
 
     // If no bookmarks, return empty array
     if (!user.bookmarkedPoems || user.bookmarkedPoems.length === 0) {
@@ -346,8 +233,6 @@ router.get("/bookmarks", auth, poemOperationLimit, async (req, res) => {
       skip,
       skip + parseInt(limit)
     );
-
-    console.log("✅ Returning", paginatedPoems.length, "bookmarked poems");
 
     res.json({
       success: true,
@@ -397,31 +282,12 @@ router.get("/:id", optionalAuth, poemOperationLimit, async (req, res) => {
       (poem.moderatedBy &&
         poem.moderatedAt &&
         poem.status !== "rejected" &&
-        poem.status !== "pending") ||
-      // TEMPORARY: Allow specific problematic poem for debugging
-      poem._id.toString() === "68dcefed1585774baa31611c";
-
-    // Debug logging
-    console.log("🔍 Debug Poem Access:", {
-      poemId: poem._id,
-      title: poem.title,
-      published: poem.published,
-      status: poem.status,
-      isPubliclyAccessible,
-      userRole: req.user?.role,
-      userId: req.user?.userId,
-      authorId: poem.author?._id?.toString(),
-      hasUser: !!req.user,
-      moderatedBy: !!poem.moderatedBy,
-      moderatedAt: !!poem.moderatedAt,
-      isSpecificDebugPoem: poem._id.toString() === "68dcefed1585774baa31611c",
-    });
+        poem.status !== "pending");
 
     // If poem is not publicly accessible, check permissions
     if (!isPubliclyAccessible) {
       // Allow access if no user is logged in but poem is in pending status (for preview)
       if (poem.status === "pending" && !req.user) {
-        console.log("🚫 Blocked: Pending poem, no user logged in");
         return res.status(403).json({
           success: false,
           message:
@@ -434,8 +300,6 @@ router.get("/:id", optionalAuth, poemOperationLimit, async (req, res) => {
         const isAuthor = req.user.userId === poem.author._id.toString();
         const isAdmin = req.user.role === "admin";
         const isModerator = req.user.role === "moderator";
-
-        console.log("🔍 Permission check:", { isAuthor, isAdmin, isModerator });
 
         // Allow author, admin, or moderator to view
         if (!isAuthor && !isAdmin && !isModerator) {
@@ -454,11 +318,6 @@ router.get("/:id", optionalAuth, poemOperationLimit, async (req, res) => {
         return res.status(403).json({
           success: false,
           message: "This poem is not yet published",
-          debug: {
-            status: poem.status,
-            published: poem.published,
-            requiresAuth: poem.status === "pending",
-          },
         });
       }
     }

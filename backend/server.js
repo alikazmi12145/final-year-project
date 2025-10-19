@@ -100,6 +100,7 @@ const startServer = async () => {
     const authRoutes = await import("./routes/auth.js");
     const oauthRoutes = await import("./routes/oauth.js");
     const adminRoutes = await import("./routes/admin.js");
+    const adminDataRoutes = await import("./routes/adminData.js");
     const poetRoutes = await import("./routes/poets.js");
     const biographyRoutes = await import("./routes/biographies.js");
     const poemRoutes = await import("./routes/poems.js");
@@ -117,6 +118,7 @@ const startServer = async () => {
     app.use("/api/auth", authRoutes.default);
     app.use("/api/auth", oauthRoutes.default);
     app.use("/api/admin", adminRoutes.default);
+    app.use("/api/admin-data", adminDataRoutes.default);
     app.use("/api/poets", poetRoutes.default);
     app.use("/api/biographies", biographyRoutes.default);
     app.use("/api/poems", poemRoutes.default);

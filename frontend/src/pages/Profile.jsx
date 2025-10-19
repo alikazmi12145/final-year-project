@@ -123,7 +123,7 @@ const Profile = () => {
             totalPoems: poetStats.data?.poems?.length || 0,
           }));
         } catch (error) {
-          console.log("Poet stats API not available, using default values");
+          // Poet stats API not available, using default values
         }
       }
 
@@ -335,15 +335,6 @@ const Profile = () => {
       setLoading(false);
     }
   };
-
-  // Debug logging - properly format user object
-  console.log("Profile - User data:", {
-    name: user?.name,
-    role: user?.role,
-    email: user?.email,
-    id: user?._id,
-    fullName: user?.fullName,
-  });
 
   if (!user) {
     return (

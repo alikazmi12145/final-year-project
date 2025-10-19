@@ -100,12 +100,20 @@ function getEmailConfig() {
 let transporter = null;
 const emailConfig = getEmailConfig();
 
-if (emailConfig) {
+// Check if email credentials are properly configured (not placeholder values)
+const hasValidCredentials =
+  emailConfig &&
+  process.env.EMAIL_USER &&
+  process.env.EMAIL_PASS &&
+  process.env.EMAIL_USER !== "your-email@gmail.com" &&
+  process.env.EMAIL_PASS !== "your-app-password";
+
+if (emailConfig && hasValidCredentials) {
   try {
     transporter = nodemailer.createTransport(emailConfig);
     console.log("✅ Email service configured successfully");
 
-    // Verify connection
+    // Verify connection only if credentials are properly set
     transporter.verify((error, success) => {
       if (error) {
         console.log("⚠️ Email service verification failed:", error.message);
@@ -119,7 +127,7 @@ if (emailConfig) {
     transporter = null;
   }
 } else {
-  console.log("⚠️ Email service not configured - using mock email");
+  console.log("⚠️ Email service not configured - using mock email service");
 }
 
 // Mock email service for development
