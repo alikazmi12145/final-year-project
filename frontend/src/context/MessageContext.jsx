@@ -74,6 +74,34 @@ export const MessageProvider = ({ children }) => {
     [showMessage]
   );
 
+  // Show confirmation dialog
+  const showConfirm = useCallback(
+    (message, title = "تصدیق / Confirmation") => {
+      return new Promise((resolve) => {
+        const id = Date.now() + Math.random();
+        const confirmMessage = {
+          id,
+          message,
+          title,
+          type: "confirm",
+          duration: 0, // Don't auto-hide confirmation
+          position: "center",
+          onConfirm: () => {
+            hideMessage(id);
+            resolve(true);
+          },
+          onCancel: () => {
+            hideMessage(id);
+            resolve(false);
+          },
+        };
+
+        setMessages((prev) => [...prev, confirmMessage]);
+      });
+    },
+    [hideMessage]
+  );
+
   const value = {
     showMessage,
     hideMessage,
@@ -82,6 +110,7 @@ export const MessageProvider = ({ children }) => {
     showError,
     showWarning,
     showInfo,
+    showConfirm,
     messages,
   };
 
@@ -94,9 +123,12 @@ export const MessageProvider = ({ children }) => {
         <CulturalMessagePopup
           key={msg.id}
           message={msg.message}
+          title={msg.title}
           type={msg.type}
           isVisible={true}
           onClose={() => hideMessage(msg.id)}
+          onConfirm={msg.onConfirm}
+          onCancel={msg.onCancel}
           duration={0} // Duration is handled by the provider
           position={msg.position}
         />

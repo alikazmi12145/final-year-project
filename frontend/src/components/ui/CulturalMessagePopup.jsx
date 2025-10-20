@@ -5,8 +5,11 @@ import { GeometricOrnament, IslamicPattern } from "./CulturalElements";
 const CulturalMessagePopup = ({
   message,
   type = "info",
+  title,
   isVisible,
   onClose,
+  onConfirm,
+  onCancel,
   duration = 5000,
   position = "top-center",
 }) => {
@@ -16,7 +19,8 @@ const CulturalMessagePopup = ({
     if (isVisible) {
       setIsAnimating(true);
 
-      if (duration > 0) {
+      // Don't auto-close confirmation dialogs
+      if (duration > 0 && type !== "confirm") {
         const timer = setTimeout(() => {
           handleClose();
         }, duration);
@@ -63,6 +67,15 @@ const CulturalMessagePopup = ({
           icon: <AlertTriangle className="w-7 h-7" />,
           ornamentColor: "text-amber-600",
           shadowColor: "shadow-amber-200",
+        };
+      case "confirm":
+        return {
+          bg: "bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-100",
+          border: "border-purple-400 border-2",
+          text: "text-purple-900",
+          icon: <AlertCircle className="w-7 h-7" />,
+          ornamentColor: "text-purple-600",
+          shadowColor: "shadow-purple-200",
         };
       default:
         return {
@@ -187,15 +200,17 @@ const CulturalMessagePopup = ({
             ></div>
           </div>
 
-          {/* Close Button */}
-          <button
-            onClick={handleClose}
-            className={`absolute top-4 right-4 p-2 rounded-full transition-all duration-300
-              hover:bg-white hover:bg-opacity-60 ${styles.text} hover:scale-110 hover:rotate-90
-              shadow-lg hover:shadow-xl`}
-          >
-            <X className="w-5 h-5" />
-          </button>
+          {/* Close Button - hidden for confirmation dialogs */}
+          {type !== "confirm" && (
+            <button
+              onClick={handleClose}
+              className={`absolute top-4 right-4 p-2 rounded-full transition-all duration-300
+                hover:bg-white hover:bg-opacity-60 ${styles.text} hover:scale-110 hover:rotate-90
+                shadow-lg hover:shadow-xl`}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
 
           {/* Content */}
           <div className="relative p-8 pr-16">
@@ -237,8 +252,35 @@ const CulturalMessagePopup = ({
                   lineHeight: "1.8",
                 }}
               >
+                {title && <div className="text-xl font-bold mb-2">{title}</div>}
                 {message}
               </div>
+
+              {/* Confirmation Buttons for confirm type */}
+              {type === "confirm" && (
+                <div className="flex justify-center gap-4 mt-6 mb-4">
+                  <button
+                    onClick={onCancel}
+                    className="px-6 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                    style={{
+                      fontFamily:
+                        '"Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", "Al Qalam Taj Nastaleeq", serif',
+                    }}
+                  >
+                    منسوخ / Cancel
+                  </button>
+                  <button
+                    onClick={onConfirm}
+                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                    style={{
+                      fontFamily:
+                        '"Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", "Al Qalam Taj Nastaleeq", serif',
+                    }}
+                  >
+                    تصدیق / Confirm
+                  </button>
+                </div>
+              )}
 
               {/* Cultural bottom ornament */}
               <div className="flex justify-center mt-5 pt-2">
