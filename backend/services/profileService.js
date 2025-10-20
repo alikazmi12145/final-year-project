@@ -592,23 +592,55 @@ class ProfileService {
   // Get user notifications
   async getUserNotifications(userId, limit = 10) {
     try {
-      // Mock notifications - implement with actual notification system
-      return [
-        {
-          id: "1",
-          type: "like",
-          message: 'Someone liked your poem "دل کی بات"',
-          timestamp: new Date(),
-          read: false,
-        },
-        {
-          id: "2",
-          type: "follow",
-          message: "احمد علی نے آپ کو فالو کیا",
-          timestamp: new Date(Date.now() - 3600000),
-          read: true,
-        },
-      ];
+      const user = await User.findById(userId);
+      if (!user) return [];
+
+      // Get notifications from user's activities
+      const notifications = [];
+
+      // Get recent likes on user's poems
+      const userPoems = await Poem.find({ author: userId })
+        .populate("likes", "name")
+        .sort({ updatedAt: -1 })
+        .limit(5);
+
+      userPoems.forEach((poem) => {
+        if (poem.likes && poem.likes.length > 0) {
+          poem.likes.forEach((liker) => {
+            if (liker._id.toString() !== userId) {
+              notifications.push({
+                id: `like_${poem._id}_${liker._id}`,
+                type: "like",
+                message: `${liker.name} نے آپ کی نظم "${poem.title}" کو پسند کیا`,
+                timestamp: poem.updatedAt,
+                read: false,
+              });
+            }
+          });
+        }
+      });
+
+      // Get recent followers
+      if (user.followers && user.followers.length > 0) {
+        const recentFollowers = await User.find({
+          _id: { $in: user.followers.slice(-3) },
+        }).select("name createdAt");
+
+        recentFollowers.forEach((follower) => {
+          notifications.push({
+            id: `follow_${follower._id}`,
+            type: "follow",
+            message: `${follower.name} نے آپ کو فالو کیا`,
+            timestamp: follower.createdAt,
+            read: true,
+          });
+        });
+      }
+
+      // Sort by timestamp and limit
+      return notifications
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, limit);
     } catch (error) {
       console.error("Get user notifications error:", error);
       return [];

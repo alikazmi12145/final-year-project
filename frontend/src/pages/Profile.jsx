@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useMessage } from "../context/MessageContext";
 import { useNavigate } from "react-router-dom";
-import { authAPI, poetryAPI, adminAPI, dashboardAPI } from "../services/api";
+import api, {
+  authAPI,
+  poetryAPI,
+  adminAPI,
+  dashboardAPI,
+} from "../services/api";
 import {
   User,
   Settings,
@@ -31,6 +37,7 @@ import {
   LogOut,
   ArrowLeft,
   BarChart3,
+  FileText,
 } from "lucide-react";
 
 // Helper function to get full image URL
@@ -44,11 +51,11 @@ const getImageUrl = (url) => {
 
 const Profile = () => {
   const { user, updateProfile, logout } = useAuth();
+  const { showSuccess, showError, showWarning, showConfirm } = useMessage();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [activeSection, setActiveSection] = useState("profile");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
   const [statistics, setStatistics] = useState({
     poemsRead: 0,
     likedPoems: 0,
@@ -134,13 +141,16 @@ const Profile = () => {
         bookmarks: bookmarkedPoems.data?.poems?.length || 0,
       }));
 
-      // Set join date
+      // Fetch user statistics
+      const userStats = await api.getUserStats();
       setStatistics((prev) => ({
         ...prev,
         joinedDate: user?.createdAt,
-        poemsRead: 12, // Mock data until API is available
-        likedPoems: 8, // Mock data until API is available
-        totalViews: 245, // Mock data until API is available
+        poemsRead: userStats.data?.stats?.poemsRead || 0,
+        likedPoems: userStats.data?.stats?.likedPoems || 0,
+        totalViews: userStats.data?.stats?.totalViews || 0,
+        poemsCreated: userStats.data?.stats?.poemsCreated || 0,
+        publishedPoems: userStats.data?.stats?.publishedPoems || 0,
       }));
     } catch (error) {
       console.error("Failed to fetch user data:", error);
@@ -159,39 +169,29 @@ const Profile = () => {
 
   const fetchRecentActivity = async () => {
     try {
-      // Mock recent activity - in real app, this would come from an activity API
-      const mockActivity = [
-        {
-          id: 1,
-          type: "poem_read",
-          title: 'Read "دل کی بات"',
-          time: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          icon: BookOpen,
-        },
-        {
-          id: 2,
-          type: "poem_liked",
-          title: 'Liked "محبت کا گیت"',
-          time: new Date(Date.now() - 5 * 60 * 60 * 1000),
-          icon: Heart,
-        },
-        {
-          id: 3,
-          type: "poem_bookmarked",
-          title: 'Bookmarked "شاعری کا جادو"',
-          time: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-          icon: Bookmark,
-        },
-      ];
-      setRecentActivity(mockActivity);
+      const userActivity = await api.getUserActivity();
+
+      // Map activity types to icons
+      const iconMap = {
+        poem_created: FileText,
+        poem_liked: Heart,
+        poem_bookmarked: Bookmark,
+        poem_read: BookOpen,
+      };
+
+      const mappedActivity =
+        userActivity.data?.activity?.map((item) => ({
+          ...item,
+          time: new Date(item.time),
+          icon: iconMap[item.type] || FileText,
+        })) || [];
+
+      setRecentActivity(mappedActivity);
     } catch (error) {
       console.error("Failed to fetch recent activity:", error);
+      // Fallback to empty array instead of mock data
+      setRecentActivity([]);
     }
-  };
-
-  const showMessage = (type, text) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage({ type: "", text: "" }), 3000);
   };
 
   const handleSave = async () => {
@@ -200,12 +200,14 @@ const Profile = () => {
       const result = await updateProfile({ profile: formData });
       if (result.success) {
         setIsEditing(false);
-        showMessage("success", "Profile updated successfully!");
+        showSuccess(
+          "پروفائل کامیابی سے اپ ڈیٹ ہو گیا! / Profile updated successfully!"
+        );
       } else {
-        showMessage("error", "Failed to update profile");
+        showError("پروفائل اپ ڈیٹ نہیں ہو سکا / Failed to update profile");
       }
     } catch (error) {
-      showMessage("error", "Failed to update profile");
+      showError("پروفائل اپ ڈیٹ نہیں ہو سکا / Failed to update profile");
     } finally {
       setLoading(false);
     }
@@ -213,12 +215,14 @@ const Profile = () => {
 
   const handlePasswordChange = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      showMessage("error", "New passwords do not match");
+      showError("نئے پاس ورڈ میں مطابقت نہیں / New passwords do not match");
       return;
     }
 
     if (passwordData.newPassword.length < 6) {
-      showMessage("error", "Password must be at least 6 characters");
+      showWarning(
+        "پاس ورڈ کم از کم 6 حروف کا ہونا چاہیے / Password must be at least 6 characters"
+      );
       return;
     }
 
@@ -231,9 +235,11 @@ const Profile = () => {
         newPassword: "",
         confirmPassword: "",
       });
-      showMessage("success", "Password changed successfully!");
+      showSuccess(
+        "پاس ورڈ کامیابی سے تبدیل ہو گیا! / Password changed successfully!"
+      );
     } catch (error) {
-      showMessage("error", "Failed to change password");
+      showError("پاس ورڈ تبدیل نہیں ہو سکا / Failed to change password");
     } finally {
       setLoading(false);
     }
@@ -417,8 +423,12 @@ const Profile = () => {
             </div>
 
             <button
-              onClick={() => {
-                if (window.confirm("Are you sure you want to logout?")) {
+              onClick={async () => {
+                const confirmed = await showConfirm(
+                  "کیا آپ واقعی لاگ آؤٹ کرنا چاہتے ہیں؟ / Are you sure you want to logout?",
+                  "لاگ آؤٹ کی تصدیق / Logout Confirmation"
+                );
+                if (confirmed) {
                   logout();
                   navigate("/auth");
                 }
@@ -430,23 +440,6 @@ const Profile = () => {
             </button>
           </div>
         </div>
-        {/* Message Banner */}
-        {message.text && (
-          <div
-            className={`mb-4 p-4 rounded-lg flex items-center gap-2 ${
-              message.type === "success"
-                ? "bg-green-100 text-green-800 border border-green-200"
-                : "bg-red-100 text-red-800 border border-red-200"
-            }`}
-          >
-            {message.type === "success" ? (
-              <Check size={20} />
-            ) : (
-              <AlertCircle size={20} />
-            )}
-            {message.text}
-          </div>
-        )}
 
         {/* Profile Header */}
         <div className="card p-8 mb-6">
@@ -1184,12 +1177,12 @@ const Profile = () => {
                     Export My Data
                   </button>
                   <button
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          "Are you sure you want to delete your account? This action cannot be undone."
-                        )
-                      ) {
+                    onClick={async () => {
+                      const confirmed = await showConfirm(
+                        "کیا آپ واقعی اپنا اکاؤنٹ حذف کرنا چاہتے ہیں؟ یہ عمل واپس نہیں ہو سکتا۔ / Are you sure you want to delete your account? This action cannot be undone.",
+                        "اکاؤنٹ حذف کرنے کی تصدیق / Account Deletion Confirmation"
+                      );
+                      if (confirmed) {
                         logout();
                       }
                     }}

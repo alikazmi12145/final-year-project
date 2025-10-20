@@ -18,9 +18,11 @@ import {
 } from "lucide-react";
 import { adminAPI } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { useMessage } from "../../context/MessageContext";
 
 const PoetApprovalPanel = () => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useMessage();
   const [pendingPoets, setPendingPoets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState({});
@@ -100,19 +102,25 @@ const PoetApprovalPanel = () => {
         setPendingPoets(pendingPoets.filter((poet) => poet._id !== poetId));
 
         // Show success message
-        alert(
+        showSuccess(
           approved
             ? `✅ شاعر "${
                 pendingPoets.find((p) => p._id === poetId)?.name
-              }" کو کامیابی سے منظور کر دیا گیا!`
+              }" کو کامیابی سے منظور کر دیا گیا! / ✅ Poet "${
+                pendingPoets.find((p) => p._id === poetId)?.name
+              }" approved successfully!`
             : `❌ شاعر "${
                 pendingPoets.find((p) => p._id === poetId)?.name
-              }" کو مسترد کر دیا گیا`
+              }" کو مسترد کر دیا گیا / ❌ Poet "${
+                pendingPoets.find((p) => p._id === poetId)?.name
+              }" rejected`
         );
       }
     } catch (error) {
       console.error("Approval/Rejection failed:", error);
-      alert("خرابی: عملیات مکمل نہیں ہو سکی۔ دوبارہ کوشش کریں۔");
+      showError(
+        "خرابی: عملیات مکمل نہیں ہو سکی۔ دوبارہ کوشش کریں۔ / Error: Operation could not be completed. Please try again."
+      );
     } finally {
       setProcessing({ ...processing, [poetId]: false });
     }
@@ -395,7 +403,7 @@ const PoetApprovalPanel = () => {
                   </button>
                   <button
                     onClick={() =>
-                      alert(
+                      showSuccess(
                         `شاعر ${poet.name} کی تفصیلات:\n\nنام: ${
                           poet.name
                         }\nای میل: ${poet.email}\nمقام: ${
@@ -404,6 +412,14 @@ const PoetApprovalPanel = () => {
                           poet.createdAt
                         ).toLocaleDateString("ur-PK")}\n\nتعارف: ${
                           poet.bio || "کوئی تعارف نہیں"
+                        } / Poet ${poet.name} Details:\n\nName: ${
+                          poet.name
+                        }\nEmail: ${poet.email}\nLocation: ${
+                          poet.location?.city || "Unknown"
+                        }\nRegistration: ${new Date(
+                          poet.createdAt
+                        ).toLocaleDateString()}\n\nBio: ${
+                          poet.bio || "No bio available"
                         }`
                       )
                     }

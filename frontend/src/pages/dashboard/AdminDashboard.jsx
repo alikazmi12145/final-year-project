@@ -54,10 +54,12 @@ import {
 } from "../../services/dashboardAPI";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useMessage } from "../../context/MessageContext";
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { showSuccess, showError, showWarning, showConfirm } = useMessage();
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -73,8 +75,12 @@ const AdminDashboard = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Handle logout
-  const handleLogout = () => {
-    if (window.confirm("کیا آپ واقعی لاگ آؤٹ کرنا چاہتے ہیں؟")) {
+  const handleLogout = async () => {
+    const confirmed = await showConfirm(
+      "کیا آپ واقعی لاگ آؤٹ کرنا چاہتے ہیں؟ / Are you sure you want to logout?",
+      "لاگ آؤٹ کی تصدیق / Logout Confirmation"
+    );
+    if (confirmed) {
       logout();
       navigate("/auth");
     }
@@ -584,7 +590,11 @@ const AdminDashboard = () => {
 
         // Show success message
         setError(null);
-        console.log(`صارف ${approved ? "منظور" : "مسترد"} کر دیا گیا`);
+        showSuccess(
+          `صارف ${approved ? "منظور" : "مسترد"} کر دیا گیا / User ${
+            approved ? "approved" : "rejected"
+          } successfully`
+        );
       } else {
         throw new Error(response.message || "User approval failed");
       }
@@ -628,7 +638,11 @@ const AdminDashboard = () => {
       await loadDashboardData();
 
       setError(null);
-      console.log(`شاعری ${approved ? "منظور" : "مسترد"} کر دی گئی`);
+      showSuccess(
+        `شاعری ${approved ? "منظور" : "مسترد"} کر دی گئی / Poem ${
+          approved ? "approved" : "rejected"
+        } successfully`
+      );
     } catch (err) {
       setError(`شاعری کو ${approved ? "منظور" : "مسترد"} کرنے میں خرابی`);
     } finally {
@@ -637,7 +651,11 @@ const AdminDashboard = () => {
   };
 
   const handleUserDelete = async (userId) => {
-    if (window.confirm("کیا آپ واقعی اس صارف کو حذف کرنا چاہتے ہیں؟")) {
+    const confirmed = await showConfirm(
+      "کیا آپ واقعی اس صارف کو حذف کرنا چاہتے ہیں؟ / Are you sure you want to delete this user?",
+      "صارف حذف کرنے کی تصدیق / Delete User Confirmation"
+    );
+    if (confirmed) {
       try {
         setRefreshing(true);
         // Dynamic deletion - replace with real API
@@ -647,7 +665,9 @@ const AdminDashboard = () => {
         setUsers(users.filter((user) => user._id !== userId));
         await loadDashboardData();
 
-        console.log("صارف کامیابی سے حذف کر دیا گیا");
+        showSuccess(
+          "صارف کامیابی سے حذف کر دیا گیا / User deleted successfully"
+        );
       } catch (err) {
         setError("صارف کو حذف کرنے میں خرابی");
       } finally {
@@ -665,8 +685,8 @@ const AdminDashboard = () => {
       // Simulate API delay
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      alert(
-        "🤖 AI رپورٹ کامیابی سے تیار ہوگئی!\n\n📊 ہفتہ وار تجزیہ:\n✅ 87% صارف کی سرگرمی\n✅ 23% نئے شاعر\n✅ 156 نئی نظمیں\n✅ 94% کوالٹی ریٹنگ\n✅ 78% مشغولیت کی شرح"
+      showSuccess(
+        "🤖 AI رپورٹ کامیابی سے تیار ہوگئی!\n\n📊 ہفتہ وار تجزیہ:\n✅ 87% صارف کی سرگرمی\n✅ 23% نئے شاعر\n✅ 156 نئی نظمیں\n✅ 94% کوالٹی ریٹنگ\n✅ 78% مشغولیت کی شرح / 🤖 AI Report generated successfully!\n\n📊 Weekly Analysis:\n✅ 87% User Activity\n✅ 23% New Poets\n✅ 156 New Poems\n✅ 94% Quality Rating\n✅ 78% Engagement Rate"
       );
     } catch (err) {
       setError("AI رپورٹ تیار کرنے میں خرابی");

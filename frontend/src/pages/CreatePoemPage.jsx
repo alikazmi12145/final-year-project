@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PoemForm from "../components/poetry/PoemForm";
 import { useAuth } from "../context/AuthContext";
+import { useMessage } from "../context/MessageContext";
 
 const CreatePoemPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showSuccess, showError } = useMessage();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (formData) => {
@@ -20,19 +22,18 @@ const CreatePoemPage = () => {
         const poemTitle = response.data.poem.title;
         const successMessage = `🎉 آپ کی نظم "${poemTitle}" کامیابی سے شائع ہو گئی!\n\n✅ یہ اب نظموں کے مجموعے میں دستیاب ہے\n✅ دوسرے صارفین اسے دیکھ سکتے ہیں\n✅ آپ کو شاعر کے طور پر دکھایا جائے گا\n📋 یہ ایڈمن کی حتمی منظوری کا انتظار کر رہی ہے`;
 
-        alert(successMessage);
-
-        // Give user options to navigate
-        const viewOption = confirm(
-          "کیا آپ اپنی نظم دیکھنا چاہتے ہیں؟ (Cancel کر کے نظموں کا مجموعہ دیکھیں)"
+        showSuccess(
+          `${successMessage} / 🎉 Your poem "${poemTitle}" has been published successfully!\n\n✅ It is now available in the poetry collection\n✅ Other users can view it\n✅ You are shown as the poet\n📋 It is awaiting final admin approval`
         );
-        if (viewOption) {
-          navigate(`/poems/${response.data.poem._id}`);
-        } else {
-          navigate("/poems");
-        }
+
+        // Navigate to the poem
+        navigate(`/poems/${response.data.poem._id}`);
       } else {
-        alert(response.data.message || "نظم بناتے وقت خرابی ہوئی");
+        showError(
+          `${response.data.message || "نظم بناتے وقت خرابی ہوئی"} / ${
+            response.data.message || "Error creating poem"
+          }`
+        );
       }
     } catch (error) {
       console.error("Create poem error:", error);
@@ -42,11 +43,15 @@ const CreatePoemPage = () => {
         const errorMessages = error.response.data.errors
           .map((err) => err.msg)
           .join("\n");
-        alert(`تصدیق میں خرابی:\n${errorMessages}`);
+        showError(
+          `تصدیق میں خرابی:\n${errorMessages} / Validation errors:\n${errorMessages}`
+        );
       } else if (error.response?.data?.message) {
-        alert(error.response.data.message);
+        showError(
+          `${error.response.data.message} / ${error.response.data.message}`
+        );
       } else {
-        alert("نظم بناتے وقت خرابی ہوئی");
+        showError("نظم بناتے وقت خرابی ہوئی / Error creating poem");
       }
     } finally {
       setIsLoading(false);

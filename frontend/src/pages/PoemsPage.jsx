@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import PoemList from "../components/poetry/PoemList";
 import { useAuth } from "../context/AuthContext";
+import { useMessage } from "../context/MessageContext";
 
 const PoemsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showSuccess, showError } = useMessage();
 
   const [poems, setPoems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -84,13 +86,13 @@ const PoemsPage = () => {
 
       if (response.data.success) {
         setPoems((prev) => prev.filter((poem) => poem._id !== poemId));
-        alert("نظم کامیابی سے حذف ہو گئی");
+        showSuccess("نظم کامیابی سے حذف ہو گئی / Poem deleted successfully");
       } else {
-        alert("نظم حذف کرنے میں خرابی ہوئی");
+        showError("نظم حذف کرنے میں خرابی ہوئی / Error deleting poem");
       }
     } catch (error) {
       console.error("Delete error:", error);
-      alert("نظم حذف کرنے میں خرابی ہوئی");
+      showError("نظم حذف کرنے میں خرابی ہوئی / Error deleting poem");
     }
   }, []);
 

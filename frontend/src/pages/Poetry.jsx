@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useMessage } from "../context/MessageContext";
 import { poetryAPI } from "../services/api";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import {
@@ -29,6 +30,7 @@ import {
 const Poetry = () => {
   const { id } = useParams();
   const { user } = useAuth();
+  const { showSuccess, showError, showWarning } = useMessage();
 
   // State management
   const [poem, setPoem] = useState(null);
@@ -114,7 +116,9 @@ const Poetry = () => {
   // Handle like action
   const handleLike = async () => {
     if (!user) {
-      alert("براہ کرم لاگ ان کریں - Please login to like poems");
+      showWarning(
+        "براہ کرم لاگ ان کریں تاکہ نظموں کو پسند کر سکیں / Please login to like poems"
+      );
       return;
     }
 
@@ -125,22 +129,26 @@ const Poetry = () => {
 
       // Show success feedback
       const message = !isLiked
-        ? "شعر پسند کر دیا گیا!"
-        : "شعر کو ناپسند کر دیا گیا!";
-      console.log("✅ Like action:", message);
+        ? "شعر پسند کر دیا گیا! / Poem liked!"
+        : "شعر کو ناپسند کر دیا گیا! / Poem unliked!";
+      showSuccess(message);
     } catch (err) {
       console.error("Error liking poem:", err);
       // Show error feedback but still update optimistically for better UX
       setIsLiked(!isLiked);
       setLikesCount((prev) => (isLiked ? prev - 1 : prev + 1));
-      alert("نیٹ ورک کی خرابی - Network error, please try again");
+      showError(
+        "نیٹ ورک کی خرابی، دوبارہ کوشش کریں / Network error, please try again"
+      );
     }
   };
 
   // Handle bookmark action
   const handleBookmark = async () => {
     if (!user) {
-      alert("براہ کرم لاگ ان کریں - Please login to bookmark poems");
+      showWarning(
+        "براہ کرم لاگ ان کریں تاکہ نظموں کو محفوظ کر سکیں / Please login to bookmark poems"
+      );
       return;
     }
 
@@ -150,21 +158,25 @@ const Poetry = () => {
 
       // Show success feedback
       const message = !isBookmarked
-        ? "شعر محفوظ کر دیا گیا!"
-        : "شعر کو محفوظات سے ہٹا دیا گیا!";
-      console.log("✅ Bookmark action:", message);
+        ? "شعر محفوظ کر دیا گیا! / Poem bookmarked!"
+        : "شعر کو محفوظات سے ہٹا دیا گیا! / Poem unbookmarked!";
+      showSuccess(message);
     } catch (err) {
       console.error("Error bookmarking poem:", err);
       // Update optimistically for better UX
       setIsBookmarked(!isBookmarked);
-      alert("نیٹ ورک کی خرابی - Network error, please try again");
+      showError(
+        "نیٹ ورک کی خرابی، دوبارہ کوشش کریں / Network error, please try again"
+      );
     }
   };
 
   // Handle rating
   const handleRating = async (rating) => {
     if (!user) {
-      alert("براہ کرم لاگ ان کریں - Please login to rate poems");
+      showWarning(
+        "براہ کرم لاگ ان کریں تاکہ نظموں کو ریٹ کر سکیں / Please login to rate poems"
+      );
       return;
     }
 
@@ -178,12 +190,16 @@ const Poetry = () => {
       setAverageRating(newAverage);
       setTotalRatings(newTotal);
 
-      console.log(`✅ شعر کو ${rating} ستارے دیے گئے!`);
+      showSuccess(
+        `شعر کو ${rating} ستارے دیے گئے! / Poem rated ${rating} stars!`
+      );
     } catch (err) {
       console.error("Error rating poem:", err);
       // Update optimistically for better UX
       setUserRating(rating);
-      alert("نیٹ ورک کی خرابی - Network error, please try again");
+      showError(
+        "نیٹ ورک کی خرابی، دوبارہ کوشش کریں / Network error, please try again"
+      );
     }
   };
 
@@ -376,7 +392,9 @@ const Poetry = () => {
                   }, 2000);
                 } catch (error) {
                   console.error("Download error:", error);
-                  alert("ڈاؤن لوڈ میں مسئلہ - Download failed");
+                  showError(
+                    "ڈاؤن لوڈ میں مسئلہ، دوبارہ کوشش کریں / Download failed, please try again"
+                  );
                 }
               }}
               data-download-btn
@@ -442,7 +460,9 @@ const Poetry = () => {
                   <button
                     onClick={async () => {
                       if (!newComment.trim()) {
-                        alert("براہ کرم تبصرہ لکھیں - Please write a comment");
+                        showWarning(
+                          "براہ کرم تبصرہ لکھیں / Please write a comment"
+                        );
                         return;
                       }
 
@@ -475,8 +495,8 @@ const Poetry = () => {
                           },
                         ]);
                         setNewComment("");
-                        alert(
-                          "تبصرہ شامل کر دیا گیا! (نیٹ ورک کی خرابی ہو سکتی ہے)"
+                        showSuccess(
+                          "تبصرہ شامل کر دیا گیا! / Comment added successfully!"
                         );
                       }
                       setCommentLoading(false);
@@ -544,7 +564,9 @@ const Poetry = () => {
                   onClick={() => {
                     try {
                       navigator.clipboard.writeText(window.location.href);
-                      alert("لنک کاپی ہو گیا! - Link copied successfully!");
+                      showSuccess(
+                        "لنک کاپی ہو گیا! / Link copied successfully!"
+                      );
                       setShowShareModal(false);
                     } catch (error) {
                       // Fallback for older browsers
@@ -554,7 +576,9 @@ const Poetry = () => {
                       textArea.select();
                       document.execCommand("copy");
                       document.body.removeChild(textArea);
-                      alert("لنک کاپی ہو گیا! - Link copied successfully!");
+                      showSuccess(
+                        "لنک کاپی ہو گیا! / Link copied successfully!"
+                      );
                       setShowShareModal(false);
                     }
                   }}
@@ -575,10 +599,14 @@ const Poetry = () => {
                       )}&quote=${encodeURIComponent(text)}`;
                       window.open(url, "_blank", "width=600,height=400");
                       setShowShareModal(false);
-                      console.log("✅ فیس بک پر شیئر کیا گیا!");
+                      showSuccess(
+                        "فیس بک پر شیئر کیا گیا! / Shared on Facebook!"
+                      );
                     } catch (error) {
                       console.error("Facebook share error:", error);
-                      alert("شیئر کرنے میں مسئلہ - Share failed");
+                      showError(
+                        "شیئر کرنے میں مسئلہ، دوبارہ کوشش کریں / Share failed, please try again"
+                      );
                     }
                   }}
                   className="w-full flex items-center space-x-3 p-3 text-left rounded-lg hover:bg-gray-50 transition-all"
@@ -600,10 +628,14 @@ const Poetry = () => {
                       )}`;
                       window.open(url, "_blank", "width=600,height=400");
                       setShowShareModal(false);
-                      console.log("✅ ٹویٹر پر شیئر کیا گیا!");
+                      showSuccess(
+                        "ٹویٹر پر شیئر کیا گیا! / Shared on Twitter!"
+                      );
                     } catch (error) {
                       console.error("Twitter share error:", error);
-                      alert("شیئر کرنے میں مسئلہ - Share failed");
+                      showError(
+                        "شیئر کرنے میں مسئلہ، دوبارہ کوشش کریں / Share failed, please try again"
+                      );
                     }
                   }}
                   className="w-full flex items-center space-x-3 p-3 text-left rounded-lg hover:bg-gray-50 transition-all"

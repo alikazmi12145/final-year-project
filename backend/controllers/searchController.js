@@ -1098,7 +1098,8 @@ export const unifiedSearch = async (req, res) => {
           ...results.sources.rekhta.poems,
         ];
         if (allPoems.length > 0) {
-          const mockUserProfile = {
+          // Build dynamic user profile based on search context
+          const userProfile = {
             favoriteCategories: [query],
             favoritePoets: [extractPoetName(query)].filter(Boolean),
             preferredThemes: [query],
@@ -1106,7 +1107,7 @@ export const unifiedSearch = async (req, res) => {
 
           const recommendations =
             await AIPoetryService.generatePersonalizedRecommendations(
-              mockUserProfile,
+              userProfile,
               allPoems
             );
 

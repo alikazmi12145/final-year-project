@@ -31,6 +31,7 @@ import {
   Activity,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useMessage } from "../../context/MessageContext";
 import { useNavigate } from "react-router-dom";
 import { poetryAPI } from "../../services/api";
 import axios from "axios";
@@ -294,6 +295,7 @@ const PoemFormModal = ({ isOpen, onClose, poem, onSave }) => {
 
 const PoetDashboard = () => {
   const { user, logout } = useAuth();
+  const { showConfirm, showSuccess } = useMessage();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
@@ -402,8 +404,12 @@ const PoetDashboard = () => {
     }
   };
 
-  const handleLogout = () => {
-    if (window.confirm("کیا آپ واقعی لاگ آؤٹ کرنا چاہتے ہیں؟")) {
+  const handleLogout = async () => {
+    const confirmed = await showConfirm(
+      "کیا آپ واقعی لاگ آؤٹ کرنا چاہتے ہیں؟ / Are you sure you want to logout?",
+      "لاگ آؤٹ کی تصدیق / Logout Confirmation"
+    );
+    if (confirmed) {
       logout();
       navigate("/auth");
     }
@@ -430,7 +436,11 @@ const PoetDashboard = () => {
   };
 
   const handleDeletePoem = async (poemId) => {
-    if (!window.confirm("کیا آپ واقعی اس نظم کو حذف کرنا چاہتے ہیں؟")) return;
+    const confirmed = await showConfirm(
+      "کیا آپ واقعی اس نظم کو حذف کرنا چاہتے ہیں؟ / Are you sure you want to delete this poem?",
+      "نظم حذف کرنے کی تصدیق / Delete Poem Confirmation"
+    );
+    if (!confirmed) return;
 
     try {
       await poetryAPI.deletePoem(poemId);

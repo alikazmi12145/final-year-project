@@ -1,10 +1,92 @@
 import express from "express";
-import { auth } from "../middleware/auth.js";
+import { auth, moderatorAuth } from "../middleware/auth.js";
 import Poem from "../models/Poem.js";
 import User from "../models/User.js";
 import Contest from "../models/Contest.js";
 
 const router = express.Router();
+
+// Helper function to calculate monthly growth
+const calculateMonthlyGrowth = async (userId) => {
+  try {
+    const currentMonth = new Date();
+    const lastMonth = new Date();
+    lastMonth.setMonth(currentMonth.getMonth() - 1);
+
+    const currentMonthCount = await Poem.countDocuments({
+      author: userId,
+      createdAt: {
+        $gte: new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1),
+      },
+    });
+
+    const lastMonthCount = await Poem.countDocuments({
+      author: userId,
+      createdAt: {
+        $gte: new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1),
+        $lt: new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1),
+      },
+    });
+
+    if (lastMonthCount === 0) return currentMonthCount > 0 ? 100 : 0;
+    return Math.round(
+      ((currentMonthCount - lastMonthCount) / lastMonthCount) * 100
+    );
+  } catch (error) {
+    console.error("Error calculating monthly growth:", error);
+    return 0;
+  }
+};
+
+// Helper function to calculate engagement rate
+const calculateEngagementRate = async () => {
+  try {
+    const totalPoems = await Poem.countDocuments({ status: "published" });
+    const totalInteractions = await Poem.aggregate([
+      { $match: { status: "published" } },
+      {
+        $project: {
+          interactions: {
+            $add: [
+              { $size: { $ifNull: ["$likes", []] } },
+              { $size: { $ifNull: ["$comments", []] } },
+              "$views",
+            ],
+          },
+        },
+      },
+      { $group: { _id: null, total: { $sum: "$interactions" } } },
+    ]);
+
+    if (totalPoems === 0) return 0;
+    const avgInteractions = totalInteractions[0]?.total || 0;
+    return Math.round((avgInteractions / totalPoems) * 100) / 100;
+  } catch (error) {
+    console.error("Error calculating engagement rate:", error);
+    return 0;
+  }
+};
+
+// Helper function to calculate content quality score
+const calculateContentQualityScore = async () => {
+  try {
+    const totalPoems = await Poem.countDocuments();
+    const publishedPoems = await Poem.countDocuments({ status: "published" });
+    const featuredPoems = await Poem.countDocuments({ featured: true });
+
+    if (totalPoems === 0) return 0;
+
+    const publishedRatio = publishedPoems / totalPoems;
+    const featuredRatio = featuredPoems / totalPoems;
+
+    // Quality score based on approval rate and featured content
+    const qualityScore = publishedRatio * 70 + featuredRatio * 30;
+    return Math.round(qualityScore);
+  } catch (error) {
+    console.error("Error calculating content quality score:", error);
+    return 0;
+  }
+};
 
 // Get poet dashboard data
 router.get("/poet", auth, async (req, res) => {
@@ -39,34 +121,23 @@ router.get("/poet", auth, async (req, res) => {
       0
     );
 
-    // Get contests (mock data for now)
-    const contests = [
-      {
-        id: "1",
-        title: "Spring Poetry Contest 2024",
-        deadline: "2024-02-15T23:59:59Z",
-        status: "active",
-        participants: 45,
-      },
-      {
-        id: "2",
-        title: "Love & Romance Poetry",
-        deadline: "2024-03-01T23:59:59Z",
-        status: "upcoming",
-        participants: 12,
-      },
-    ];
+    // Get real contests from database
+    const contests = await Contest.find({
+      status: { $in: ["active", "upcoming"] },
+    })
+      .select("title deadline status participants")
+      .limit(5)
+      .sort({ deadline: 1 });
 
-    // Get submissions (mock data for now)
-    const submissions = [
-      {
-        id: "5",
-        title: "دل کی بات",
-        contest: "Spring Poetry 2024",
-        status: "under_review",
-        submittedAt: "2024-01-22T11:20:00Z",
-      },
-    ];
+    // Get real contest submissions from user's poems
+    const submissions = await Poem.find({
+      author: userId,
+      contestId: { $exists: true, $ne: null },
+    })
+      .select("title contestId status createdAt")
+      .populate("contestId", "title")
+      .limit(5)
+      .sort({ createdAt: -1 });
 
     const analytics = {
       totalViews,
@@ -77,12 +148,12 @@ router.get("/poet", auth, async (req, res) => {
       pendingPoems: pendingPoems.length,
       rejectedPoems: rejectedPoems.length,
       totalDrafts: drafts.length,
-      followers: 45, // Mock data - implement follower system later
+      followers: user.followers ? user.followers.length : 0, // Real follower count
       engagementRate:
         totalViews > 0
           ? (((totalLikes + totalComments) / totalViews) * 100).toFixed(1)
           : 0,
-      monthlyGrowth: 12, // Mock data
+      monthlyGrowth: await calculateMonthlyGrowth(userId), // Real growth calculation
     };
 
     res.json({
@@ -145,15 +216,46 @@ router.get("/admin", auth, async (req, res) => {
       { $sort: { count: -1 } },
     ]);
 
-    // Monthly growth data (mock for now)
-    const monthlyGrowth = [
-      { month: "Jan", users: 45, poems: 120 },
-      { month: "Feb", users: 52, poems: 135 },
-      { month: "Mar", users: 61, poems: 158 },
-      { month: "Apr", users: 68, poems: 172 },
-      { month: "May", users: 74, poems: 189 },
-      { month: "Jun", users: 82, poems: 205 },
-    ];
+    // Monthly growth data - real data from last 6 months
+    const monthlyGrowth = [];
+    const currentDate = new Date();
+
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() - i,
+        1
+      );
+      const nextMonthDate = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() - i + 1,
+        1
+      );
+
+      const monthName = monthDate.toLocaleString("default", { month: "short" });
+
+      // Get user count for this month
+      const usersCount = await User.countDocuments({
+        createdAt: {
+          $gte: monthDate,
+          $lt: nextMonthDate,
+        },
+      });
+
+      // Get poems count for this month
+      const poemsCount = await Poem.countDocuments({
+        createdAt: {
+          $gte: monthDate,
+          $lt: nextMonthDate,
+        },
+      });
+
+      monthlyGrowth.push({
+        month: monthName,
+        users: usersCount,
+        poems: poemsCount,
+      });
+    }
 
     const analytics = {
       totalUsers,
@@ -162,8 +264,8 @@ router.get("/admin", auth, async (req, res) => {
       pendingApprovals,
       poemsByCategory,
       monthlyGrowth,
-      engagementRate: 8.4, // Mock data
-      contentQualityScore: 92, // Mock data
+      engagementRate: await calculateEngagementRate(), // Real engagement calculation
+      contentQualityScore: await calculateContentQualityScore(), // Real quality score
     };
 
     res.json({
@@ -383,6 +485,76 @@ router.get("/following", auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch following",
+    });
+  }
+});
+
+// Get moderation queue for moderators
+router.get("/moderation-queue", auth, moderatorAuth, async (req, res) => {
+  try {
+    // Get pending poems
+    const pendingPoems = await Poem.find({ status: "pending" })
+      .populate("author", "name username")
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    // Get pending users
+    const pendingUsers = await User.find({ status: "pending" })
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    // Format moderation queue items
+    const moderationQueue = [];
+
+    pendingPoems.forEach((poem) => {
+      moderationQueue.push({
+        id: poem._id,
+        type: "poem",
+        title: `New Poem: "${poem.title}"`,
+        user: poem.author?.name || "Unknown User",
+        reason: "Awaiting content approval",
+        submittedAt: poem.createdAt,
+        priority: "medium",
+        objectId: poem._id,
+      });
+    });
+
+    pendingUsers.forEach((user) => {
+      moderationQueue.push({
+        id: user._id,
+        type: "user",
+        title: `${user.role === "poet" ? "Poet" : "User"} Verification Request`,
+        user: user.name || user.username,
+        reason: `${user.role} account verification required`,
+        submittedAt: user.createdAt,
+        priority: user.role === "poet" ? "high" : "medium",
+        objectId: user._id,
+      });
+    });
+
+    // Sort by priority and date
+    const priorityOrder = { high: 3, medium: 2, low: 1 };
+    moderationQueue.sort((a, b) => {
+      if (priorityOrder[b.priority] !== priorityOrder[a.priority]) {
+        return priorityOrder[b.priority] - priorityOrder[a.priority];
+      }
+      return new Date(b.submittedAt) - new Date(a.submittedAt);
+    });
+
+    res.json({
+      success: true,
+      moderationQueue: moderationQueue.slice(0, 20),
+      stats: {
+        totalPending: moderationQueue.length,
+        pendingPoems: pendingPoems.length,
+        pendingUsers: pendingUsers.length,
+      },
+    });
+  } catch (error) {
+    console.error("Get moderation queue error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch moderation queue",
     });
   }
 });

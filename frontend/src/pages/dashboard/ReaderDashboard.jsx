@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useMessage } from "../../context/MessageContext";
 import { poetryAPI, dashboardAPI } from "../../services/api";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
@@ -50,6 +51,7 @@ import {
 
 const ReaderDashboard = () => {
   const { user, logout } = useAuth();
+  const { showConfirm } = useMessage();
   const navigate = useNavigate();
 
   // Core state
@@ -404,8 +406,12 @@ const ReaderDashboard = () => {
                 پروفائل
               </Button>
               <Button
-                onClick={() => {
-                  if (window.confirm("کیا آپ واقعی لاگ آؤٹ کرنا چاہتے ہیں؟")) {
+                onClick={async () => {
+                  const confirmed = await showConfirm(
+                    "کیا آپ واقعی لاگ آؤٹ کرنا چاہتے ہیں؟ / Are you sure you want to logout?",
+                    "لاگ آؤٹ کی تصدیق / Logout Confirmation"
+                  );
+                  if (confirmed) {
                     logout();
                     navigate("/auth");
                   }

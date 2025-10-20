@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken";
 import { body, validationResult } from "express-validator";
 import User from "../models/User.js";
 import Poet from "../models/poet.js";
+import Poem from "../models/Poem.js";
+import Collection from "../models/Collection.js";
 import { auth, adminAuth } from "../middleware/auth.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
@@ -1217,6 +1219,130 @@ router.post("/logout", auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Logout failed",
+    });
+  }
+});
+
+// Get user statistics
+router.get("/user-stats", auth, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Get user's poems and calculate stats
+    const userPoems = await Poem.find({ author: userId });
+    const likedPoems = await Poem.find({ likes: userId });
+    const bookmarkedPoems = await Collection.findOne({
+      name: "Favorites",
+      createdBy: userId,
+    }).populate("poems");
+
+    // Calculate total views from user's poems
+    const totalViews = userPoems.reduce(
+      (sum, poem) => sum + (poem.views || 0),
+      0
+    );
+
+    res.json({
+      success: true,
+      stats: {
+        poemsRead: likedPoems.length, // Using liked poems as proxy for read poems
+        likedPoems: likedPoems.length,
+        bookmarks: bookmarkedPoems?.poems?.length || 0,
+        totalViews: totalViews,
+        poemsCreated: userPoems.length,
+        publishedPoems: userPoems.filter((poem) => poem.status === "published")
+          .length,
+      },
+    });
+  } catch (error) {
+    console.error("Get user stats error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user statistics",
+    });
+  }
+});
+
+// Get user recent activity
+router.get("/user-activity", auth, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Get recent poems created by user
+    const recentPoems = await Poem.find({ author: userId })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select("title createdAt status");
+
+    // Get recently liked poems
+    const recentLikes = await Poem.find({ likes: userId })
+      .sort({ updatedAt: -1 })
+      .limit(5)
+      .select("title updatedAt author")
+      .populate("author", "name");
+
+    // Get recently bookmarked poems
+    const userFavorites = await Collection.findOne({
+      name: "Favorites",
+      createdBy: userId,
+    }).populate({
+      path: "poems",
+      options: { sort: { updatedAt: -1 }, limit: 5 },
+      select: "title updatedAt author",
+      populate: { path: "author", select: "name" },
+    });
+
+    const activity = [];
+
+    // Add poem creation activities
+    recentPoems.forEach((poem) => {
+      activity.push({
+        id: `poem_created_${poem._id}`,
+        type: "poem_created",
+        title: `Created "${poem.title}"`,
+        time: poem.createdAt,
+        icon: "FileText",
+      });
+    });
+
+    // Add like activities
+    recentLikes.forEach((poem) => {
+      activity.push({
+        id: `poem_liked_${poem._id}`,
+        type: "poem_liked",
+        title: `Liked "${poem.title}"`,
+        time: poem.updatedAt,
+        icon: "Heart",
+      });
+    });
+
+    // Add bookmark activities
+    if (userFavorites?.poems) {
+      userFavorites.poems.forEach((poem) => {
+        activity.push({
+          id: `poem_bookmarked_${poem._id}`,
+          type: "poem_bookmarked",
+          title: `Bookmarked "${poem.title}"`,
+          time: poem.updatedAt,
+          icon: "Bookmark",
+        });
+      });
+    }
+
+    // Sort by time and limit to 10 most recent
+    const sortedActivity = activity
+      .sort((a, b) => new Date(b.time) - new Date(a.time))
+      .slice(0, 10);
+
+    res.json({
+      success: true,
+      activity: sortedActivity,
+    });
+  } catch (error) {
+    console.error("Get user activity error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user activity",
     });
   }
 });

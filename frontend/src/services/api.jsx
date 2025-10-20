@@ -751,8 +751,13 @@ export const dashboardAPI = {
     axiosInstance.put("/auth/profile/notifications", { notificationSettings }),
   sendTestEmail: () => axiosInstance.post("/auth/profile/test-email"),
 
+  // User Statistics & Activity
+  getUserStats: () => axiosInstance.get("/auth/user-stats"),
+  getUserActivity: () => axiosInstance.get("/auth/user-activity"),
+
   // Admin Dashboard
   getAdminDashboard: () => axiosInstance.get("/dashboard/admin"),
+  getModerationQueue: () => axiosInstance.get("/dashboard/moderation-queue"),
   approvePoem: (id) =>
     axiosInstance.patch(`/dashboard/admin/poems/${id}/approve`),
   rejectPoem: (id, reason) =>

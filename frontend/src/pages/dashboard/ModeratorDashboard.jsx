@@ -9,6 +9,7 @@ import {
   Flag,
   MessageCircle,
 } from "lucide-react";
+import api from "../../services/api";
 
 const ModeratorDashboard = () => {
   const [moderationQueue, setModerationQueue] = useState([]);
@@ -21,60 +22,31 @@ const ModeratorDashboard = () => {
   });
 
   useEffect(() => {
-    // Mock data for demonstration
-    setModerationQueue([
-      {
-        id: 1,
-        type: "poem",
-        title: "New Ghazal Submission",
-        user: "new_poet123",
-        reason: "Copyright verification needed",
-        submittedAt: "2024-01-15T10:30:00Z",
-        priority: "high",
-      },
-      {
-        id: 2,
-        type: "comment",
-        title: "Inappropriate comment",
-        user: "user456",
-        reason: "Reported by multiple users",
-        submittedAt: "2024-01-15T09:15:00Z",
-        priority: "medium",
-      },
-      {
-        id: 3,
-        type: "user",
-        title: "Poet Verification Request",
-        user: "aspiring_poet",
-        reason: "Profile verification required",
-        submittedAt: "2024-01-14T16:45:00Z",
-        priority: "low",
-      },
-    ]);
+    const fetchModerationData = async () => {
+      try {
+        const response = await api.getModerationQueue();
+        if (response.data.success) {
+          setModerationQueue(response.data.moderationQueue);
+          setStats((prev) => ({
+            ...prev,
+            pendingReviews: response.data.stats.totalPending,
+            activeUsers: response.data.stats.pendingUsers,
+          }));
+        }
+      } catch (error) {
+        console.error("Failed to fetch moderation data:", error);
+        // Fallback to empty array instead of mock data
+        setModerationQueue([]);
+        setStats({
+          pendingModeration: 0,
+          resolvedToday: 0,
+          totalReports: 0,
+          activeUsers: 0,
+        });
+      }
+    };
 
-    setReports([
-      {
-        id: 1,
-        type: "spam",
-        content: "Commercial promotion in comments",
-        reporter: "community_member",
-        status: "new",
-      },
-      {
-        id: 2,
-        type: "inappropriate",
-        content: "Offensive language detected",
-        reporter: "moderator_ai",
-        status: "in_review",
-      },
-    ]);
-
-    setStats({
-      pendingModeration: 12,
-      resolvedToday: 8,
-      totalReports: 45,
-      activeUsers: 234,
-    });
+    fetchModerationData();
   }, []);
 
   const handleApprove = (itemId) => {

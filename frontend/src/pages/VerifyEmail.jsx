@@ -4,12 +4,14 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { CulturalElements } from "../components/ui/CulturalElements";
+import { useMessage } from "../context/MessageContext";
 import api from "../services/api";
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
+  const { showSuccess, showError } = useMessage();
 
   const [status, setStatus] = useState("verifying");
   const [message, setMessage] = useState("");
@@ -77,13 +79,20 @@ export default function VerifyEmail() {
       const response = await api.post("/auth/resend-verification", { email });
 
       if (response.data.success) {
-        alert("Verification email sent! Please check your inbox.");
+        showSuccess(
+          "تصدیقی ای میل بھیجا گیا! براہ کرم اپنا ان باکس چیک کریں / Verification email sent! Please check your inbox."
+        );
       } else {
-        alert("Failed to resend verification email: " + response.data.message);
+        showError(
+          "تصدیقی ای میل دوبارہ بھیجنے میں ناکامی / Failed to resend verification email: " +
+            response.data.message
+        );
       }
     } catch (error) {
       console.error("Resend verification error:", error);
-      alert("Failed to resend verification email. Please try again.");
+      showError(
+        "تصدیقی ای میل دوبارہ بھیجنے میں ناکامی، دوبارہ کوشش کریں / Failed to resend verification email. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
