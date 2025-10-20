@@ -3,11 +3,13 @@ import { useParams, useNavigate } from "react-router-dom";
 import PoemView from "../components/poetry/PoemView";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
+import { useMessage } from "../context/MessageContext";
 
 const PoemDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showError, showSuccess, showWarning } = useMessage();
 
   const [poem, setPoem] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -41,17 +43,23 @@ const PoemDetailPage = () => {
 
         // Check if it's an authentication issue
         if (errorMessage.includes("requires authentication")) {
-          alert("اس نظم کو دیکھنے کے لیے لاگ ان کریں");
+          showWarning(
+            "اس نظم کو دیکھنے کے لیے لاگ ان کریں / Please login to view this poem"
+          );
           navigate("/auth");
         } else if (errorMessage.includes("not yet published")) {
-          alert("یہ نظم ابھی شائع نہیں ہوئی ہے");
+          showWarning(
+            "یہ نظم ابھی شائع نہیں ہوئی ہے / This poem has not been published yet"
+          );
           navigate("/poems");
         } else {
-          alert("آپ کو اس نظم تک رسائی نہیں ہے");
+          showError(
+            "آپ کو اس نظم تک رسائی نہیں ہے / You don't have access to this poem"
+          );
           navigate("/unauthorized");
         }
       } else {
-        alert("نظم لوڈ کرنے میں خرابی ہوئی");
+        showError("نظم لوڈ کرنے میں خرابی ہوئی / Error loading poem");
       }
     } finally {
       setLoading(false);
@@ -76,7 +84,7 @@ const PoemDetailPage = () => {
       }
     } catch (error) {
       console.error("Like error:", error);
-      alert("پسند کرنے میں خرابی ہوئی");
+      showError("پسند کرنے میں خرابی ہوئی / Error liking poem");
     }
 
     return null;
@@ -104,9 +112,11 @@ const PoemDetailPage = () => {
         const errorMessages = error.response.data.errors
           .map((err) => err.msg)
           .join("\n");
-        alert(`تصدیق میں خرابی:\n${errorMessages}`);
+        showError(
+          `تصدیق میں خرابی:\n${errorMessages} / Validation errors:\n${errorMessages}`
+        );
       } else {
-        alert("تبصرہ بھیجنے میں خرابی ہوئی");
+        showError("تبصرہ بھیجنے میں خرابی ہوئی / Error submitting comment");
       }
     }
 
@@ -127,14 +137,14 @@ const PoemDetailPage = () => {
       const response = await poetryAPI.deletePoem(poemId);
 
       if (response.data.success) {
-        alert("نظم کامیابی سے حذف ہو گئی");
+        showSuccess("نظم کامیابی سے حذف ہو گئی / Poem deleted successfully");
         navigate("/poems");
       } else {
-        alert("نظم حذف کرنے میں خرابی ہوئی");
+        showError("نظم حذف کرنے میں خرابی ہوئی / Error deleting poem");
       }
     } catch (error) {
       console.error("Delete error:", error);
-      alert("نظم حذف کرنے میں خرابی ہوئی");
+      showError("نظم حذف کرنے میں خرابی ہوئی / Error deleting poem");
     }
   };
 

@@ -3,11 +3,13 @@ import { useParams, useNavigate } from "react-router-dom";
 import PoemForm from "../components/poetry/PoemForm";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
+import { useMessage } from "../context/MessageContext";
 
 const EditPoemPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showSuccess, showError } = useMessage();
 
   const [poem, setPoem] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,12 +53,12 @@ const EditPoemPage = () => {
       console.error("Error fetching poem:", error);
 
       if (error.response?.status === 404) {
-        alert("نظم نہیں ملی");
+        showError("نظم نہیں ملی / Poem not found");
         navigate("/poems");
       } else if (error.response?.status === 403) {
         navigate("/unauthorized");
       } else {
-        alert("نظم لوڈ کرنے میں خرابی ہوئی");
+        showError("نظم لوڈ کرنے میں خرابی ہوئی / Error loading poem");
         navigate("/poems");
       }
     } finally {
@@ -72,10 +74,15 @@ const EditPoemPage = () => {
       const response = await poetryAPI.updatePoem(id, formData);
 
       if (response.data.success) {
-        alert("نظم کامیابی سے اپ ڈیٹ ہو گئی!");
+        showSuccess(
+          "نظم کامیابی سے اپ ڈیٹ ہو گئی! / Poem updated successfully!"
+        );
         navigate(`/poems/${id}`);
       } else {
-        alert(response.data.message || "نظم اپ ڈیٹ کرتے وقت خرابی ہوئی");
+        showError(
+          response.data.message ||
+            "نظم اپ ڈیٹ کرتے وقت خرابی ہوئی / Error updating poem"
+        );
       }
     } catch (error) {
       console.error("Update poem error:", error);
@@ -85,14 +92,18 @@ const EditPoemPage = () => {
         const errorMessages = error.response.data.errors
           .map((err) => err.msg)
           .join("\n");
-        alert(`تصدیق میں خرابی:\n${errorMessages}`);
+        showError(`تصدیق میں خرابی / Validation errors:\n${errorMessages}`);
       } else if (error.response?.data?.message) {
-        alert(error.response.data.message);
+        showError(error.response.data.message);
       } else if (error.response?.status === 403) {
-        alert("آپ کو اس نظم میں تبدیلی کی اجازت نہیں ہے");
+        showError(
+          "آپ کو اس نظم میں تبدیلی کی اجازت نہیں ہے / You don't have permission to edit this poem"
+        );
         navigate("/unauthorized");
       } else {
-        alert("نظم اپ ڈیٹ کرتے وقت خرابی ہوئی");
+        showError(
+          "نظم اپ ڈیٹ کرتے وقت خرابی ہوئی / Error occurred while updating poem"
+        );
       }
     } finally {
       setIsSubmitting(false);

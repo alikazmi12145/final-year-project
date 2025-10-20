@@ -2,10 +2,12 @@ import React, { useState, useRef, useCallback } from "react";
 import { Upload, Image, Camera, X, Eye, Scan, FileImage } from "lucide-react";
 import { Button } from "../ui/Button";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
+import { useMessage } from "../../context/MessageContext";
 import api from "../../services/api";
 import Tesseract from "tesseract.js";
 
 const ImageSearch = ({ onSearch, loading = false }) => {
+  const { showError } = useMessage();
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [extractedText, setExtractedText] = useState("");
@@ -55,7 +57,9 @@ const ImageSearch = ({ onSearch, loading = false }) => {
       }
     } catch (error) {
       console.error("❌ OCR processing error:", error);
-      alert("OCR processing failed. Please try with a clearer image.");
+      showError(
+        "OCR processing failed. Please try with a clearer image. / OCR پروسیسنگ ناکام ہوگئی۔ واضح تصویر کے ساتھ کوشش کریں۔"
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -185,7 +189,9 @@ const ImageSearch = ({ onSearch, loading = false }) => {
       }
     } catch (error) {
       console.error("OCR Error:", error);
-      alert("تصویر سے متن نکالنے میں خرابی ہوئی۔ دوبارہ کوشش کریں۔");
+      showError(
+        "تصویر سے متن نکالنے میں خرابی ہوئی۔ دوبارہ کوشش کریں۔ / Error extracting text from image. Please try again."
+      );
     } finally {
       setIsProcessing(false);
       setOcrProgress(0);

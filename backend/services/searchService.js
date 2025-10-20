@@ -692,21 +692,29 @@ class SearchService {
   // Get popular searches
   async getPopularSearches(limit = 10) {
     try {
-      // Mock data - implement with actual SearchLog model
+      // Get popular searches based on most viewed poems and categories
+      const popularPoems = await Poem.find({ status: "published" })
+        .sort({ views: -1 })
+        .limit(20)
+        .select("title category theme author");
+
+      const popularCategories = [
+        ...new Set(popularPoems.map((p) => p.category).filter(Boolean)),
+      ].slice(0, Math.floor(limit / 2));
+
+      const popularThemes = [
+        ...new Set(popularPoems.map((p) => p.theme).filter(Boolean)),
+      ].slice(0, Math.floor(limit / 2));
+
+      const popularSearches = [
+        ...popularCategories,
+        ...popularThemes,
+        ...popularPoems.slice(0, 3).map((p) => p.title),
+      ].slice(0, limit);
+
       return {
         success: true,
-        popularSearches: [
-          "غالب کی غزلیں",
-          "اقبال کا کلام",
-          "فیض کی نظمیں",
-          "عشق کی شاعری",
-          "حمد و نعت",
-          "انقلابی شاعری",
-          "کلاسیکی شاعری",
-          "جدید شاعری",
-          "رومانوی شاعری",
-          "روحانی کلام",
-        ].slice(0, limit),
+        popularSearches,
       };
     } catch (error) {
       console.error("Popular searches error:", error);
