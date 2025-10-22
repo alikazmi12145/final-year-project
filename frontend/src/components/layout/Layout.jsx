@@ -23,6 +23,13 @@ const Layout = ({ children }) => {
     location.pathname.startsWith(route)
   );
 
+  // Explicitly show navbar for poetry collection pages and poets pages
+  const isPoetryCollectionPage =
+    location.pathname.startsWith("/poetry-collection");
+  const isPoetsPage = location.pathname.startsWith("/poets");
+  const shouldShowNavbar =
+    isPoetryCollectionPage || isPoetsPage || !shouldHideNavbar;
+
   // Check if current route is auth page
   const isAuthPage = location.pathname === "/auth";
 
@@ -52,7 +59,7 @@ const Layout = ({ children }) => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-urdu-cream/10">
-      {!shouldHideNavbar && <Navbar />}
+      {shouldShowNavbar && <Navbar />}
       <main className="flex-grow relative">
         {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -61,7 +68,7 @@ const Layout = ({ children }) => {
         </div>
         <div className="relative z-10">{children}</div>
       </main>
-      {!user && !isAuthPage && !shouldHideNavbar && <Footer />}
+      {!user && !isAuthPage && shouldShowNavbar && <Footer />}
     </div>
   );
 };

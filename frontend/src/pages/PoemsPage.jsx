@@ -7,7 +7,7 @@ import { useMessage } from "../context/MessageContext";
 const PoemsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { showSuccess, showError } = useMessage();
+  const { showSuccess, showError, showConfirm } = useMessage();
 
   const [poems, setPoems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,16 +16,17 @@ const PoemsPage = () => {
     limit: 20,
     category: "all",
     era: "all",
-    poetryLanguage: "urdu", // Changed from language to poetryLanguage
+    poetryLanguage: "urdu",
     sortBy: "createdAt",
     sortOrder: "desc",
   });
   const [searchTerm, setSearchTerm] = useState("");
 
   // Import API function dynamically to avoid circular dependencies
-  const fetchPoems = async () => {
+  const fetchPoems = useCallback(async () => {
     try {
       setLoading(true);
+
       const { poetryAPI } = await import("../services/api.jsx");
 
       const params = {
@@ -46,15 +47,16 @@ const PoemsPage = () => {
       }
     } catch (error) {
       console.error("Error fetching poems:", error);
+      showError("نظمیں لوڈ کرنے میں خرابی / Error loading poems");
       setPoems([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, searchTerm, showError]);
 
   useEffect(() => {
     fetchPoems();
-  }, [filters, searchTerm]);
+  }, [fetchPoems]);
 
   const handleSearch = useCallback((term) => {
     setSearchTerm(term);
@@ -75,40 +77,48 @@ const PoemsPage = () => {
     [navigate]
   );
 
-  const handleDelete = useCallback(async (poemId) => {
-    if (!window.confirm("کیا آپ واقعی اس نظم کو حذف کرنا چاہتے ہیں؟")) {
-      return;
-    }
+  const handleDelete = useCallback(
+    async (poemId) => {
+      const confirmed = await showConfirm(
+        "کیا آپ واقعی اس نظم کو حذف کرنا چاہتے ہیں؟",
+        "Are you sure you want to delete this poem?"
+      );
 
-    try {
-      const { poetryAPI } = await import("../services/api.jsx");
-      const response = await poetryAPI.deletePoem(poemId);
+      if (!confirmed) return;
 
-      if (response.data.success) {
-        setPoems((prev) => prev.filter((poem) => poem._id !== poemId));
-        showSuccess("نظم کامیابی سے حذف ہو گئی / Poem deleted successfully");
-      } else {
+      try {
+        const { poetryAPI } = await import("../services/api.jsx");
+        const response = await poetryAPI.deletePoem(poemId);
+
+        if (response.data.success) {
+          setPoems((prev) => prev.filter((poem) => poem._id !== poemId));
+          showSuccess("نظم کامیابی سے حذف ہو گئی / Poem deleted successfully");
+        } else {
+          showError("نظم حذف کرنے میں خرابی ہوئی / Error deleting poem");
+        }
+      } catch (error) {
+        console.error("Delete error:", error);
         showError("نظم حذف کرنے میں خرابی ہوئی / Error deleting poem");
       }
-    } catch (error) {
-      console.error("Delete error:", error);
-      showError("نظم حذف کرنے میں خرابی ہوئی / Error deleting poem");
-    }
-  }, []);
+    },
+    [showConfirm, showSuccess, showError]
+  );
 
   return (
-    <PoemList
-      poems={poems}
-      loading={loading}
-      showActions={user?.role === "poet" || user?.role === "admin"}
-      onEdit={handleEdit}
-      onDelete={handleDelete}
-      onSearch={handleSearch}
-      onFilter={handleFilter}
-      showHeader={true}
-      showCreateButton={user?.role === "poet" || user?.role === "admin"}
-      onCreateNew={handleCreateNew}
-    />
+    <div className="min-h-screen bg-gradient-to-br from-urdu-cream via-white to-urdu-cream/50">
+      <PoemList
+        poems={poems}
+        loading={loading}
+        showActions={user?.role === "poet" || user?.role === "admin"}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onSearch={handleSearch}
+        onFilter={handleFilter}
+        showHeader={true}
+        showCreateButton={user?.role === "poet" || user?.role === "admin"}
+        onCreateNew={handleCreateNew}
+      />
+    </div>
   );
 };
 

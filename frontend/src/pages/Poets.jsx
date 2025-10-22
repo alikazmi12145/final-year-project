@@ -137,103 +137,148 @@ const Poets = () => {
 
   if (id && enhancedPoet) {
     return (
-      <div className="min-h-screen cultural-bg py-8">
+      <div className="min-h-screen cultural-bg pt-20 py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Poet Profile Header */}
-          <div className="card p-8 mb-6">
-            <div className="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-6">
-              <div className="w-32 h-32 bg-gradient-to-r from-urdu-gold to-urdu-brown rounded-full flex items-center justify-center">
+          {/* Enhanced Poet Profile Header with Cultural Design */}
+          <div className="bg-gradient-to-br from-urdu-cream via-white to-cultural-pearl p-8 mb-6 rounded-2xl shadow-cultural border border-urdu-gold/20 overflow-hidden relative">
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-5">
+              <div className="absolute top-10 right-10 w-32 h-32 bg-urdu-gold rounded-full"></div>
+              <div className="absolute bottom-10 left-10 w-24 h-24 bg-cultural-amber rounded-full"></div>
+            </div>
+
+            <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8">
+              <div className="w-40 h-40 bg-gradient-to-r from-urdu-gold via-cultural-amber to-urdu-brown rounded-full flex items-center justify-center overflow-hidden shadow-cultural ring-4 ring-urdu-gold/20">
                 {poet.profilePicture ? (
                   <img
                     src={poet.profilePicture}
                     alt={poet.name}
-                    className="w-32 h-32 rounded-full object-cover"
+                    className="w-40 h-40 rounded-full object-cover filter grayscale hover:filter-none transition-all duration-500"
                   />
                 ) : (
-                  <User className="text-white w-16 h-16" />
+                  <User className="text-white w-20 h-20" />
                 )}
               </div>
 
               <div className="flex-1 text-center md:text-left">
-                <div className="flex items-center justify-center md:justify-start space-x-2 mb-2">
-                  <h1 className="text-3xl font-bold text-urdu-brown">
+                <div className="flex items-center justify-center md:justify-start space-x-3 mb-3">
+                  <h1 className="text-4xl font-bold text-urdu-brown font-urdu urdu-heading-lg">
                     {poet.name}
                   </h1>
                   {poet.isVerified && (
-                    <Star className="w-5 h-5 text-urdu-gold fill-current" />
+                    <div className="bg-gradient-to-r from-urdu-gold to-cultural-amber p-2 rounded-full shadow-md">
+                      <Star className="w-6 h-6 text-white fill-current" />
+                    </div>
                   )}
                 </div>
 
-                <p className="text-urdu-maroon mb-4">
-                  {poet.bio || "کوئی تعارف دستیاب نہیں"}
-                </p>
+                {/* Enhanced Bio Section */}
+                <div className="bg-gradient-to-r from-urdu-light/50 to-cultural-pearl/50 p-4 rounded-xl mb-4 border border-urdu-gold/10">
+                  <p className="text-urdu-maroon mb-2 font-urdu urdu-body text-lg leading-relaxed">
+                    {poet.bio || "کوئی تعارف دستیاب نہیں"}
+                  </p>
+                  {/* Extended bio in Urdu */}
+                  <p className="text-cultural-burgundy font-urdu urdu-body text-base leading-relaxed">
+                    اردو ادب کے منظر نامے میں ایک اہم نام، جو اپنے خوبصورت اشعار
+                    اور گہری سوچ کے لیے مشہور ہے۔
+                  </p>
+                </div>
 
-                <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm text-urdu-brown">
+                <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm">
                   {poet.birthPlace && (
-                    <div className="flex items-center space-x-1">
-                      <MapPin className="w-4 h-4" />
-                      <span>{poet.birthPlace}</span>
+                    <div className="flex items-center space-x-2 bg-urdu-gold/10 px-3 py-2 rounded-full">
+                      <MapPin className="w-4 h-4 text-urdu-gold" />
+                      <span className="text-urdu-brown font-urdu urdu-caption">
+                        {poet.birthPlace}
+                      </span>
                     </div>
                   )}
                   {poet.era && (
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="w-4 h-4" />
-                      <span>
+                    <div className="flex items-center space-x-2 bg-cultural-amber/10 px-3 py-2 rounded-full">
+                      <Calendar className="w-4 h-4 text-cultural-amber" />
+                      <span className="text-urdu-brown font-urdu urdu-caption">
                         {poet.era === "contemporary" ? "معاصر" : poet.era}
                       </span>
                     </div>
                   )}
                   {poet.dateOfBirth && (
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="w-4 h-4" />
-                      <span>{new Date(poet.dateOfBirth).getFullYear()}</span>
+                    <div className="flex items-center space-x-2 bg-cultural-burgundy/10 px-3 py-2 rounded-full">
+                      <Calendar className="w-4 h-4 text-cultural-burgundy" />
+                      <span className="text-urdu-brown font-urdu urdu-caption">
+                        {new Date(poet.dateOfBirth).getFullYear()}
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-urdu-cream">
+            {/* Enhanced Stats Section */}
+            <div className="grid grid-cols-3 gap-6 mt-8 pt-6 border-t border-urdu-gold/30">
               {[
                 {
                   icon: BookOpen,
                   label: "نظمیں",
+                  labelEn: "Poems",
                   value: poet.stats?.poemCount || 0,
+                  colorClasses: "text-urdu-gold",
+                  bgClasses: "bg-urdu-gold/10 border-urdu-gold/20",
                 },
                 {
                   icon: Users,
                   label: "پیروکار",
+                  labelEn: "Followers",
                   value: poet.stats?.followers || 0,
+                  colorClasses: "text-cultural-amber",
+                  bgClasses: "bg-cultural-amber/10 border-cultural-amber/20",
                 },
                 {
                   icon: Heart,
                   label: "پسندیدگی",
+                  labelEn: "Likes",
                   value: poet.stats?.totalLikes || 0,
+                  colorClasses: "text-cultural-burgundy",
+                  bgClasses:
+                    "bg-cultural-burgundy/10 border-cultural-burgundy/20",
                 },
               ].map((stat, index) => (
-                <div key={index} className="text-center">
-                  <stat.icon className="w-6 h-6 text-urdu-gold mx-auto mb-1" />
-                  <div className="text-2xl font-bold text-urdu-brown">
+                <div
+                  key={index}
+                  className={`text-center p-4 rounded-xl ${stat.bgClasses} hover:shadow-md transition-all`}
+                >
+                  <stat.icon
+                    className={`w-8 h-8 ${stat.colorClasses} mx-auto mb-2`}
+                  />
+                  <div className="text-3xl font-bold text-urdu-brown font-urdu">
                     {stat.value}
                   </div>
-                  <div className="text-sm text-urdu-maroon">{stat.label}</div>
+                  <div
+                    className={`text-sm ${stat.colorClasses} font-urdu urdu-caption`}
+                  >
+                    {stat.label}
+                  </div>
+                  <div className="text-xs text-urdu-maroon/70">
+                    {stat.labelEn}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Achievements */}
+          {/* Enhanced Achievements Section */}
           {poet.achievements && poet.achievements.length > 0 && (
-            <div className="card p-6 mb-6">
-              <h2 className="text-xl font-bold text-urdu-brown mb-4">
-                Achievements
-              </h2>
-              <div className="flex flex-wrap gap-2">
+            <div className="bg-gradient-to-br from-cultural-pearl via-urdu-cream to-urdu-light p-6 mb-6 rounded-2xl shadow-cultural border border-cultural-amber/20">
+              <div className="flex items-center mb-4">
+                <Award className="w-6 h-6 text-urdu-gold mr-3" />
+                <h2 className="text-2xl font-bold text-urdu-brown font-urdu urdu-heading-md">
+                  اعزازات / Achievements
+                </h2>
+              </div>
+              <div className="flex flex-wrap gap-3">
                 {poet.achievements.map((achievement, index) => (
                   <span
                     key={index}
-                    className="px-3 py-1 bg-urdu-gold/10 text-urdu-brown rounded-full text-sm"
+                    className="px-4 py-2 bg-gradient-to-r from-urdu-gold/20 to-cultural-amber/20 text-urdu-brown rounded-full text-sm font-urdu urdu-body border border-urdu-gold/30 hover:shadow-md transition-all"
                   >
                     {achievement}
                   </span>
@@ -242,14 +287,48 @@ const Poets = () => {
             </div>
           )}
 
-          {/* Poet's Poems Placeholder */}
-          <div className="card p-6">
-            <h2 className="text-xl font-bold text-urdu-brown mb-4">
-              Poems by {poet.name}
-            </h2>
-            <div className="text-center py-8">
-              <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-urdu-maroon">Poems will be displayed here</p>
+          {/* Famous Quote Section */}
+          <div className="bg-gradient-to-r from-cultural-burgundy/5 via-urdu-maroon/5 to-cultural-burgundy/5 p-6 mb-6 rounded-2xl border border-cultural-burgundy/20 shadow-cultural">
+            <div className="text-center">
+              <div className="text-6xl text-urdu-gold/30 mb-2">"</div>
+              <blockquote className="text-xl font-urdu urdu-poetry text-cultural-burgundy mb-4 leading-relaxed">
+                {extendedPoetData.famousQuoteUrdu}
+              </blockquote>
+              <p className="text-base text-urdu-brown font-elegant italic mb-4">
+                "{extendedPoetData.famousQuote}"
+              </p>
+              <div className="w-16 h-1 bg-gradient-to-r from-urdu-gold to-cultural-amber mx-auto"></div>
+            </div>
+          </div>
+
+          {/* Enhanced Poems Section */}
+          <div className="bg-gradient-to-br from-urdu-cream via-cultural-pearl to-white p-8 rounded-2xl shadow-cultural border border-urdu-gold/20 relative overflow-hidden">
+            {/* Background Decoration */}
+            <div className="absolute top-4 right-4 w-20 h-20 bg-urdu-gold/5 rounded-full"></div>
+            <div className="absolute bottom-4 left-4 w-16 h-16 bg-cultural-amber/5 rounded-full"></div>
+
+            <div className="relative z-10">
+              <div className="flex items-center mb-6">
+                <BookOpen className="w-8 h-8 text-urdu-gold mr-3" />
+                <h2 className="text-2xl font-bold text-urdu-brown font-urdu urdu-heading-md">
+                  {poet.name} کے اشعار / Poems by {poet.name}
+                </h2>
+              </div>
+
+              <div className="text-center py-12">
+                <div className="w-24 h-24 bg-gradient-to-r from-urdu-gold/20 to-cultural-amber/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-urdu-gold/30">
+                  <BookOpen className="w-12 h-12 text-urdu-gold" />
+                </div>
+                <h3 className="text-xl font-urdu urdu-heading-sm text-urdu-brown mb-2">
+                  اشعار جلد آئیں گے
+                </h3>
+                <p className="text-urdu-maroon font-urdu urdu-body">
+                  Poems will be displayed here
+                </p>
+                <div className="mt-4 text-sm text-cultural-brown bg-urdu-gold/5 px-4 py-2 rounded-lg inline-block">
+                  Coming Soon / جلد آنے والا
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -258,173 +337,205 @@ const Poets = () => {
   }
 
   return (
-    <div className="min-h-screen cultural-bg py-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold gradient-text mb-4">Our Poets</h1>
-          <p className="text-lg text-urdu-brown">
-            Discover talented poets from the Urdu poetry community
-          </p>
-        </div>
+    <>
+      <div className="min-h-screen cultural-bg pt-20 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold gradient-text mb-4 urdu-heading-lg">
+              ہمارے شعراء
+            </h1>
+            <h2 className="text-3xl font-urdu text-urdu-brown mb-2">
+              Our Poets
+            </h2>
+            <p className="text-lg text-urdu-maroon urdu-body">
+              اردو شاعری کمیونٹی کے باصلاحیت شعراء کو دریافت کریں
+            </p>
+            <p className="text-base text-cultural-brown">
+              Discover talented poets from the Urdu poetry community
+            </p>
+          </div>
 
-        {/* Search Bar */}
-        <div className="card p-4 mb-6">
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search poets by name or location..."
-              className="input-field pl-10"
-            />
+          {/* Search Bar */}
+          <div className="bg-gradient-to-r from-urdu-cream to-cultural-pearl p-6 rounded-xl shadow-cultural mb-6 border border-urdu-gold/20">
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-urdu-brown w-5 h-5" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="شاعر کا نام یا مقام تلاش کریں... / Search poets by name or location..."
+                className="w-full pl-10 pr-4 py-3 bg-white/80 border-2 border-urdu-gold/30 rounded-lg focus:border-urdu-gold focus:ring-2 focus:ring-urdu-gold/20 transition-all placeholder-urdu-maroon/60 font-urdu text-urdu-base"
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Poets Grid */}
-        {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <LoadingSpinner />
-          </div>
-        ) : error ? (
-          <div className="card p-8 text-center">
-            <Users className="w-16 h-16 text-red-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-red-600 mb-2">
-              Error Loading Poets
-            </h3>
-            <p className="text-red-500 mb-4">{error}</p>
-            <button
-              onClick={fetchPoets}
-              className="px-4 py-2 bg-urdu-gold text-white rounded-lg hover:bg-urdu-brown transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {poets && poets.length > 0 ? (
-              poets.map((poet) => (
-                <Link
-                  key={poet._id || poet.slug}
-                  to={
-                    poet.isExternal
-                      ? `/poets/external/${poet.slug}`
-                      : `/poets/${poet._id}`
-                  }
-                  className="card p-6 hover:shadow-xl transition-all duration-300 group"
-                >
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-16 h-16 bg-gradient-to-r from-urdu-gold to-urdu-brown rounded-full flex items-center justify-center">
-                      {poet.avatar || poet.image ? (
+          {/* Poets Grid */}
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <LoadingSpinner />
+            </div>
+          ) : error ? (
+            <div className="bg-gradient-to-br from-red-50 to-red-100 p-8 text-center rounded-xl border border-red-200 shadow-cultural">
+              <Users className="w-16 h-16 text-red-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-red-700 mb-2 font-urdu urdu-heading-md">
+                شعراء لوڈ کرنے میں خرابی / Error Loading Poets
+              </h3>
+              <p className="text-red-600 mb-4 font-urdu urdu-body">{error}</p>
+              <button
+                onClick={fetchPoets}
+                className="px-6 py-3 bg-gradient-to-r from-urdu-gold to-cultural-amber text-white rounded-lg hover:from-cultural-amber hover:to-urdu-gold transition-all font-urdu urdu-body shadow-md"
+              >
+                دوبارہ کوشش کریں / Try Again
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {poets && poets.length > 0 ? (
+                poets.map((poet) => (
+                  <Link
+                    key={poet._id || poet.slug}
+                    to={
+                      poet.isExternal
+                        ? `/poets/external/${poet.slug}`
+                        : `/poets/${poet._id}`
+                    }
+                    className="bg-gradient-to-br from-urdu-cream via-white to-cultural-pearl hover:from-urdu-light hover:to-cultural-pearl hover:shadow-cultural transform hover:-translate-y-1 transition-all duration-300 group overflow-hidden rounded-xl border border-urdu-gold/20 shadow-poetry"
+                  >
+                    {/* Large Classical Image at Top */}
+                    <div className="h-48 bg-gradient-to-br from-cultural-charcoal to-cultural-slate flex items-center justify-center relative overflow-hidden">
+                      {poet.avatar || poet.image || poet.profilePicture ? (
                         <img
-                          src={poet.avatar || poet.image}
+                          src={poet.avatar || poet.image || poet.profilePicture}
                           alt={poet.name}
-                          className="w-full h-full rounded-full object-cover"
+                          className="w-full h-full object-cover filter grayscale hover:filter-none transition-all duration-500"
                         />
                       ) : (
-                        <User className="text-white w-8 h-8" />
+                        <div className="w-32 h-32 bg-gradient-to-r from-urdu-gold to-cultural-amber rounded-full flex items-center justify-center shadow-lg">
+                          <User className="text-white w-16 h-16" />
+                        </div>
                       )}
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-1">
-                        <h3 className="font-semibold text-urdu-brown group-hover:text-urdu-maroon">
-                          {poet.name}
-                        </h3>
+                      {/* Classical overlay effect */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10"></div>
+                      {/* Status badges */}
+                      <div className="absolute top-3 right-3 flex flex-col gap-1">
                         {poet.isVerified && (
-                          <Star className="w-4 h-4 text-urdu-gold fill-current" />
+                          <span className="bg-gradient-to-r from-urdu-gold to-cultural-amber text-white px-3 py-1 rounded-full text-xs flex items-center shadow-md urdu-caption">
+                            <Star className="w-3 h-3 mr-1 fill-current" />
+                            تصدیق شدہ
+                          </span>
                         )}
                         {poet.isExternal && (
-                          <span className="text-xs bg-urdu-gold text-white px-2 py-1 rounded-full">
+                          <span className="bg-gradient-to-r from-cultural-brown to-urdu-brown text-white px-3 py-1 rounded-full text-xs urdu-caption shadow-md">
                             کلاسیکی
                           </span>
                         )}
                         {poet.isDeceased && (
-                          <span className="text-xs bg-gray-400 text-white px-2 py-1 rounded-full">
+                          <span className="bg-gradient-to-r from-cultural-charcoal to-cultural-slate text-white px-3 py-1 rounded-full text-xs urdu-caption shadow-md">
                             مرحوم
                           </span>
                         )}
                       </div>
-                      {!poet.isExternal && (
-                        <p className="text-sm text-urdu-maroon">
-                          @{poet.username}
-                        </p>
-                      )}
-                      {poet.penName && (
-                        <p className="text-sm text-urdu-maroon font-urdu">
-                          {poet.penName}
-                        </p>
-                      )}
-                      {(poet.location || poet.birthPlace) && (
-                        <p className="text-xs text-urdu-maroon opacity-75">
-                          {poet.location || poet.birthPlace}
-                        </p>
-                      )}
-                      {poet.era && (
-                        <p className="text-xs text-urdu-brown">{poet.era}</p>
-                      )}
                     </div>
-                  </div>
 
-                  <p className="text-sm text-urdu-maroon mb-4 line-clamp-2">
-                    {poet.bio ||
-                      poet.description ||
-                      "A passionate poet sharing beautiful verses"}
-                  </p>
+                    {/* Card Content */}
+                    <div className="p-6 bg-gradient-to-b from-transparent to-urdu-cream/30">
+                      {/* Poet Name and Info */}
+                      <div className="mb-4">
+                        <h3 className="font-bold text-xl text-urdu-brown group-hover:text-cultural-burgundy mb-1 transition-colors font-urdu urdu-heading-md">
+                          {poet.name}
+                        </h3>
+                        {!poet.isExternal && (
+                          <p className="text-sm text-urdu-maroon font-modern">
+                            @{poet.username}
+                          </p>
+                        )}
+                        {poet.penName && (
+                          <p className="text-sm text-cultural-burgundy font-urdu urdu-body">
+                            {poet.penName}
+                          </p>
+                        )}
+                        {(poet.location || poet.birthPlace) && (
+                          <div className="flex items-center text-xs text-urdu-maroon/80 mt-2">
+                            <MapPin className="w-3 h-3 mr-1 text-urdu-gold" />
+                            <span className="font-urdu urdu-caption">
+                              {poet.location || poet.birthPlace}
+                            </span>
+                          </div>
+                        )}
+                        {poet.era && (
+                          <p className="text-xs text-cultural-brown mt-1 capitalize bg-urdu-gold/10 px-2 py-1 rounded-full inline-block">
+                            {poet.era}
+                          </p>
+                        )}
+                      </div>
 
-                  <div className="flex items-center justify-between text-sm text-urdu-brown">
-                    <div className="flex items-center space-x-1">
-                      <BookOpen className="w-4 h-4" />
-                      <span>
-                        {poet.isExternal
-                          ? `${poet.totalPoems || 0} کلام`
-                          : `${poet.stats?.poemCount || 0} poems`}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      {poet.isExternal ? (
-                        <>
-                          <Globe className="w-4 h-4" />
-                          <span>ریختہ</span>
-                        </>
-                      ) : (
-                        <>
-                          <Heart className="w-4 h-4" />
-                          <span>{poet.stats?.totalLikes || 0} likes</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Additional info for external poets */}
-                  {poet.isExternal && poet.famousPoems && (
-                    <div className="mt-3 pt-3 border-t border-gray-100">
-                      <p className="text-xs text-urdu-maroon opacity-75">
-                        مشہور کلام: {poet.famousPoems.slice(0, 2).join("، ")}
+                      <p className="text-sm text-urdu-maroon mb-4 line-clamp-2 font-urdu urdu-body leading-relaxed">
+                        {poet.bio ||
+                          poet.description ||
+                          "خوبصورت اشعار کا اشتراک کرنے والا شاعر / A passionate poet sharing beautiful verses"}
                       </p>
+
+                      <div className="flex items-center justify-between text-sm text-urdu-brown bg-cultural-pearl/50 rounded-lg p-3">
+                        <div className="flex items-center space-x-1">
+                          <BookOpen className="w-4 h-4 text-urdu-gold" />
+                          <span className="font-urdu urdu-caption">
+                            {poet.isExternal
+                              ? `${poet.totalPoems || 0} کلام`
+                              : `${poet.stats?.poemCount || 0} نظمیں`}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          {poet.isExternal ? (
+                            <>
+                              <Globe className="w-4 h-4 text-cultural-amber" />
+                              <span className="font-urdu urdu-caption">
+                                ریختہ
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Heart className="w-4 h-4 text-cultural-burgundy" />
+                              <span className="font-urdu urdu-caption">
+                                {poet.stats?.totalLikes || 0} پسندیدگی
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Additional info for external poets */}
+                      {poet.isExternal && poet.famousPoems && (
+                        <div className="mt-3 pt-3 border-t border-urdu-gold/20">
+                          <p className="text-xs text-urdu-maroon/75 font-urdu urdu-caption">
+                            مشہور کلام:{" "}
+                            {poet.famousPoems.slice(0, 2).join("، ")}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </Link>
-              ))
-            ) : (
-              <div className="col-span-full">
-                <div className="card p-8 text-center">
-                  <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-urdu-brown mb-2">
-                    No Poets Found
-                  </h3>
-                  <p className="text-urdu-maroon">
-                    {searchTerm
-                      ? "Try adjusting your search terms"
-                      : "No poets available at the moment"}
-                  </p>
+                  </Link>
+                ))
+              ) : (
+                <div className="col-span-full">
+                  <div className="bg-gradient-to-br from-urdu-cream to-cultural-pearl p-8 text-center rounded-xl border border-urdu-gold/20 shadow-cultural">
+                    <Users className="w-16 h-16 text-urdu-gold mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-urdu-brown mb-2 font-urdu urdu-heading-md">
+                      کوئی شاعر نہیں ملا / No Poets Found
+                    </h3>
+                    <p className="text-urdu-maroon font-urdu urdu-body">
+                      {searchTerm
+                        ? "اپنی تلاش کے الفاظ کو تبدیل کر کے دیکھیں / Try adjusting your search terms"
+                        : "فی الوقت کوئی شاعر دستیاب نہیں / No poets available at the moment"}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
