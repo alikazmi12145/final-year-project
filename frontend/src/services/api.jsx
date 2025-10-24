@@ -793,6 +793,80 @@ export const rekhtaAPI = {
 };
 
 //
+// 🔹 OpenAI API for AI features
+//
+export const openaiAPI = {
+  // Generate text using OpenAI
+  generateText: async (options) => {
+    try {
+      return await axiosInstance.post("/openai/generate", options);
+    } catch (error) {
+      console.error("OpenAI text generation failed:", error);
+      throw error;
+    }
+  },
+
+  // Summarize biography
+  summarizeBiography: async (biography) => {
+    try {
+      return await axiosInstance.post("/openai/summarize", {
+        text: biography,
+        type: "biography",
+      });
+    } catch (error) {
+      console.error("Biography summarization failed:", error);
+      throw error;
+    }
+  },
+
+  // Translate text to English
+  translateToEnglish: async (text) => {
+    try {
+      return await axiosInstance.post("/openai/translate", {
+        text,
+        targetLanguage: "english",
+      });
+    } catch (error) {
+      console.error("Translation failed:", error);
+      throw error;
+    }
+  },
+
+  // Translate poem with context
+  translatePoem: async (poem, metadata) => {
+    try {
+      return await axiosInstance.post("/openai/translate-poem", {
+        poem,
+        metadata,
+      });
+    } catch (error) {
+      console.error("Poem translation failed:", error);
+      throw error;
+    }
+  },
+
+  // Get related poems using AI
+  getRelatedPoems: async (poem) => {
+    try {
+      return await axiosInstance.post("/openai/related-poems", { poem });
+    } catch (error) {
+      console.error("Related poems search failed:", error);
+      throw error;
+    }
+  },
+
+  // Generate search suggestions
+  generateSearchSuggestions: async (query) => {
+    try {
+      return await axiosInstance.post("/openai/search-suggestions", { query });
+    } catch (error) {
+      console.error("Search suggestions failed:", error);
+      throw error;
+    }
+  },
+};
+
+//
 // 🔹 Test API Connection
 //
 export const checkAPIStatus = async () => {

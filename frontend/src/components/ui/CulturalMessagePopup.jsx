@@ -43,48 +43,53 @@ const CulturalMessagePopup = ({
     switch (type) {
       case "success":
         return {
-          bg: "bg-gradient-to-br from-emerald-50 via-green-50 to-teal-100",
-          border: "border-emerald-400 border-2",
-          text: "text-emerald-900",
+          bg: "bg-gradient-to-br from-urdu-cream via-cultural-pearl to-urdu-light",
+          border: "border-urdu-gold border-2",
+          text: "text-urdu-brown",
           icon: <Check className="w-7 h-7" />,
-          ornamentColor: "text-emerald-600",
-          shadowColor: "shadow-emerald-200",
+          ornamentColor: "text-urdu-gold",
+          shadowColor: "shadow-cultural",
+          buttonBg: "from-urdu-gold to-cultural-amber",
         };
       case "error":
         return {
           bg: "bg-gradient-to-br from-red-50 via-rose-50 to-pink-100",
-          border: "border-red-400 border-2",
-          text: "text-red-900",
+          border: "border-cultural-burgundy border-2",
+          text: "text-cultural-burgundy",
           icon: <AlertCircle className="w-7 h-7" />,
-          ornamentColor: "text-red-600",
-          shadowColor: "shadow-red-200",
+          ornamentColor: "text-cultural-burgundy",
+          shadowColor: "shadow-cultural",
+          buttonBg: "from-cultural-burgundy to-urdu-maroon",
         };
       case "warning":
         return {
-          bg: "bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-100",
-          border: "border-amber-400 border-2",
-          text: "text-amber-900",
+          bg: "bg-gradient-to-br from-urdu-light via-cultural-pearl to-urdu-cream",
+          border: "border-cultural-amber border-2",
+          text: "text-cultural-brown",
           icon: <AlertTriangle className="w-7 h-7" />,
-          ornamentColor: "text-amber-600",
-          shadowColor: "shadow-amber-200",
+          ornamentColor: "text-cultural-amber",
+          shadowColor: "shadow-cultural",
+          buttonBg: "from-cultural-amber to-urdu-gold",
         };
       case "confirm":
         return {
-          bg: "bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-100",
-          border: "border-purple-400 border-2",
-          text: "text-purple-900",
+          bg: "bg-gradient-to-br from-urdu-cream via-cultural-pearl to-urdu-light",
+          border: "border-urdu-brown border-2",
+          text: "text-urdu-brown",
           icon: <AlertCircle className="w-7 h-7" />,
-          ornamentColor: "text-purple-600",
-          shadowColor: "shadow-purple-200",
+          ornamentColor: "text-urdu-brown",
+          shadowColor: "shadow-cultural",
+          buttonBg: "from-urdu-brown to-cultural-burgundy",
         };
       default:
         return {
-          bg: "bg-gradient-to-br from-blue-50 via-indigo-50 to-cyan-100",
-          border: "border-blue-400 border-2",
-          text: "text-blue-900",
+          bg: "bg-gradient-to-br from-urdu-cream via-cultural-pearl to-urdu-light",
+          border: "border-urdu-gold border-2",
+          text: "text-urdu-brown",
           icon: <Info className="w-7 h-7" />,
-          ornamentColor: "text-blue-600",
-          shadowColor: "shadow-blue-200",
+          ornamentColor: "text-urdu-gold",
+          shadowColor: "shadow-cultural",
+          buttonBg: "from-urdu-gold to-cultural-amber",
         };
     }
   };
@@ -205,8 +210,8 @@ const CulturalMessagePopup = ({
             <button
               onClick={handleClose}
               className={`absolute top-4 right-4 p-2 rounded-full transition-all duration-300
-                hover:bg-white hover:bg-opacity-60 ${styles.text} hover:scale-110 hover:rotate-90
-                shadow-lg hover:shadow-xl`}
+                hover:bg-urdu-gold/20 ${styles.text} hover:scale-110 hover:rotate-90
+                shadow-md hover:shadow-cultural border border-urdu-gold/30`}
             >
               <X className="w-5 h-5" />
             </button>
@@ -219,8 +224,8 @@ const CulturalMessagePopup = ({
               <div
                 className={`
                 flex-shrink-0 p-3 rounded-full 
-                bg-white bg-opacity-80 ${styles.text}
-                shadow-lg border border-white border-opacity-50
+                bg-gradient-to-r from-urdu-cream to-cultural-pearl ${styles.text}
+                shadow-cultural border border-urdu-gold/30
                 transform hover:scale-105 transition-transform duration-300
               `}
               >
@@ -241,19 +246,17 @@ const CulturalMessagePopup = ({
               </div>
             </div>
 
-            {/* Message Text with Urdu Font Support */}
+            {/* Message Text with Enhanced Urdu Font Support */}
             <div className={`${styles.text} leading-relaxed`}>
-              <div
-                className="font-semibold text-lg mb-2"
-                dir="auto"
-                style={{
-                  fontFamily:
-                    '"Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", "Al Qalam Taj Nastaleeq", serif',
-                  lineHeight: "1.8",
-                }}
-              >
-                {title && <div className="text-xl font-bold mb-2">{title}</div>}
-                {message}
+              <div className="font-urdu urdu-body text-lg mb-2" dir="auto">
+                {title && (
+                  <div className="text-xl font-bold mb-2 font-urdu urdu-heading-md">
+                    {title}
+                  </div>
+                )}
+                <div className="font-urdu urdu-body leading-relaxed text-base">
+                  {message}
+                </div>
               </div>
 
               {/* Confirmation Buttons for confirm type */}
@@ -261,21 +264,13 @@ const CulturalMessagePopup = ({
                 <div className="flex justify-center gap-4 mt-6 mb-4">
                   <button
                     onClick={onCancel}
-                    className="px-6 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                    style={{
-                      fontFamily:
-                        '"Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", "Al Qalam Taj Nastaleeq", serif',
-                    }}
+                    className="px-6 py-3 bg-gradient-to-r from-cultural-charcoal to-cultural-slate text-white rounded-xl hover:from-cultural-slate hover:to-cultural-charcoal transition-all duration-300 shadow-cultural hover:shadow-lg transform hover:-translate-y-1 font-urdu urdu-body"
                   >
                     منسوخ / Cancel
                   </button>
                   <button
                     onClick={onConfirm}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                    style={{
-                      fontFamily:
-                        '"Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", "Al Qalam Taj Nastaleeq", serif',
-                    }}
+                    className={`px-6 py-3 bg-gradient-to-r ${styles.buttonBg} text-white rounded-xl hover:shadow-lg transition-all duration-300 shadow-cultural transform hover:-translate-y-1 font-urdu urdu-body`}
                   >
                     تصدیق / Confirm
                   </button>
