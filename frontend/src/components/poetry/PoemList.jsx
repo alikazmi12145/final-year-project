@@ -1,29 +1,57 @@
 import React, { useState, useEffect } from "react";
-import { Search, Filter, Plus, Grid, List, X, RefreshCw } from "lucide-react";
+import {
+  Search,
+  Filter,
+  Plus,
+  Grid,
+  List,
+  X,
+  RefreshCw,
+  BookOpen,
+  Heart,
+  Languages,
+  Share2,
+} from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useMessage } from "../../context/MessageContext";
+import { usePoems, usePoemInteractions } from "../../hooks/usePoetry";
 import PoemCard from "./PoemCard";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
 
 const PoemList = ({
-  poems = [],
-  loading = false,
+  initialCategory = "all",
+  initialSortBy = "popularity",
   showActions = false,
   onEdit,
   onDelete,
-  onSearch,
-  onFilter,
   showHeader = true,
   showCreateButton = false,
   onCreateNew,
 }) => {
   const { user } = useAuth();
   const { showMessage } = useMessage();
+
+  // Use custom hooks for dynamic poetry data
+  const {
+    poems,
+    loading,
+    error,
+    hasMore,
+    options,
+    loadMore,
+    updateOptions,
+    searchPoems,
+    filterByCategory,
+    refresh,
+  } = usePoems({
+    category: initialCategory,
+    sortBy: initialSortBy,
+  });
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedEra, setSelectedEra] = useState("all");
   const [selectedLanguage, setSelectedLanguage] = useState("urdu");
-  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortBy, setSortBy] = useState(initialSortBy);
   const [sortOrder, setSortOrder] = useState("desc");
   const [viewMode, setViewMode] = useState("grid");
   const [showFilters, setShowFilters] = useState(false);
@@ -94,35 +122,35 @@ const PoemList = ({
     { value: "viewsCount", label: "نظارے" },
   ];
 
-  // Search handler with debouncing
+  // Search handler with debouncing - enhanced with dynamic API
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (onSearch) {
-        onSearch(searchTerm);
+      if (searchTerm.trim()) {
+        searchPoems(searchTerm);
+      } else {
+        updateOptions({ search: undefined });
       }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchTerm, onSearch]);
+  }, [searchTerm, searchPoems, updateOptions]);
 
-  // Filter change handler
+  // Filter change handler - enhanced with dynamic API
   useEffect(() => {
-    if (onFilter) {
-      onFilter({
-        category: selectedCategory,
-        era: selectedEra,
-        language: selectedLanguage,
-        sortBy,
-        sortOrder,
-      });
-    }
+    updateOptions({
+      category: selectedCategory,
+      era: selectedEra,
+      language: selectedLanguage,
+      sortBy,
+      sortOrder,
+    });
   }, [
     selectedCategory,
     selectedEra,
     selectedLanguage,
     sortBy,
     sortOrder,
-    onFilter,
+    updateOptions,
   ]);
 
   const handleSearchChange = (e) => {
@@ -130,31 +158,60 @@ const PoemList = ({
   };
 
   const clearFilters = () => {
-    setSelectedCategory("all");
+    setSelectedCategory(initialCategory);
     setSelectedEra("all");
     setSelectedLanguage("urdu");
-    setSortBy("createdAt");
+    setSortBy(initialSortBy);
     setSortOrder("desc");
     setSearchTerm("");
+    // Refresh data with cleared filters
+    refresh();
   };
 
   const hasActiveFilters = () => {
     return (
-      selectedCategory !== "all" ||
+      selectedCategory !== initialCategory ||
       selectedEra !== "all" ||
       selectedLanguage !== "urdu" ||
-      sortBy !== "createdAt" ||
+      sortBy !== initialSortBy ||
       sortOrder !== "desc" ||
       searchTerm !== ""
     );
   };
 
-  if (loading) {
+  // Handle infinite scroll
+  const handleScroll = () => {
+    if (
+      window.innerHeight + document.documentElement.scrollTop >=
+        document.documentElement.offsetHeight - 1000 &&
+      hasMore &&
+      !loading
+    ) {
+      loadMore();
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [hasMore, loading, loadMore]);
+
+  // Show error state
+  if (error && poems.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-urdu-cream/30 via-white to-urdu-gold/10 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center items-center h-64">
-            <LoadingSpinner />
+          <div className="text-center py-12">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+              <h3 className="text-red-800 font-medium mb-2 urdu-text">خرابی</h3>
+              <p className="text-red-600 text-sm urdu-text">{error}</p>
+              <button
+                onClick={refresh}
+                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors urdu-text"
+              >
+                دوبارہ کوشش کریں
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -292,28 +349,39 @@ const PoemList = ({
                 <div className="text-sm text-urdu-maroon bg-urdu-gold/10 px-3 py-2 rounded-lg flex items-center space-x-2">
                   <span className="font-medium">{poems.length}</span>
                   <span>نظمیں ملیں</span>
+                  {hasMore && (
+                    <span className="text-xs text-urdu-gold">
+                      • مزید لوڈ ہو رہا ہے
+                    </span>
+                  )}
                   <button
-                    onClick={() => window.location.reload()}
+                    onClick={refresh}
                     className="ml-2 p-1 hover:bg-urdu-gold/20 rounded transition-colors"
                     title="دوبارہ لوڈ کریں"
                   >
-                    <RefreshCw className="w-4 h-4" />
+                    <RefreshCw
+                      className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+                    />
                   </button>
                 </div>
               </div>
 
-              {/* Quick Category Filter Buttons - As shown in image */}
+              {/* Quick Category Filter Buttons - Enhanced with dynamic filtering */}
               <div className="flex flex-wrap gap-3 mb-6">
                 {[
                   { value: "all", label: "تمام اقسام" },
                   { value: "ghazal", label: "غزل" },
                   { value: "nazm", label: "نظم" },
                   { value: "rubai", label: "رباعی" },
+                  { value: "qasida", label: "قصیدہ" },
                   { value: "manqabat", label: "منقبت" },
                 ].map((category) => (
                   <button
                     key={category.value}
-                    onClick={() => setSelectedCategory(category.value)}
+                    onClick={() => {
+                      setSelectedCategory(category.value);
+                      filterByCategory(category.value);
+                    }}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       selectedCategory === category.value
                         ? "bg-urdu-brown text-white shadow-lg"
@@ -417,53 +485,81 @@ const PoemList = ({
           </div>
         )}
 
-        {/* Poems Grid/List */}
-        {loading ? (
+        {/* Poems Grid/List - Enhanced with infinite scroll and interactions */}
+        {loading && poems.length === 0 ? (
           <div className="flex justify-center items-center py-20">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-urdu-gold mx-auto mb-4"></div>
-              <p className="text-urdu-brown">نظمیں لوڈ ہو رہی ہیں...</p>
+              <p className="text-urdu-brown urdu-text">
+                نظمیں لوڈ ہو رہی ہیں...
+              </p>
             </div>
           </div>
         ) : poems.length > 0 ? (
-          <div
-            className={
-              viewMode === "grid"
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr"
-                : "space-y-6"
-            }
-          >
-            {poems.map((poem) => (
-              <div
-                key={poem._id}
-                className="flex transform transition-all duration-300 hover:scale-105 hover:shadow-xl"
-              >
-                <PoemCard
-                  poem={poem}
-                  showActions={showActions}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  onBookmark={handleBookmark}
-                  isBookmarked={
-                    user?.bookmarkedPoems?.includes(poem._id) || false
-                  }
-                />
+          <>
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr"
+                  : "space-y-6"
+              }
+            >
+              {poems.map((poem, index) => (
+                <div
+                  key={poem._id || poem.id}
+                  className="flex transform transition-all duration-300 hover:scale-105 hover:shadow-xl"
+                >
+                  <EnhancedPoemCard
+                    poem={poem}
+                    viewMode={viewMode}
+                    showActions={showActions}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    onBookmark={handleBookmark}
+                    isBookmarked={
+                      user?.bookmarkedPoems?.includes(poem._id || poem.id) ||
+                      false
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Loading more indicator */}
+            {loading && poems.length > 0 && (
+              <div className="flex justify-center py-8">
+                <div className="flex items-center gap-3 text-urdu-gold">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-urdu-gold"></div>
+                  <span className="urdu-text">
+                    مزید نظمیں لوڈ ہو رہی ہیں...
+                  </span>
+                </div>
               </div>
-            ))}
-          </div>
+            )}
+
+            {/* End of results */}
+            {!hasMore && poems.length > 0 && (
+              <div className="text-center py-8 text-gray-500 urdu-text">
+                <div className="bg-urdu-cream/30 rounded-lg p-4">
+                  تمام شاعری دکھائی گئی ہے
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-12">
             <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-8 border border-urdu-cream">
-              <h3 className="text-xl font-semibold text-urdu-brown mb-2">
+              <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-urdu-brown mb-2 urdu-text">
                 کوئی نظم نہیں ملی
               </h3>
-              <p className="text-urdu-maroon mb-4">
+              <p className="text-urdu-maroon mb-4 urdu-text">
                 اپنی تلاش کو تبدیل کرنے کی کوشش کریں یا فلٹر کو صاف کریں
               </p>
               {showCreateButton && (
                 <button
                   onClick={onCreateNew}
-                  className="px-6 py-3 bg-gradient-to-r from-urdu-gold to-urdu-maroon text-white rounded-lg hover:shadow-lg transition-all duration-300 hover:scale-105"
+                  className="px-6 py-3 bg-gradient-to-r from-urdu-gold to-urdu-maroon text-white rounded-lg hover:shadow-lg transition-all duration-300 hover:scale-105 urdu-text"
                 >
                   پہلی نظم بنائیں
                 </button>
@@ -473,6 +569,291 @@ const PoemList = ({
         )}
       </div>
     </div>
+  );
+};
+
+/**
+ * Enhanced Poem Card with Dynamic Interactions
+ */
+const EnhancedPoemCard = ({
+  poem,
+  viewMode = "grid",
+  showActions = false,
+  onEdit,
+  onDelete,
+  onBookmark,
+  isBookmarked = false,
+}) => {
+  const {
+    liked,
+    favorited,
+    translation,
+    loading,
+    toggleLike,
+    toggleFavorite,
+    translatePoem,
+    sharePoem,
+  } = usePoemInteractions(poem);
+
+  const [showFullContent, setShowFullContent] = useState(false);
+  const [shareMessage, setShareMessage] = useState("");
+  const [localBookmarked, setLocalBookmarked] = useState(isBookmarked);
+
+  // Handle bookmark
+  const handleBookmarkClick = async () => {
+    try {
+      if (onBookmark) {
+        await onBookmark(poem._id || poem.id);
+        setLocalBookmarked(!localBookmarked);
+      }
+    } catch (error) {
+      console.error("Bookmark error:", error);
+    }
+  };
+
+  // Handle share
+  const handleShare = async () => {
+    const result = await sharePoem("copy");
+    setShareMessage(result.message);
+    setTimeout(() => setShareMessage(""), 3000);
+  };
+
+  const truncatedContent =
+    poem.content?.length > 200
+      ? poem.content.substring(0, 200) + "..."
+      : poem.content;
+
+  const contentToShow = showFullContent ? poem.content : truncatedContent;
+
+  if (viewMode === "list") {
+    return (
+      <div className="bg-white/90 backdrop-blur-sm border border-cultural-pearl rounded-lg p-6 hover:shadow-lg transition-all duration-300 w-full">
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Content */}
+          <div className="flex-1">
+            <div className="flex items-start justify-between mb-3">
+              <h3 className="text-xl font-bold text-gray-800 urdu-heading">
+                {poem.title}
+              </h3>
+              <span className="text-sm text-urdu-gold bg-urdu-cream px-2 py-1 rounded">
+                {poem.category}
+              </span>
+            </div>
+
+            <p
+              className="text-gray-600 urdu-body leading-relaxed mb-4"
+              dir="rtl"
+            >
+              {contentToShow}
+            </p>
+
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-500 urdu-body">
+                <span>شاعر: {poem.poet?.name || poem.author || "نامعلوم"}</span>
+                {poem.metadata?.era && (
+                  <span className="mr-4">دور: {poem.metadata.era}</span>
+                )}
+              </div>
+
+              {poem.content?.length > 200 && (
+                <button
+                  onClick={() => setShowFullContent(!showFullContent)}
+                  className="text-urdu-gold hover:text-urdu-gold/80 text-sm urdu-body"
+                >
+                  {showFullContent ? "کم دکھائیں" : "مزید پڑھیں"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Enhanced Interactions */}
+          <div className="flex md:flex-col gap-2">
+            <ActionButton
+              icon={Heart}
+              active={liked}
+              loading={loading.like}
+              onClick={toggleLike}
+              tooltip="پسند کریں"
+            />
+            <ActionButton
+              icon={BookOpen}
+              active={localBookmarked}
+              onClick={handleBookmarkClick}
+              tooltip="محفوظ کریں"
+            />
+            <ActionButton
+              icon={Languages}
+              loading={loading.translate}
+              onClick={translatePoem}
+              tooltip="ترجمہ"
+            />
+            <ActionButton
+              icon={Share2}
+              onClick={handleShare}
+              tooltip="شیئر کریں"
+            />
+          </div>
+        </div>
+
+        {/* Translation */}
+        {translation && (
+          <div className="mt-4 pt-4 border-t border-cultural-pearl">
+            <h4 className="text-sm font-medium text-urdu-gold mb-2">
+              English Translation:
+            </h4>
+            <p className="text-gray-600 text-sm leading-relaxed" dir="ltr">
+              {translation}
+            </p>
+          </div>
+        )}
+
+        {/* Share message */}
+        {shareMessage && (
+          <div className="mt-2 text-sm text-green-600 urdu-body">
+            {shareMessage}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Grid view - Enhanced
+  return (
+    <div className="bg-white/90 backdrop-blur-sm border border-cultural-pearl rounded-lg overflow-hidden hover:shadow-lg transition-all duration-300 group w-full">
+      {/* Header */}
+      <div className="p-4 bg-gradient-to-r from-urdu-cream to-cultural-pearl/20">
+        <div className="flex items-start justify-between mb-2">
+          <h3 className="text-lg font-bold text-gray-800 urdu-heading group-hover:text-urdu-gold transition-colors">
+            {poem.title}
+          </h3>
+          <span className="text-xs text-urdu-gold bg-white px-2 py-1 rounded">
+            {poem.category}
+          </span>
+        </div>
+        <p className="text-sm text-gray-600 urdu-body">
+          {poem.poet?.name || poem.author || "نامعلوم"}
+        </p>
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
+        <p
+          className="text-gray-700 urdu-body leading-relaxed mb-4 line-clamp-4"
+          dir="rtl"
+        >
+          {poem.content}
+        </p>
+
+        {/* Metadata */}
+        {poem.metadata && (
+          <div className="flex flex-wrap gap-2 mb-4 text-xs text-gray-500">
+            {poem.metadata.era && (
+              <span className="bg-gray-100 px-2 py-1 rounded urdu-body">
+                {poem.metadata.era}
+              </span>
+            )}
+            {poem.metadata.style && (
+              <span className="bg-gray-100 px-2 py-1 rounded urdu-body">
+                {poem.metadata.style}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Enhanced Interactions */}
+        <div className="flex items-center justify-between">
+          <div className="flex gap-2">
+            <ActionButton
+              icon={Heart}
+              active={liked}
+              loading={loading.like}
+              onClick={toggleLike}
+              size="sm"
+            />
+            <ActionButton
+              icon={BookOpen}
+              active={localBookmarked}
+              onClick={handleBookmarkClick}
+              size="sm"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <ActionButton
+              icon={Languages}
+              loading={loading.translate}
+              onClick={translatePoem}
+              size="sm"
+            />
+            <ActionButton icon={Share2} onClick={handleShare} size="sm" />
+          </div>
+        </div>
+
+        {/* Translation */}
+        {translation && (
+          <div className="mt-4 pt-4 border-t border-cultural-pearl">
+            <h5 className="text-xs font-medium text-urdu-gold mb-2">
+              Translation:
+            </h5>
+            <p className="text-gray-600 text-xs leading-relaxed" dir="ltr">
+              {translation}
+            </p>
+          </div>
+        )}
+
+        {/* Share message */}
+        {shareMessage && (
+          <div className="mt-2 text-xs text-green-600 urdu-body">
+            {shareMessage}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Action Button Component for Poem Interactions
+ */
+const ActionButton = ({
+  icon: Icon,
+  active = false,
+  loading = false,
+  onClick,
+  tooltip = "",
+  size = "md",
+}) => {
+  const sizeClasses = {
+    sm: "p-1.5 w-7 h-7",
+    md: "p-2 w-9 h-9",
+  };
+
+  const iconSizes = {
+    sm: "w-3 h-3",
+    md: "w-4 h-4",
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      title={tooltip}
+      className={`${
+        sizeClasses[size]
+      } rounded-lg border transition-all duration-200 ${
+        active
+          ? "bg-urdu-gold text-white border-urdu-gold"
+          : "bg-white text-gray-600 border-cultural-pearl hover:bg-urdu-cream hover:border-urdu-gold hover:text-urdu-gold"
+      } ${loading ? "opacity-50 cursor-not-allowed" : "hover:scale-105"}`}
+    >
+      {loading ? (
+        <div
+          className={`animate-spin rounded-full border-2 border-current border-t-transparent ${iconSizes[size]}`}
+        />
+      ) : (
+        <Icon className={iconSizes[size]} />
+      )}
+    </button>
   );
 };
 
