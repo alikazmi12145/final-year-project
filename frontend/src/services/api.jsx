@@ -767,32 +767,6 @@ export const dashboardAPI = {
 };
 
 //
-// 🔹 Rekhta API (External Classical Poets)
-//
-export const rekhtaAPI = {
-  // Get list of supported classical poets
-  getSupportedPoets: () => axiosInstance.get("/rekhta/poets"),
-
-  // Get poems by poet from Rekhta
-  getPoetPoems: (poetSlug, params = {}) =>
-    axiosInstance.get(`/rekhta/${poetSlug}`, { params }),
-
-  // Get poet biography from Rekhta
-  getPoetBiography: (poetSlug) =>
-    axiosInstance.get(`/rekhta/${poetSlug}/biography`),
-
-  // Search poems in Rekhta
-  searchPoems: (query, params = {}) =>
-    axiosInstance.get("/rekhta/search", {
-      params: { q: query, ...params },
-    }),
-
-  // Get poem details from Rekhta
-  getPoemDetails: (poetSlug, poemId) =>
-    axiosInstance.get(`/rekhta/${poetSlug}/poems/${poemId}`),
-};
-
-//
 // 🔹 OpenAI API for AI features
 //
 export const openaiAPI = {

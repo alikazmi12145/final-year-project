@@ -161,7 +161,11 @@ const PoetCard = ({
               {poet.birthPlace && (
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-urdu-gold" />
-                  <span className="urdu-body">{poet.birthPlace}</span>
+                  <span className="urdu-body">
+                    {typeof poet.birthPlace === 'object' 
+                      ? `${poet.birthPlace.city}, ${poet.birthPlace.region}` 
+                      : poet.birthPlace}
+                  </span>
                 </div>
               )}
 
@@ -428,7 +432,11 @@ const PoetCard = ({
           {poet.birthPlace && (
             <div className="flex items-center gap-2">
               <MapPin className="w-3 h-3 text-urdu-gold" />
-              <span className="urdu-body">{poet.birthPlace}</span>
+              <span className="urdu-body">
+                {typeof poet.birthPlace === 'object' 
+                  ? `${poet.birthPlace.city}, ${poet.birthPlace.region}` 
+                  : poet.birthPlace}
+              </span>
             </div>
           )}
         </div>

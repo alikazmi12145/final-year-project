@@ -25,7 +25,7 @@ const createPoemLimit = rateLimit({
 // Rate limiting for poem operations
 const poemOperationLimit = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 30, // limit each IP to 30 requests per windowMs
+  max: 200, // Increased for development - limit each IP to 200 requests per minute
   message: "Too many requests from this IP, please try again later.",
 });
 
