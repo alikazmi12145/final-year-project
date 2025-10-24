@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Search,
   Filter,
@@ -17,6 +17,26 @@ import { useMessage } from "../../context/MessageContext";
 import { usePoems, usePoemInteractions } from "../../hooks/usePoetry";
 import PoemCard from "./PoemCard";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
+
+// Throttle utility function for performance optimization
+const throttle = (func, delay) => {
+  let timeoutId;
+  let lastExecTime = 0;
+  return function (...args) {
+    const currentTime = Date.now();
+
+    if (currentTime - lastExecTime > delay) {
+      func.apply(this, args);
+      lastExecTime = currentTime;
+    } else {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        func.apply(this, args);
+        lastExecTime = Date.now();
+      }, delay - (currentTime - lastExecTime));
+    }
+  };
+};
 
 const PoemList = ({
   initialCategory = "all",
@@ -179,8 +199,8 @@ const PoemList = ({
     );
   };
 
-  // Handle infinite scroll
-  const handleScroll = () => {
+  // Handle infinite scroll with throttling for better performance
+  const handleScroll = useCallback(() => {
     if (
       window.innerHeight + document.documentElement.scrollTop >=
         document.documentElement.offsetHeight - 1000 &&
@@ -189,12 +209,18 @@ const PoemList = ({
     ) {
       loadMore();
     }
-  };
+  }, [hasMore, loading, loadMore]);
+
+  // Throttled scroll handler
+  const throttledHandleScroll = useCallback(
+    throttle(handleScroll, 100), // Throttle to once every 100ms
+    [handleScroll]
+  );
 
   useEffect(() => {
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [hasMore, loading, loadMore]);
+    window.addEventListener("scroll", throttledHandleScroll);
+    return () => window.removeEventListener("scroll", throttledHandleScroll);
+  }, [throttledHandleScroll]);
 
   // Show error state
   if (error && poems.length === 0) {
@@ -493,6 +519,11 @@ const PoemList = ({
               <p className="text-urdu-brown urdu-text">
                 نظمیں لوڈ ہو رہی ہیں...
               </p>
+              <p className="text-sm text-gray-500 mt-2">
+                {poems.length > 0
+                  ? `${poems.length} نظمیں لوڈ ہو چکی ہیں`
+                  : "براہ کرم انتظار کریں"}
+              </p>
             </div>
           </div>
         ) : poems.length > 0 ? (
@@ -506,7 +537,7 @@ const PoemList = ({
             >
               {poems.map((poem, index) => (
                 <div
-                  key={poem._id || poem.id}
+                  key={`${poem._id || poem.id}-${index}`} // Ensure unique keys
                   className="flex transform transition-all duration-300 hover:scale-105 hover:shadow-xl"
                 >
                   <EnhancedPoemCard

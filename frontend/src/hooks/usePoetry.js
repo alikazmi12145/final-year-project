@@ -23,14 +23,15 @@ export const usePoems = (initialOptions = {}) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [options, setOptions] = useState({
     page: 1,
-    limit: 20,
+    limit: 50, // Increased limit for better performance with large datasets
     category: "all",
     sortBy: "popularity",
     ...initialOptions,
   });
 
-  // Ref to track if component is mounted
+  // Ref to track if component is mounted and prevent multiple fetches
   const isMounted = useRef(true);
+  const fetchingRef = useRef(false);
 
   /**
    * Fetch poems with current options
@@ -38,13 +39,25 @@ export const usePoems = (initialOptions = {}) => {
    */
   const fetchPoems = useCallback(
     async (append = false) => {
-      if (loading) return;
+      if (fetchingRef.current || !isMounted.current) return;
 
+      fetchingRef.current = true;
       setLoading(true);
       setError(null);
 
+      // Add timeout to prevent infinite loading
+      const timeoutId = setTimeout(() => {
+        if (isMounted.current && fetchingRef.current) {
+          setError("Request timed out. Please try again.");
+          setLoading(false);
+          fetchingRef.current = false;
+        }
+      }, 30000); // 30 second timeout
+
       try {
         const response = await poetryService.fetchPoems(options);
+
+        clearTimeout(timeoutId);
 
         if (!isMounted.current) return;
 
@@ -59,6 +72,7 @@ export const usePoems = (initialOptions = {}) => {
           setError(response.error || "Failed to load poems");
         }
       } catch (err) {
+        clearTimeout(timeoutId);
         if (isMounted.current) {
           setError("Network error. Please check your connection.");
           console.error("Poems fetch error:", err);
@@ -67,9 +81,10 @@ export const usePoems = (initialOptions = {}) => {
         if (isMounted.current) {
           setLoading(false);
         }
+        fetchingRef.current = false;
       }
     },
-    [options, loading]
+    [options]
   );
 
   /**
@@ -124,7 +139,7 @@ export const usePoems = (initialOptions = {}) => {
   useEffect(() => {
     const shouldAppend = options.page > 1 && poems.length > 0;
     fetchPoems(shouldAppend);
-  }, [options]);
+  }, [JSON.stringify(options)]); // Use JSON.stringify to avoid infinite re-renders
 
   // Cleanup on unmount
   useEffect(() => {
