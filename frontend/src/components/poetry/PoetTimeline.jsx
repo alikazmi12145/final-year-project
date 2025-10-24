@@ -18,12 +18,16 @@ const PoetTimeline = ({ poet, events = [] }) => {
       id: 1,
       year: poet.birthYear || "1875",
       title: "Birth / پیدائش",
-      description: `Born in ${poet.birthPlace || "Aligarh"}, ${
-        poet.location?.country || "India"
-      }`,
-      descriptionUrdu: `${poet.birthPlace || "علی گڑھ"}، ${
-        poet.location?.country || "ہندوستان"
-      } میں پیدائش`,
+      description: `Born in ${
+        typeof poet.birthPlace === 'object' 
+          ? `${poet.birthPlace.city}, ${poet.birthPlace.region}` 
+          : (poet.birthPlace || "Aligarh")
+      }, ${poet.location?.country || "India"}`,
+      descriptionUrdu: `${
+        typeof poet.birthPlace === 'object' 
+          ? poet.birthPlace.city 
+          : (poet.birthPlace || "علی گڑھ")
+      }، ${poet.location?.country || "ہندوستان"} میں پیدائش`,
       type: "birth",
       icon: "🌟",
       isImportant: true,
@@ -68,10 +72,10 @@ const PoetTimeline = ({ poet, events = [] }) => {
       title: poet.isAlive ? "Present Day / موجودہ دور" : "Death / وفات",
       description: poet.isAlive
         ? `Continues to contribute to Urdu literature`
-        : `Passed away in ${poet.deathPlace || poet.birthPlace || "India"}`,
+        : `Passed away in ${poet.deathPlace || (typeof poet.birthPlace === 'object' ? poet.birthPlace.city : poet.birthPlace) || "India"}`,
       descriptionUrdu: poet.isAlive
         ? `اردو ادب میں اپنا حصہ ڈالتے رہے ہیں`
-        : `${poet.deathPlace || poet.birthPlace || "ہندوستان"} میں وفات`,
+        : `${poet.deathPlace || (typeof poet.birthPlace === 'object' ? poet.birthPlace.city : poet.birthPlace) || "ہندوستان"} میں وفات`,
       type: poet.isAlive ? "present" : "death",
       icon: poet.isAlive ? "✨" : "🌙",
       isImportant: true,

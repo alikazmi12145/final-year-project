@@ -1,10 +1,10 @@
 /**
  * Poetry Service - Centralized API Management
- * Handles all API calls for Rekhta, OpenAI, and other poetry APIs
+ * Handles all API calls for OpenAI and other poetry APIs
  * Includes caching, error handling, retry logic, and token management
  */
 
-import { rekhtaAPI, poetryAPI, openaiAPI } from "./api.jsx";
+import { poetryAPI, openaiAPI } from "./api.jsx";
 import openaiService from "./openaiService.js";
 
 // Cache configuration
@@ -132,29 +132,7 @@ class PoetryService {
 
     try {
       const result = await this.withRetry(async () => {
-        // Try Rekhta API first (only for search queries with search terms)
-        if (search && search.trim()) {
-          try {
-            const rekhtaResponse = await rekhtaAPI.searchPoems(search, {
-              page,
-              limit: cappedLimit,
-              category: category !== "all" ? category : undefined,
-              poet,
-              sortBy,
-            });
-
-            if (rekhtaResponse.data?.success) {
-              return this.formatPoemsResponse(rekhtaResponse.data, "rekhta");
-            }
-          } catch (rekhtaError) {
-            console.warn(
-              "Rekhta API failed, trying local API:",
-              rekhtaError.message
-            );
-          }
-        }
-
-        // Always try local API (primary source for general browsing)
+        // Use local API for all poem queries
         const localResponse = await poetryAPI.getAllPoems({
           page,
           limit: cappedLimit,
@@ -187,7 +165,7 @@ class PoetryService {
   /**
    * Format poems response for consistent structure
    * @param {Object} response - API response
-   * @param {string} source - API source (rekhta/local)
+  * @param {string} source - API source (local)
    * @returns {Object} - Formatted response
    */
   formatPoemsResponse(response, source) {
@@ -268,7 +246,7 @@ class PoetryService {
       slug: poet.slug || poet.name?.toLowerCase().replace(/\s+/g, "-"),
       image: poet.image || poet.avatar || poet.profilePicture,
       bio: poet.bio || poet.description,
-      isClassical: poet.isExternal || poet.isClassical || false,
+  isClassical: poet.isClassical || false,
     };
   }
 
@@ -289,38 +267,10 @@ class PoetryService {
         // Try different sources
         let poetData = null;
 
-        // Try Rekhta API
-        try {
-          const rekhtaBiographyResponse = await rekhtaAPI.getPoetBiography(
-            poetId
-          );
-          if (rekhtaBiographyResponse.data?.success) {
-            const bioData = rekhtaBiographyResponse.data.data;
-
-            // Also try to get poet poems from Rekhta
-            const rekhtaPoemsResponse = await rekhtaAPI.getPoetPoems(poetId);
-            const poemsData = rekhtaPoemsResponse.data?.data || {};
-
-            // Combine biography and basic poet info
-            const combinedData = {
-              ...bioData,
-              ...poemsData,
-              bio: bioData.biography || bioData.bio,
-              name: bioData.name || bioData.title || poemsData.name,
-            };
-
-            poetData = this.formatPoetResponse(combinedData, "rekhta");
-          }
-        } catch (rekhtaError) {
-          console.warn("Rekhta poet API failed:", rekhtaError.message);
-        }
-
-        // Try local API if Rekhta failed
-        if (!poetData) {
-          const localResponse = await poetryAPI.getPoetById(poetId);
-          if (localResponse.success) {
-            poetData = this.formatPoetResponse(localResponse.data, "local");
-          }
+        // Use local API for poet data
+        const localResponse = await poetryAPI.getPoetById(poetId);
+        if (localResponse.success) {
+          poetData = this.formatPoetResponse(localResponse.data, "local");
         }
 
         if (!poetData) {
@@ -379,7 +329,7 @@ class PoetryService {
       birthPlace: poet.birthPlace || poet.location,
       era: poet.era || this.determineEra(poet.birthDate, poet.deathDate),
       language: poet.language || "urdu",
-      isClassical: poet.isExternal || poet.isClassical || source === "rekhta",
+  isClassical: poet.isClassical || false,
       stats: {
         totalPoems: poet.totalPoems || poet.poemCount || 0,
         totalLikes: poet.totalLikes || 0,

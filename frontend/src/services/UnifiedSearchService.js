@@ -7,7 +7,7 @@ class UnifiedSearchService {
   }
 
   /**
-   * Unified search across database, Rekhta API, and OpenAI
+   * Unified search across database and OpenAI (Rekhta disabled)
    * @param {string} query - Search query
    * @param {object} options - Search options
    * @returns {Promise<object>} - Search results from all sources
@@ -17,8 +17,8 @@ class UnifiedSearchService {
       limit = 20,
       page = 1,
       useAI = true,
-      includeRekhta = true,
-      sources = ["database", "rekhta", "ai"],
+      includeRekhta = false, // Disabled by default
+      sources = ["database", "ai"], // Only use database and AI
     } = options;
 
     try {
@@ -56,7 +56,7 @@ class UnifiedSearchService {
 
           // Results by source
           database: data.sources?.database?.poems || [],
-          rekhta: data.sources?.rekhta?.poems || [],
+          // Rekhta removed
           aiSuggestions: data.sources?.ai?.suggestions || [],
           aiRecommendations: data.sources?.ai?.recommendations || [],
         },
@@ -65,7 +65,7 @@ class UnifiedSearchService {
         summary: {
           total: data.combined?.length || 0,
           databaseCount: data.sources?.database?.count || 0,
-          rekhtaCount: data.sources?.rekhta?.count || 0,
+          // Rekhta removed
           aiSuggestionCount: data.sources?.ai?.suggestions?.length || 0,
         },
 
@@ -84,14 +84,14 @@ class UnifiedSearchService {
         results: {
           all: [],
           database: [],
-          rekhta: [],
+          // Rekhta removed
           aiSuggestions: [],
           aiRecommendations: [],
         },
         summary: {
           total: 0,
           databaseCount: 0,
-          rekhtaCount: 0,
+          // Rekhta removed
           aiSuggestionCount: 0,
         },
       };

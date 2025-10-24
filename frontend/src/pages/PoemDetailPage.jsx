@@ -16,6 +16,7 @@ const PoemDetailPage = () => {
   const [relatedPoems, setRelatedPoems] = useState([]);
 
   useEffect(() => {
+    console.log('PoemDetailPage useEffect triggered for id:', id);
     fetchPoem();
   }, [id]);
 
@@ -27,8 +28,8 @@ const PoemDetailPage = () => {
       const response = await poetryAPI.getPoemById(id);
 
       if (response.data.success) {
-        setPoem(response.data.poem);
-        setRelatedPoems(response.data.relatedPoems || []);
+  setPoem(response.data.poem);
+  // Related poems/AI generation removed
       } else {
         console.error("Failed to fetch poem:", response.data.message);
         setPoem(null);

@@ -39,11 +39,15 @@ const throttle = (func, delay) => {
 };
 
 const PoemList = ({
+  poems: poemsProp, // Accept poems as prop
+  loading: loadingProp, // Accept loading as prop
   initialCategory = "all",
   initialSortBy = "popularity",
   showActions = false,
   onEdit,
   onDelete,
+  onSearch,
+  onFilter,
   showHeader = true,
   showCreateButton = false,
   onCreateNew,
@@ -51,22 +55,36 @@ const PoemList = ({
   const { user } = useAuth();
   const { showMessage } = useMessage();
 
-  // Use custom hooks for dynamic poetry data
+  // Use custom hooks for dynamic poetry data ONLY if poems not provided as prop
   const {
-    poems,
-    loading,
+    poems: poemsFromHook,
+    loading: loadingFromHook,
     error,
     hasMore,
     options,
     loadMore,
     updateOptions,
-    searchPoems,
+    searchPoems: searchPoemsHook,
     filterByCategory,
     refresh,
   } = usePoems({
     category: initialCategory,
     sortBy: initialSortBy,
   });
+
+  // Use props if provided, otherwise use hook data
+  const poems = poemsProp !== undefined ? poemsProp : poemsFromHook;
+  const loading = loadingProp !== undefined ? loadingProp : loadingFromHook;
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log("🎨 PoemList rendering:");
+    console.log("  - Poems from prop:", poemsProp?.length);
+    console.log("  - Poems from hook:", poemsFromHook?.length);
+    console.log("  - Using poems:", poems?.length);
+    console.log("  - Loading:", loading);
+  }, [poemsProp, poemsFromHook, poems, loading]);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedEra, setSelectedEra] = useState("all");
@@ -146,30 +164,51 @@ const PoemList = ({
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchTerm.trim()) {
-        searchPoems(searchTerm);
+        // Use onSearch prop if provided, otherwise use hook
+        if (onSearch) {
+          onSearch(searchTerm);
+        } else {
+          searchPoemsHook(searchTerm);
+        }
       } else {
-        updateOptions({ search: undefined });
+        if (onSearch) {
+          onSearch("");
+        } else {
+          updateOptions({ search: undefined });
+        }
       }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchTerm, searchPoems, updateOptions]);
+  }, [searchTerm, onSearch, searchPoemsHook, updateOptions]);
 
   // Filter change handler - enhanced with dynamic API
   useEffect(() => {
-    updateOptions({
-      category: selectedCategory,
-      era: selectedEra,
-      language: selectedLanguage,
-      sortBy,
-      sortOrder,
-    });
+    // Use onFilter prop if provided, otherwise use hook
+    if (onFilter) {
+      onFilter({
+        category: selectedCategory,
+        era: selectedEra,
+        language: selectedLanguage,
+        sortBy,
+        sortOrder,
+      });
+    } else {
+      updateOptions({
+        category: selectedCategory,
+        era: selectedEra,
+        language: selectedLanguage,
+        sortBy,
+        sortOrder,
+      });
+    }
   }, [
     selectedCategory,
     selectedEra,
     selectedLanguage,
     sortBy,
     sortOrder,
+    onFilter,
     updateOptions,
   ]);
 
@@ -185,7 +224,17 @@ const PoemList = ({
     setSortOrder("desc");
     setSearchTerm("");
     // Refresh data with cleared filters
-    refresh();
+    if (onFilter) {
+      onFilter({
+        category: initialCategory,
+        era: "all",
+        language: "urdu",
+        sortBy: initialSortBy,
+        sortOrder: "desc",
+      });
+    } else {
+      refresh();
+    }
   };
 
   const hasActiveFilters = () => {

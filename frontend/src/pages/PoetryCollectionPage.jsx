@@ -32,6 +32,7 @@ const PoetryCollectionPage = () => {
   const fetchPoems = useCallback(async () => {
     try {
       setLoading(true);
+      console.log("🔍 Fetching poems with params:", filters);
 
       const { poetryAPI } = await import("../services/api.jsx");
 
@@ -43,16 +44,21 @@ const PoetryCollectionPage = () => {
         language: filters.poetryLanguage, // Map poetryLanguage back to language for API
       };
 
+      console.log("📡 API Request params:", params);
       const response = await poetryAPI.getAllPoems(params);
+      console.log("✅ API Response:", response.data);
 
       if (response.data.success) {
-        setPoems(response.data.poems || []);
+        const poemsData = response.data.poems || [];
+        console.log(`📚 Got ${poemsData.length} poems from DB`);
+        setPoems(poemsData);
       } else {
         console.error("Failed to fetch poems:", response.data.message);
         setPoems([]);
+        showError("نظمیں لوڈ کرنے میں خرابی / Error loading poems");
       }
     } catch (error) {
-      console.error("Error fetching poems:", error);
+      console.error("❌ Error fetching poems:", error);
       showError("نظمیں لوڈ کرنے میں خرابی / Error loading poems");
       setPoems([]);
     } finally {

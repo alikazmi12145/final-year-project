@@ -24,7 +24,10 @@ const Poets = () => {
   const { id } = useParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [poets, setPoets] = useState([]);
+  const [selectedPoet, setSelectedPoet] = useState(null);
+  const [poetPoems, setPoetPoems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingPoems, setLoadingPoems] = useState(false);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     page: 1,
@@ -40,13 +43,20 @@ const Poets = () => {
     fetchPoets();
   }, [filters, searchTerm]);
 
+  // Fetch specific poet and their poems when id changes
+  useEffect(() => {
+    if (id) {
+      fetchPoetDetail(id);
+    }
+  }, [id]);
+
   const fetchPoets = async () => {
     try {
       setLoading(true);
       setError(null);
 
       // Dynamic import to avoid circular dependencies
-      const { poetAPI, rekhtaAPI } = await import("../services/api.jsx");
+      const { poetAPI } = await import("../services/api.jsx");
 
       const params = {
         ...filters,
@@ -57,32 +67,12 @@ const Poets = () => {
 
       // Fetch poets from MongoDB
       const response = await poetAPI.getAllPoets(params);
-      let mongoPoets = [];
+      let allPoets = [];
 
       if (response?.data?.success) {
-        mongoPoets = response.data.poets || response.data.data || [];
+        allPoets = response.data.poets || response.data.data || [];
       }
 
-      // If no search term, also fetch classical poets from Rekhta
-      let rekhtaPoets = [];
-      if (!searchTerm || searchTerm.trim() === "") {
-        try {
-          const rekhtaResponse = await rekhtaAPI.getSupportedPoets();
-          if (rekhtaResponse?.data?.success) {
-            rekhtaPoets = (rekhtaResponse.data.poets || []).map((poet) => ({
-              ...poet,
-              isExternal: true,
-              source: "rekhta",
-              isDeceased: true, // Classical poets are typically deceased
-            }));
-          }
-        } catch (rekhtaError) {
-          console.log("Rekhta API not available:", rekhtaError.message);
-        }
-      }
-
-      // Combine MongoDB and Rekhta poets
-      const allPoets = [...mongoPoets, ...rekhtaPoets];
       setPoets(Array.isArray(allPoets) ? allPoets : []);
 
       if (allPoets.length === 0) {
@@ -104,6 +94,43 @@ const Poets = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPoetDetail = async (poetId) => {
+    try {
+      setLoading(true);
+      setLoadingPoems(true);
+      setError(null);
+
+      const { poetAPI } = await import("../services/api.jsx");
+      
+      const response = await poetAPI.getPoetById(poetId);
+      
+      if (response?.data?.success) {
+        // Merge the stats from API response into the poet object
+        const poetWithStats = {
+          ...response.data.poet,
+          stats: {
+            poemCount: response.data.stats?.totalPoems || 0,
+            totalLikes: response.data.stats?.totalLikes || 0,
+            totalViews: response.data.stats?.totalViews || 0,
+            totalComments: response.data.stats?.totalComments || 0,
+            averageRating: response.data.stats?.averageRating || 0,
+            followers: response.data.poet?.stats?.followers || 0,
+          }
+        };
+        setSelectedPoet(poetWithStats);
+        setPoetPoems(response.data.poems || []);
+      } else {
+        setError("Poet not found");
+      }
+    } catch (error) {
+      console.error("Error fetching poet detail:", error);
+      setError("Failed to load poet details");
+    } finally {
+      setLoading(false);
+      setLoadingPoems(false);
     }
   };
 
@@ -132,7 +159,7 @@ const Poets = () => {
     },
   };
 
-  const poet = id ? poets.find((p) => p._id === id) : null;
+  const poet = id ? (selectedPoet || poets.find((p) => p._id === id)) : null;
   const enhancedPoet = poet ? { ...poet, ...extendedPoetData } : null;
 
   if (id && enhancedPoet) {
@@ -149,9 +176,9 @@ const Poets = () => {
 
             <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8">
               <div className="w-40 h-40 bg-gradient-to-r from-urdu-gold via-cultural-amber to-urdu-brown rounded-full flex items-center justify-center overflow-hidden shadow-cultural ring-4 ring-urdu-gold/20">
-                {poet.profilePicture ? (
+                {(poet.profileImage?.url || poet.profilePicture) ? (
                   <img
-                    src={poet.profilePicture}
+                    src={poet.profileImage?.url || poet.profilePicture}
                     alt={poet.name}
                     className="w-40 h-40 rounded-full object-cover filter grayscale hover:filter-none transition-all duration-500"
                   />
@@ -189,7 +216,9 @@ const Poets = () => {
                     <div className="flex items-center space-x-2 bg-urdu-gold/10 px-3 py-2 rounded-full">
                       <MapPin className="w-4 h-4 text-urdu-gold" />
                       <span className="text-urdu-brown font-urdu urdu-caption">
-                        {poet.birthPlace}
+                        {typeof poet.birthPlace === 'object' 
+                          ? `${poet.birthPlace.city}, ${poet.birthPlace.region}` 
+                          : poet.birthPlace}
                       </span>
                     </div>
                   )}
@@ -308,27 +337,76 @@ const Poets = () => {
             <div className="absolute bottom-4 left-4 w-16 h-16 bg-cultural-amber/5 rounded-full"></div>
 
             <div className="relative z-10">
-              <div className="flex items-center mb-6">
-                <BookOpen className="w-8 h-8 text-urdu-gold mr-3" />
-                <h2 className="text-2xl font-bold text-urdu-brown font-urdu urdu-heading-md">
-                  {poet.name} کے اشعار / Poems by {poet.name}
-                </h2>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <BookOpen className="w-8 h-8 text-urdu-gold mr-3" />
+                  <h2 className="text-2xl font-bold text-urdu-brown font-urdu urdu-heading-md">
+                    {poet.name} کے اشعار / Poems by {poet.name}
+                  </h2>
+                </div>
+                <span className="text-sm bg-urdu-gold/10 px-4 py-2 rounded-full text-urdu-brown font-urdu">
+                  کل: {poetPoems.length}
+                </span>
               </div>
 
-              <div className="text-center py-12">
-                <div className="w-24 h-24 bg-gradient-to-r from-urdu-gold/20 to-cultural-amber/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-urdu-gold/30">
-                  <BookOpen className="w-12 h-12 text-urdu-gold" />
+              {loadingPoems ? (
+                <div className="text-center py-12">
+                  <LoadingSpinner />
+                  <p className="mt-4 text-urdu-maroon font-urdu">Loading poems...</p>
                 </div>
-                <h3 className="text-xl font-urdu urdu-heading-sm text-urdu-brown mb-2">
-                  اشعار جلد آئیں گے
-                </h3>
-                <p className="text-urdu-maroon font-urdu urdu-body">
-                  Poems will be displayed here
-                </p>
-                <div className="mt-4 text-sm text-cultural-brown bg-urdu-gold/5 px-4 py-2 rounded-lg inline-block">
-                  Coming Soon / جلد آنے والا
+              ) : poetPoems.length > 0 ? (
+                <div className="space-y-4">
+                  {poetPoems.map((poem) => (
+                    <Link
+                      key={poem._id}
+                      to={`/poems/${poem._id}`}
+                      className="block bg-white p-6 rounded-xl border border-urdu-gold/20 hover:shadow-lg hover:border-urdu-gold/40 transition-all duration-300"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <h3 className="text-xl font-bold text-urdu-brown font-urdu urdu-heading-sm">
+                          {poem.title}
+                        </h3>
+                        <span className="text-xs bg-cultural-amber/20 px-3 py-1 rounded-full text-cultural-brown">
+                          {poem.category}
+                        </span>
+                      </div>
+                      
+                      <p className="text-urdu-maroon font-urdu urdu-body leading-relaxed mb-4 line-clamp-3">
+                        {poem.content}
+                      </p>
+                      
+                      <div className="flex items-center gap-4 text-sm text-urdu-maroon/70">
+                        <div className="flex items-center gap-1">
+                          <Heart className="w-4 h-4" />
+                          <span>{poem.likes?.length || 0}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <BookOpen className="w-4 h-4" />
+                          <span>{poem.views || 0} views</span>
+                        </div>
+                        {poem.averageRating > 0 && (
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 fill-current text-urdu-gold" />
+                            <span>{poem.averageRating.toFixed(1)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-24 h-24 bg-gradient-to-r from-urdu-gold/20 to-cultural-amber/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-urdu-gold/30">
+                    <BookOpen className="w-12 h-12 text-urdu-gold" />
+                  </div>
+                  <h3 className="text-xl font-urdu urdu-heading-sm text-urdu-brown mb-2">
+                    ابھی تک کوئی شاعری نہیں
+                  </h3>
+                  <p className="text-urdu-maroon font-urdu urdu-body">
+                    No poems available yet
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -403,12 +481,12 @@ const Poets = () => {
                     className="bg-gradient-to-br from-urdu-cream via-white to-cultural-pearl hover:from-urdu-light hover:to-cultural-pearl hover:shadow-cultural transform hover:-translate-y-1 transition-all duration-300 group overflow-hidden rounded-xl border border-urdu-gold/20 shadow-poetry"
                   >
                     {/* Large Classical Image at Top */}
-                    <div className="h-48 bg-gradient-to-br from-cultural-charcoal to-cultural-slate flex items-center justify-center relative overflow-hidden">
-                      {poet.avatar || poet.image || poet.profilePicture ? (
+                    <div className="h-60 bg-gradient-to-br from-cultural-charcoal to-cultural-slate flex items-center justify-center relative overflow-hidden">
+                      {poet.profileImage?.url || poet.avatar || poet.image || poet.profilePicture ? (
                         <img
-                          src={poet.avatar || poet.image || poet.profilePicture}
+                          src={poet.profileImage?.url || poet.avatar || poet.image || poet.profilePicture}
                           alt={poet.name}
-                          className="w-full h-full object-cover filter grayscale hover:filter-none transition-all duration-500"
+                          className="w-full h-full object-cover bg-center filter grayscale hover:filter-none transition-all duration-500"
                         />
                       ) : (
                         <div className="w-32 h-32 bg-gradient-to-r from-urdu-gold to-cultural-amber rounded-full flex items-center justify-center shadow-lg">
@@ -459,7 +537,9 @@ const Poets = () => {
                           <div className="flex items-center text-xs text-urdu-maroon/80 mt-2">
                             <MapPin className="w-3 h-3 mr-1 text-urdu-gold" />
                             <span className="font-urdu urdu-caption">
-                              {poet.location || poet.birthPlace}
+                              {poet.location || (typeof poet.birthPlace === 'object' 
+                                ? `${poet.birthPlace.city}, ${poet.birthPlace.region}` 
+                                : poet.birthPlace)}
                             </span>
                           </div>
                         )}

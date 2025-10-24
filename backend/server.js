@@ -108,7 +108,6 @@ const startServer = async () => {
     const learningRoutes = await import("./routes/learning.js");
     const searchRoutes = await import("./routes/search.js");
     const dashboardRoutes = await import("./routes/dashboard.js");
-    const rekhtaRoutes = await import("./routes/rekhta.js");
     const poetDashboardRoutes = await import("./routes/poetDashboard.js");
     const chatRoutes = await import("./routes/chat.js");
 
@@ -124,7 +123,6 @@ const startServer = async () => {
     app.use("/api/learning", learningRoutes.default);
     app.use("/api/search", searchRoutes.default);
     app.use("/api/dashboard", dashboardRoutes.default);
-    app.use("/api/rekhta", rekhtaRoutes.default);
     app.use("/api/poet-dashboard", poetDashboardRoutes.default);
     app.use("/api/chat", chatRoutes.default);
 
