@@ -34,7 +34,7 @@ const poetSchema = new mongoose.Schema({
   nationality: String,
   languages: [{
     type: String,
-    enum: ["urdu", "persian", "arabic", "hindi", "punjabi", "other"]
+    enum: ["urdu", "punjabi", "other"]
   }],
   
   // Biography
