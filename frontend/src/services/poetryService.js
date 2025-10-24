@@ -110,7 +110,7 @@ class PoetryService {
   async fetchPoems(options = {}) {
     const {
       page = 1,
-      limit = 20,
+      limit = 50, // Increased default limit for better performance
       category = "all",
       poet = null,
       search = "",
@@ -118,7 +118,13 @@ class PoetryService {
       language = "urdu",
     } = options;
 
-    const cacheKey = `poems_${JSON.stringify(options)}`;
+    // Cap the limit to 100 to prevent performance issues
+    const cappedLimit = Math.min(limit, 100);
+
+    const cacheKey = `poems_${JSON.stringify({
+      ...options,
+      limit: cappedLimit,
+    })}`;
     const cached = poemsCache.get(cacheKey);
     if (cached) {
       return cached;
@@ -131,7 +137,7 @@ class PoetryService {
           try {
             const rekhtaResponse = await rekhtaAPI.searchPoems(search, {
               page,
-              limit,
+              limit: cappedLimit,
               category: category !== "all" ? category : undefined,
               poet,
               sortBy,
@@ -151,7 +157,7 @@ class PoetryService {
         // Always try local API (primary source for general browsing)
         const localResponse = await poetryAPI.getAllPoems({
           page,
-          limit,
+          limit: cappedLimit,
           category: category !== "all" ? category : undefined,
           poet,
           search,
@@ -248,7 +254,6 @@ class PoetryService {
       hasMore,
     };
   }
-
   /**
    * Format poet information consistently
    * @param {Object} poet - Poet data
