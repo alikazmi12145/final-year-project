@@ -5,7 +5,7 @@ import natural from "natural";
 import Tesseract from "tesseract.js";
 import Fuse from "fuse.js";
 import cloudinary from "../config/cloudinary.js";
-import RekhtaService from "../services/rekhtaService.js";
+// import RekhtaService from "../services/rekhtaService.js"; // Disabled - using local DB only
 import AIPoetryService from "../services/aiPoetryService.js";
 import {
   enhanceSearchQuery,
@@ -917,7 +917,7 @@ export const advancedSearch = async (req, res) => {
   }
 };
 
-// 7. Unified Search - Combines Database, Rekhta API, and OpenAI
+// 7. Unified Search - Uses Local Database and OpenAI (Rekhta disabled)
 export const unifiedSearch = async (req, res) => {
   try {
     const {
@@ -925,8 +925,8 @@ export const unifiedSearch = async (req, res) => {
       limit = 20,
       page = 1,
       useAI = true,
-      includeRekhta = true,
-      sources = ["database", "rekhta", "ai"], // Which sources to search
+      includeRekhta = false, // Disabled by default
+      sources = ["database", "ai"], // Only use database and AI by default
     } = req.body;
 
     if (!query || query.trim().length === 0) {
@@ -990,7 +990,9 @@ export const unifiedSearch = async (req, res) => {
       }
     }
 
-    // 2. Search Rekhta API
+    // 2. Search Rekhta API - DISABLED (Using local database only)
+    // Commented out to use only local database
+    /*
     if (sources.includes("rekhta") && includeRekhta) {
       try {
         console.log("🔍 Searching Rekhta API...");
@@ -1076,6 +1078,7 @@ export const unifiedSearch = async (req, res) => {
         results.sources.rekhta.error = error.message;
       }
     }
+    */
 
     // 3. AI-Enhanced Suggestions and Analysis
     if (sources.includes("ai") && useAI) {
@@ -1095,7 +1098,7 @@ export const unifiedSearch = async (req, res) => {
         // Get AI recommendations based on available poems
         const allPoems = [
           ...results.sources.database.poems,
-          ...results.sources.rekhta.poems,
+          // Rekhta disabled - using local database only
         ];
         if (allPoems.length > 0) {
           // Build dynamic user profile based on search context
