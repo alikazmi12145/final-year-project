@@ -4,7 +4,7 @@
  * Includes caching, error handling, retry logic, and token management
  */
 
-import { poetryAPI, openaiAPI } from "./api.jsx";
+import { poetryAPI } from "./api.jsx";
 import openaiService from "./openaiService.js";
 
 // Cache configuration
@@ -386,15 +386,8 @@ class PoetryService {
       return summary;
     } catch (error) {
       console.error("Failed to generate biography summary:", error);
-      // Fallback to basic API
-      try {
-        const fallback = await openaiAPI.summarizeBiography(biography);
-        biographiesCache.set(cacheKey, fallback);
-        return fallback;
-      } catch (fallbackError) {
-        // Return first 200 characters as final fallback
-        return biography.substring(0, 200) + "...";
-      }
+      // Fallback: Return first 200 characters as final fallback
+      return biography.substring(0, 200) + "...";
     }
   }
 
@@ -420,14 +413,8 @@ class PoetryService {
       return translation;
     } catch (error) {
       console.error("Failed to translate biography:", error);
-      // Fallback to basic API
-      try {
-        const fallback = await openaiAPI.translateToEnglish(urduBio);
-        biographiesCache.set(cacheKey, fallback);
-        return fallback;
-      } catch (fallbackError) {
-        return "Translation not available";
-      }
+      // Fallback: Return static message
+      return "Translation not available";
     }
   }
 
@@ -595,12 +582,8 @@ class PoetryService {
 
         // Generate AI suggestions if enabled
         if (fuzzy && query.length > 3) {
-          try {
-            searchResults.suggestions =
-              await openaiAPI.generateSearchSuggestions(query);
-          } catch (error) {
-            console.warn("AI suggestions failed:", error.message);
-          }
+          // Fallback: No AI suggestions available
+          searchResults.suggestions = [];
         }
 
         return searchResults;
@@ -673,11 +656,8 @@ class PoetryService {
    * @returns {Promise<Array>} - AI suggestions
    */
   async getAISuggestions(query) {
-    try {
-      return await openaiAPI.generateSearchSuggestions(query);
-    } catch (error) {
-      return [];
-    }
+    // Fallback: No AI suggestions available
+    return [];
   }
 
   // =================== POEM TRANSLATION ===================
@@ -708,18 +688,8 @@ class PoetryService {
     } catch (error) {
       console.error("Translation failed:", error);
       // Fallback to basic API
-      try {
-        const fallback = await openaiAPI.translatePoem(urduPoem, {
-          category: metadata.category,
-          poet: metadata.poet?.name,
-          style: metadata.style,
-        });
-
-        poemsCache.set(cacheKey, fallback);
-        return fallback;
-      } catch (fallbackError) {
-        return "Translation not available";
-      }
+      // Fallback: Return static message
+      return "Translation not available";
     }
   }
 
@@ -767,24 +737,9 @@ class PoetryService {
         const related = categoryPoems.poems.filter((p) => p._id !== poem._id);
 
         // Try basic AI recommendations as secondary fallback
-        try {
-          const aiRecommendations = await openaiAPI.getRelatedPoems(poem);
-          const combined = [...related, ...aiRecommendations];
-          const unique = combined.filter(
-            (p, index, arr) =>
-              arr.findIndex((item) => item._id === p._id) === index
-          );
-
-          poemsCache.set(cacheKey, unique.slice(0, 6));
-          return unique.slice(0, 6);
-        } catch (fallbackError) {
-          console.warn(
-            "Basic AI recommendations failed:",
-            fallbackError.message
-          );
-          poemsCache.set(cacheKey, related.slice(0, 6));
-          return related.slice(0, 6);
-        }
+        // Fallback: Only use category-based related poems
+        poemsCache.set(cacheKey, related.slice(0, 6));
+        return related.slice(0, 6);
       }
     } catch (error) {
       console.error("Failed to get related poems:", error);

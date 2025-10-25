@@ -1,7 +1,7 @@
 const PoetBiography = require("../models/PoetBiography");
 const Poem = require("../models/Poem");
 const rekhtaService = require("./rekhtaService");
-const openaiService = require("./openaiService");
+// OpenAI service removed
 const mongoose = require("mongoose");
 
 class PoetBiographyService {

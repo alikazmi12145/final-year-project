@@ -39,7 +39,6 @@ export const validateObjectId = (paramName = "id") => {
 export const validateRequest = (schema) => {
   return (req, res, next) => {
     const { error } = schema.validate(req.body);
-
     if (error) {
       return res.status(400).json({
         success: false,
@@ -51,31 +50,8 @@ export const validateRequest = (schema) => {
         })),
       });
     }
-
     next();
   };
-};
-
-/**
- * MongoDB error handler
- */
-export const handleMongoError = (error) => {
-  if (error.name === "ValidationError") {
-    const errors = Object.values(error.errors).map((err) => ({
-      field: err.path,
-      message: err.message,
-    }));
-
-    return {
-      status: 400,
-      response: {
-        success: false,
-        message: "Validation failed",
-        errorCode: "MONGO_VALIDATION_ERROR",
-        errors: errors,
-      },
-    };
-  }
 
   if (error.code === 11000) {
     const field = Object.keys(error.keyPattern)[0];
@@ -222,10 +198,7 @@ export const asyncHandler = (fn) => {
       }
 
       // Try specific error handlers first
-      let handled = handleMongoError(error);
-      if (handled) {
-        return res.status(handled.status).json(handled.response);
-      }
+      // handleMongoError removed (not defined)
 
       // Check if it's an OpenAI error
       if (
@@ -433,8 +406,6 @@ export const validateFileUpload = (req, res, next) => {
 export default {
   validateObjectId,
   validateRequest,
-  handleMongoError,
-  handleOpenAIError,
   handleExternalAPIError,
   asyncHandler,
   requestLogger,
