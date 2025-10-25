@@ -139,13 +139,13 @@ router.get("/resources", learningLimit, async (req, res) => {
       tutorials: [
         {
           _id: "tutorial_1",
-          title: "غزل کی بنیادی باتیں",
+          title: "Basic Ghazal Concepts",
           description: "غزل کی ردیف، قافیہ، اور بحر کو سمجھیں",
           category: "tutorial",
           level: "beginner",
           duration: "30 منٹ",
           content: "غزل اردو شاعری کی سب سے مشہور صنف ہے...",
-          tags: ["غزل", "شاعری", "بنیادی"],
+          tags: ["ghazal", "poetry", "basic"],
           author: { name: "سسٹم" }
         },
         {
