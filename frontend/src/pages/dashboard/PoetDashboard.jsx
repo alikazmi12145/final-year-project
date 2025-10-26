@@ -147,14 +147,25 @@ const PoemCard = ({ poem, onEdit, onDelete, onView }) => (
 );
 
 // Poem Form Modal Component
+const urduToEnglishCategory = {
+  "غزل": "ghazal",
+  "نظم": "nazm",
+  "قطعہ": "rubai",
+  "رباعی": "rubai",
+  "حمد": "hamd",
+  "نعت": "naat",
+  "مرثیہ": "marsiya",
+};
+
 const PoemFormModal = ({ isOpen, onClose, poem, onSave }) => {
   const [formData, setFormData] = useState({
     title: "",
     content: "",
     category: "",
-    language: "urdu",
+    poetryLanguage: "urdu",
   });
   const [loading, setLoading] = useState(false);
+  const [apiErrors, setApiErrors] = useState([]);
 
   useEffect(() => {
     if (poem) {
@@ -162,26 +173,43 @@ const PoemFormModal = ({ isOpen, onClose, poem, onSave }) => {
         title: poem.title || "",
         content: poem.content || "",
         category: poem.category || "",
-        language: poem.language || "urdu",
+        poetryLanguage: poem.poetryLanguage || "urdu",
       });
     } else {
       setFormData({
         title: "",
         content: "",
         category: "",
-        language: "urdu",
+        poetryLanguage: "urdu",
       });
     }
+    setApiErrors([]);
   }, [poem]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setApiErrors([]);
+    // Map Urdu category to English
+    const mappedCategory = urduToEnglishCategory[formData.category] || formData.category;
+    const submitData = {
+      ...formData,
+      category: mappedCategory,
+    };
     try {
-      await onSave(formData);
-      onClose();
+      await onSave(submitData, setApiErrors);
+      if (apiErrors.length === 0) {
+        onClose();
+      }
     } catch (error) {
       console.error("Error saving poem:", error);
+      if (error.response?.data?.errors) {
+        setApiErrors(error.response.data.errors.map((err) => err.msg));
+      } else if (error.response?.data?.message) {
+        setApiErrors([error.response.data.message]);
+      } else {
+        setApiErrors(["نظم محفوظ کرنے میں خرابی"]);
+      }
     }
     setLoading(false);
   };
@@ -194,6 +222,17 @@ const PoemFormModal = ({ isOpen, onClose, poem, onSave }) => {
         <h2 className="text-2xl font-bold text-gray-800 mb-6 text-right">
           {poem ? "نظم میں تبدیلی" : "نئی نظم"}
         </h2>
+
+        {/* API Error Display */}
+        {apiErrors.length > 0 && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 rounded text-red-700">
+            <ul className="mt-2 list-disc pl-5">
+              {apiErrors.map((err, idx) => (
+                <li key={idx}>{err}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -258,9 +297,9 @@ const PoemFormModal = ({ isOpen, onClose, poem, onSave }) => {
                 زبان
               </label>
               <select
-                value={formData.language}
+                value={formData.poetryLanguage}
                 onChange={(e) =>
-                  setFormData({ ...formData, language: e.target.value })
+                  setFormData({ ...formData, poetryLanguage: e.target.value })
                 }
                 className="w-full p-4 border-2 border-gray-200 rounded-xl text-right focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                 dir="rtl"

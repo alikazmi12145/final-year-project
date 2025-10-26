@@ -22,8 +22,7 @@ export const analyzeText = async (text) => {
  * @returns {array} - Array of suggestions
  */
 export const generateSmartSuggestions = async (partialQuery) => {
-  // Return immediately if OpenAI is not configured
-  // OpenAI API removed. Return fallback suggestions.
+  // OpenAI API removed. All AI features are disabled. Use fallback logic only.
   return {
     success: true,
     suggestions: [
@@ -56,8 +55,7 @@ export const improveVoiceTranscription = async (transcription, confidence) => {
     };
   }
 
-  // Return immediately if OpenAI is not configured
-  // OpenAI API removed. Return fallback voice transcription.
+  // OpenAI API removed. All AI features are disabled. Use fallback logic only.
   return {
     success: true,
     improvedText: transcription,

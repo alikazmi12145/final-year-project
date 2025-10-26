@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Save, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
-const PoemForm = ({ onSubmit, initialData = null, isLoading = false }) => {
+const PoemForm = ({ onSubmit, initialData = null, isLoading = false, apiError = null }) => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
@@ -20,6 +20,7 @@ const PoemForm = ({ onSubmit, initialData = null, isLoading = false }) => {
 
   const [tagInput, setTagInput] = useState("");
   const [errors, setErrors] = useState({});
+  const [apiErrors, setApiErrors] = useState([]);
 
   // Categories for poetry
   const categories = [
@@ -109,11 +110,12 @@ const PoemForm = ({ onSubmit, initialData = null, isLoading = false }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    setApiErrors([]);
     if (!validateForm()) {
       return;
     }
 
-    onSubmit(formData);
+    onSubmit(formData, setApiErrors);
   };
 
   return (
@@ -133,6 +135,20 @@ const PoemForm = ({ onSubmit, initialData = null, isLoading = false }) => {
             </h1>
           </div>
         </div>
+
+        {/* API Error Display */}
+        {(apiError || apiErrors.length > 0) && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 rounded text-red-700">
+            {apiError && <div>{apiError}</div>}
+            {apiErrors.length > 0 && (
+              <ul className="mt-2 list-disc pl-5">
+                {apiErrors.map((err, idx) => (
+                  <li key={idx}>{err}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">

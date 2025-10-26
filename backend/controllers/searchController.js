@@ -7,12 +7,7 @@ import Fuse from "fuse.js";
 import cloudinary from "../config/cloudinary.js";
 // import RekhtaService from "../services/rekhtaService.js"; // Disabled - using local DB only
 import AIPoetryService from "../services/aiPoetryService.js";
-import {
-  enhanceSearchQuery,
-  analyzeExtractedText,
-  generateSmartSuggestions,
-  improveVoiceTranscription,
-} from "../config/openai.js";
+
 
 // Timeout wrapper for AI functions to prevent hanging
 const withTimeout = (asyncFn, timeoutMs = 5000) => {
@@ -599,18 +594,7 @@ export const imageSearch = async (req, res) => {
     }
 
     // Use ChatGPT to analyze and improve extracted text
-    let analysisData = null;
     let searchQuery = text;
-
-    try {
-      analysisData = await analyzeExtractedText(text);
-      if (analysisData.success) {
-        searchQuery = analysisData.cleanedText || text;
-      }
-    } catch (error) {
-      console.warn("OCR text analysis failed, using raw OCR:", error.message);
-    }
-
     const cleanedText = processUrduText(searchQuery);
 
     // Search using AI-enhanced extracted text with multiple strategies
@@ -651,43 +635,7 @@ export const imageSearch = async (req, res) => {
       results = fuzzyResults.map((result) => result.item);
     }
 
-    // Additional AI-enhanced search if available
-    if (
-      analysisData &&
-      analysisData.success &&
-      analysisData.searchKeywords.length > 0
-    ) {
-      const aiResults = await Poem.find({
-        $or: [
-          { tags: { $in: analysisData.searchKeywords } },
-          { mood: { $in: analysisData.emotions } },
-          { category: { $in: [analysisData.poetryForm] } },
-          {
-            title: {
-              $regex: analysisData.searchKeywords.join("|"),
-              $options: "i",
-            },
-          },
-          {
-            content: {
-              $regex: analysisData.searchKeywords.join("|"),
-              $options: "i",
-            },
-          },
-        ],
-        status: "published",
-      })
-        .populate("poet", "name bio profileImage")
-        .populate("author", "username profile.fullName")
-        .limit(5);
 
-      // Merge results, avoiding duplicates
-      const existingIds = results.map((r) => r._id.toString());
-      const newResults = aiResults.filter(
-        (r) => !existingIds.includes(r._id.toString())
-      );
-      results = [...results, ...newResults];
-    }
 
     res.json({
       success: true,

@@ -6,17 +6,12 @@ import Poem from "../models/Poem.js";
 import Poet from "../models/poet.js";
 import Review from "../models/Review.js";
 import { poetAuth } from "../middleware/auth.js";
-import OpenAI from "openai";
 import axios from "axios";
 import multer from "multer";
 import cloudinary from "../config/cloudinary.js";
 
 const router = express.Router();
 
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 // Configure multer for file uploads
 const upload = multer({
@@ -671,22 +666,11 @@ Please provide:
 
 Keep the feedback constructive, educational, and encouraging for the poet.`;
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 800,
-        temperature: 0.7,
-      });
-
-      const suggestions = completion.choices[0].message.content;
-
+      // Fallback: AI suggestions removed
       res.json({
-        success: true,
-        data: {
-          suggestions,
-          language,
-          generatedAt: new Date(),
-        },
+        success: false,
+        message: "AI suggestions unavailable. OpenAI API removed.",
+        data: {},
       });
     } catch (error) {
       console.error("AI suggestions error:", error);
@@ -742,24 +726,11 @@ ${content}
 
 Please provide a thoughtful translation that preserves the artistic and emotional qualities of the original.`;
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 600,
-        temperature: 0.8,
-      });
-
-      const translation = completion.choices[0].message.content;
-
+      // Fallback: AI translation removed
       res.json({
-        success: true,
-        data: {
-          original: content,
-          translation,
-          fromLanguage,
-          toLanguage,
-          generatedAt: new Date(),
-        },
+        success: false,
+        message: "AI translation unavailable. OpenAI API removed.",
+        data: {},
       });
     } catch (error) {
       console.error("AI translation error:", error);

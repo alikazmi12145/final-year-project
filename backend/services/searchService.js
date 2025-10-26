@@ -1,5 +1,5 @@
 const Fuse = require("fuse.js");
-const openaiService = require("./openaiService");
+// OpenAI service removed
 const rekhtaService = require("./rekhtaService");
 const Poem = require("../models/Poem");
 const User = require("../models/User");
@@ -242,30 +242,9 @@ class SearchService {
     try {
       console.log("🎤 Processing voice search:", transcription);
 
-      // Clean and enhance transcription with AI
-      const enhancedQuery = await openaiService.enhanceSearchQuery(
-        transcription
-      );
-
-      if (!enhancedQuery.success) {
-        // Fallback to original transcription
-        return await this.textSearch(transcription, filters, limit, page);
-      }
-
-      // Use enhanced query for search
-      const searchResults = await this.textSearch(
-        enhancedQuery.data.enhancedQuery,
-        filters,
-        limit,
-        page
-      );
-
-      searchResults.searchType = "voice";
-      searchResults.originalTranscription = transcription;
-      searchResults.enhancedQuery = enhancedQuery.data.enhancedQuery;
-      searchResults.enhanced = true;
-
-      return searchResults;
+      // AI enhancement removed. Use basic query only.
+      // Fallback to text search
+      return await this.textSearch(transcription, filters, limit, page);
     } catch (error) {
       console.error("Voice search error:", error);
       // Fallback to text search
@@ -289,28 +268,8 @@ class SearchService {
         };
       }
 
-      // Clean OCR text and enhance with AI
-      const enhancedQuery = await openaiService.enhanceSearchQuery(
-        extractedText
-      );
-
-      const queryToUse = enhancedQuery.success
-        ? enhancedQuery.data.enhancedQuery
-        : extractedText.trim();
-
-      const searchResults = await this.textSearch(
-        queryToUse,
-        filters,
-        limit,
-        page
-      );
-
-      searchResults.searchType = "image";
-      searchResults.extractedText = extractedText;
-      searchResults.enhancedQuery = queryToUse;
-      searchResults.enhanced = enhancedQuery.success;
-
-      return searchResults;
+      // AI enhancement removed. Use basic query only.
+      return await this.textSearch(extractedText, filters, limit, page);
     } catch (error) {
       console.error("Image search error:", error);
       return {
@@ -329,38 +288,8 @@ class SearchService {
     try {
       console.log("🧠 Processing semantic search:", query);
 
-      // Get AI recommendations based on query
-      const aiRecommendations = await openaiService.getPoetryRecommendations(
-        query,
-        { limit: limit * 2 } // Get more for better filtering
-      );
-
-      if (!aiRecommendations.success) {
-        // Fallback to text search
-        return await this.textSearch(query, filters, limit, page);
-      }
-
-      // Extract keywords from AI recommendations
-      const keywords = aiRecommendations.data.recommendations
-        .flatMap((rec) => [rec.title, rec.theme, rec.style])
-        .filter(Boolean)
-        .join(" ");
-
-      // Combine original query with AI-suggested keywords
-      const enhancedQuery = `${query} ${keywords}`.trim();
-
-      const searchResults = await this.textSearch(
-        enhancedQuery,
-        filters,
-        limit,
-        page
-      );
-
-      searchResults.searchType = "semantic";
-      searchResults.aiRecommendations = aiRecommendations.data.recommendations;
-      searchResults.enhanced = true;
-
-      return searchResults;
+      // AI recommendations removed. Use basic recommendations only.
+      return await this.textSearch(query, filters, limit, page);
     } catch (error) {
       console.error("Semantic search error:", error);
       return await this.textSearch(query, filters, limit, page);
@@ -463,32 +392,8 @@ class SearchService {
         return searchResults;
       }
 
-      // Get AI analysis of top results
-      const topPoems = searchResults.localResults.slice(0, 5).map((poem) => ({
-        title: poem.title,
-        content: poem.content.substring(0, 500), // Limit content for AI processing
-        author: poem.author,
-      }));
-
-      const aiAnalysis = await openaiService.analyzePoetryTone(
-        topPoems[0].content
-      );
-
-      if (aiAnalysis.success) {
-        searchResults.aiInsights = {
-          dominantTheme: aiAnalysis.data.dominantEmotion,
-          suggestedTags: aiAnalysis.data.themes,
-          emotionalTone: aiAnalysis.data.emotionalIntensity,
-        };
-      }
-
-      // Get similar poems using AI
-      const similarPoems = await openaiService.getSimilarPoetry(originalQuery);
-      if (similarPoems.success) {
-        searchResults.aiSuggestions = similarPoems.data.similarPoems;
-      }
-
-      searchResults.enhanced = true;
+      // AI analysis removed. No tone analysis available.
+      // AI recommendations removed. No similar poetry available.
       return searchResults;
     } catch (error) {
       console.error("AI enhancement error:", error);
