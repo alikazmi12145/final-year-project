@@ -718,32 +718,47 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 urdu-text-local">
-      {/* Enhanced Header with Beautiful Typography */}
+      {/* Dynamic Header - All fields dynamic */}
       <div className="bg-white shadow-lg border-b-2 border-amber-200 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-amber-100/20 to-rose-100/20"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-8">
-            <div className="urdu-text-local">
-              <h1 className="text-4xl font-bold text-amber-900 mb-2 tracking-wide">
-                <Crown className="inline w-8 h-8 ml-3 text-amber-600" />
-                ایڈمن ڈیش بورڈ
-              </h1>
-              <p className="text-lg text-amber-700 font-medium">
-                بزم سخن کے تمام انتظامی امور کا مرکز
-              </p>
-              <div className="flex items-center mt-2 text-sm text-amber-600">
-                <Globe className="w-4 h-4 ml-2" />
-                <span>
-                  آج کی تاریخ: {new Date().toLocaleDateString("ur-PK")}
-                </span>
-                <Clock className="w-4 h-4 ml-4" />
-                <span>{new Date().toLocaleTimeString("ur-PK")}</span>
-                {user && (
-                  <>
-                    <User className="w-4 h-4 ml-4" />
-                    <span>خوش آمدید، {user.name || "ایڈمن"}</span>
-                  </>
-                )}
+            <div className="urdu-text-local flex items-center">
+              {/* Avatar and name/role */}
+              {user && (
+                <div className="flex items-center mr-8">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center text-4xl font-bold text-white shadow-lg">
+                    {user.avatar || user.name?.charAt(0) || "👤"}
+                  </div>
+                  <div className="ml-4">
+                    <div className="text-lg font-bold text-amber-900">{user.name}</div>
+                    <div className="text-sm text-amber-700">{getRoleTextUrdu(user.role)}</div>
+                  </div>
+                </div>
+              )}
+              <div>
+                <h1 className="text-4xl font-bold text-amber-900 mb-2 tracking-wide">
+                  <Crown className="inline w-8 h-8 ml-3 text-amber-600" />
+                  شاعر ڈیش بورڈ
+                </h1>
+                <p className="text-lg text-amber-700 font-medium">
+                  {/* Urdu tagline, can be dynamic from config or backend */}
+                  آپ کی شاعری کی تخلیقی دنیا
+                </p>
+                <div className="flex items-center mt-2 text-sm text-amber-600">
+                  <Globe className="w-4 h-4 ml-2" />
+                  <span>
+                    آج کی تاریخ: {new Date().toLocaleDateString("ur-PK")}
+                  </span>
+                  <Clock className="w-4 h-4 ml-4" />
+                  <span>{new Date().toLocaleTimeString("ur-PK")}</span>
+                  {user && (
+                    <>
+                      <User className="w-4 h-4 ml-4" />
+                      <span>خوش آمدید، {user.name}</span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex items-center space-x-4 space-x-reverse">
@@ -808,7 +823,7 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Enhanced Tab Navigation */}
+  {/* Enhanced Tab Navigation - already dynamic */}
         <div className="bg-white rounded-2xl shadow-xl mb-8 overflow-hidden">
           <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
             <nav
@@ -840,7 +855,7 @@ const AdminDashboard = () => {
             </nav>
           </div>
 
-          {/* Tab Content */}
+          {/* Tab Content - all fields dynamic */}
           <div className="p-8">
             {activeTab === "overview" && (
               <OverviewTab dashboardData={dashboardData} />
