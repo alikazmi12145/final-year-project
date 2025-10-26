@@ -466,63 +466,16 @@ const AdminDashboard = () => {
 
   const loadPoems = async () => {
     try {
-      // Dynamic poem loading - replace with real API
-      // const poems = await adminDashboardAPI.getPoems();
-      const mockPoems = [
-        {
-          _id: "1",
-          title: "محبت کا گیت",
-          author: "احمد علی شاعر",
-          status: "pending",
-          createdAt: new Date(),
-          views: 245,
-          likes: 34,
-          genre: "غزل",
-        },
-        {
-          _id: "2",
-          title: "وطن کی مٹی",
-          author: "فاطمہ خان",
-          status: "approved",
-          createdAt: new Date(),
-          views: 567,
-          likes: 89,
-          genre: "نظم",
-        },
-        {
-          _id: "3",
-          title: "یادوں کا سفر",
-          author: "محمد حسن",
-          status: "reviewing",
-          createdAt: new Date(),
-          views: 123,
-          likes: 23,
-          genre: "قطعہ",
-        },
-        {
-          _id: "4",
-          title: "امید کی کرن",
-          author: "عائشہ احمد",
-          status: "approved",
-          createdAt: new Date(),
-          views: 890,
-          likes: 145,
-          genre: "حمد",
-        },
-        {
-          _id: "5",
-          title: "شب کا سکون",
-          author: "سلیم رضا",
-          status: "pending",
-          createdAt: new Date(),
-          views: 234,
-          likes: 45,
-          genre: "رباعی",
-        },
-      ];
-      setPoems(mockPoems);
+      // Fetch pending poems from backend API
+      const response = await adminDashboardAPI.getPendingPoems();
+      if (response.success) {
+        setPoems(response.poems || []);
+      } else {
+        throw new Error("Failed to load pending poems from API");
+      }
     } catch (err) {
       setError("شاعری کی فہرست لوڈ کرنے میں خرابی");
+      setPoems([]);
     }
   };
 
@@ -623,28 +576,33 @@ const AdminDashboard = () => {
   const handlePoemModeration = async (poemId, approved) => {
     try {
       setRefreshing(true);
-      // Dynamic moderation - replace with real API
-      // await adminDashboardAPI.moderatePoem(poemId, approved ? 'approved' : 'rejected');
-
-      // Update local state for instant feedback
-      setPoems(
-        poems.map((poem) =>
-          poem._id === poemId
-            ? { ...poem, status: approved ? "approved" : "rejected" }
-            : poem
-        )
-      );
-
-      await loadDashboardData();
-
-      setError(null);
-      showSuccess(
-        `شاعری ${approved ? "منظور" : "مسترد"} کر دی گئی / Poem ${
-          approved ? "approved" : "rejected"
-        } successfully`
-      );
+      // Call backend moderation API (fix endpoint)
+      const response = await adminDashboardAPI.approvePoem(poemId, approved);
+      if (response.success) {
+        setPoems(
+          poems.map((poem) =>
+            poem._id === poemId
+              ? { ...poem, status: approved ? "approved" : "rejected" }
+              : poem
+          )
+        );
+        await loadDashboardData();
+        setError(null);
+        showSuccess(
+          `شاعری ${approved ? "منظور" : "مسترد"} کر دی گئی / Poem ${
+            approved ? "approved" : "rejected"
+          } successfully`
+        );
+      } else {
+        throw new Error(response.message || "Moderation failed");
+      }
     } catch (err) {
-      setError(`شاعری کو ${approved ? "منظور" : "مسترد"} کرنے میں خرابی`);
+      if (err.response && (err.response.status === 403 || err.response.status === 401)) {
+        setError("اجازت نہیں ہے - آپ کے پاس اس نظم کو منظور/مسترد کرنے کی اجازت نہیں ہے");
+        showError("اجازت نہیں ہے - آپ کے پاس اس نظم کو منظور/مسترد کرنے کی اجازت نہیں ہے");
+      } else {
+        setError(`شاعری کو ${approved ? "منظور" : "مسترد"} کرنے میں خرابی`);
+      }
     } finally {
       setRefreshing(false);
     }

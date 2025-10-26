@@ -69,6 +69,7 @@ class OpenAIService {
       usage: null,
     };
   }
+// OpenAIService removed. All AI features are disabled. Use fallback logic only.
 }
 
-module.exports = new OpenAIService();
+export default OpenAIService;

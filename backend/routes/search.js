@@ -82,9 +82,7 @@ router.get("/health", (req, res) => {
     success: true,
     message: "Search service is running",
     timestamp: new Date().toISOString(),
-    aiConfigured:
-      process.env.OPENAI_API_KEY &&
-      process.env.OPENAI_API_KEY !== "your-openai-api-key",
+    aiConfigured: false,
   });
 });
 
@@ -200,7 +198,7 @@ router.post(
   getSmartSuggestions
 );
 
-// 🚀 UNIFIED SEARCH - Combines Database, Rekhta API, and OpenAI
+// 🚀 UNIFIED SEARCH - Combines Database and Rekhta API (OpenAI removed)
 router.post(
   "/unified",
   searchLimit,

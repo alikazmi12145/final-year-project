@@ -1,7 +1,7 @@
 const PoetBiography = require("../models/PoetBiography");
 const Poem = require("../models/Poem");
 const rekhtaService = require("./rekhtaService");
-// OpenAI service removed
+// OpenAI service removed. All AI features are disabled. Use fallback logic only.
 const mongoose = require("mongoose");
 
 class PoetBiographyService {

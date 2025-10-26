@@ -23,26 +23,27 @@ const PoemDetailPage = () => {
   const fetchPoem = async () => {
     try {
       setLoading(true);
+      console.log('Fetching poem with id:', id);
       const { poetryAPI } = await import("../services/api.jsx");
-
       const response = await poetryAPI.getPoemById(id);
-
-      if (response.data.success) {
-  setPoem(response.data.poem);
-  // Related poems/AI generation removed
+      console.log('API response:', response);
+      if (response.data.success && response.data.poem) {
+        setPoem(response.data.poem);
       } else {
         console.error("Failed to fetch poem:", response.data.message);
+        showError("نظم نہیں ملی / Poem not found");
         setPoem(null);
       }
     } catch (error) {
       console.error("Error fetching poem:", error);
-
+      if (error.response) {
+        console.error('Error response:', error.response);
+      }
       if (error.response?.status === 404) {
         setPoem(null);
+        showError("نظم نہیں ملی / Poem not found (404)");
       } else if (error.response?.status === 403) {
         const errorMessage = error.response?.data?.message || "Access denied";
-
-        // Check if it's an authentication issue
         if (errorMessage.includes("requires authentication")) {
           showWarning(
             "اس نظم کو دیکھنے کے لیے لاگ ان کریں / Please login to view this poem"

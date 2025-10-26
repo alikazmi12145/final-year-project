@@ -1,7 +1,7 @@
 const Poem = require("../models/Poem");
 const User = require("../models/User");
 const PoetBiography = require("../models/PoetBiography");
-const openaiService = require("./openaiService");
+// OpenAI service removed
 const rekhtaService = require("./rekhtaService");
 const mongoose = require("mongoose");
 
@@ -62,7 +62,7 @@ class PoetryCollectionService {
       // Get AI analysis of the poem
       let aiAnalysis = null;
       try {
-        const analysis = await openaiService.analyzePoetryTone(content);
+  // AI analysis removed. No tone analysis available.
         if (analysis.success) {
           aiAnalysis = {
             dominantEmotion: analysis.data.dominantEmotion,
@@ -182,7 +182,7 @@ class PoetryCollectionService {
       // Generate recommendations
       let recommendations = [];
       try {
-        const recResult = await openaiService.getSimilarPoetry(poem.content);
+  // AI recommendations removed. No similar poetry available.
         if (recResult.success) {
           recommendations = recResult.data.similarPoems || [];
         }
@@ -290,7 +290,7 @@ class PoetryCollectionService {
 
         // Get new AI analysis if content changed
         try {
-          const analysis = await openaiService.analyzePoetryTone(poem.content);
+          // AI analysis removed. No tone analysis available.
           if (analysis.success) {
             poem.aiAnalysis = {
               dominantEmotion: analysis.data.dominantEmotion,
