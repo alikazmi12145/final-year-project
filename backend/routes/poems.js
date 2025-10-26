@@ -557,11 +557,12 @@ router.put(
         });
       }
 
-      // Check ownership
-      if (
-        poem.author.toString() !== req.user.userId &&
-        req.user.role !== "admin"
-      ) {
+      // Check ownership and poet approval
+      const isAuthor = poem.author.toString() === req.user.userId;
+      const isAdmin = req.user.role === "admin";
+      const isApprovedPoet =
+        req.user.role === "poet" && req.user.isApproved && req.user.status === "active";
+      if (!isAuthor && !isAdmin && !isApprovedPoet) {
         return res.status(403).json({
           success: false,
           message: "Not authorized to update this poem",
