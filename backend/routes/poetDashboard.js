@@ -149,26 +149,26 @@ router.get("/overview", poetAuth, async (req, res) => {
       recentPoems,
       topPoems,
     ] = await Promise.all([
-      Poem.countDocuments({ poet: poetId }),
-      Poem.countDocuments({ poet: poetId, status: "published" }),
-      Poem.countDocuments({ poet: poetId, status: "pending" }),
-      Poem.countDocuments({ poet: poetId, status: "rejected" }),
+      Poem.countDocuments({ author: poetId }),
+      Poem.countDocuments({ author: poetId, status: "published" }),
+      Poem.countDocuments({ author: poetId, status: "pending" }),
+      Poem.countDocuments({ author: poetId, status: "rejected" }),
       Poem.aggregate([
-        { $match: { poet: poetId } },
-        { $group: { _id: null, total: { $sum: "$stats.views" } } },
+        { $match: { author: poetId } },
+        { $group: { _id: null, total: { $sum: "$views" } } },
       ]),
       Poem.aggregate([
-        { $match: { poet: poetId } },
-        { $group: { _id: null, total: { $sum: "$stats.favorites" } } },
+        { $match: { author: poetId } },
+        { $group: { _id: null, total: { $sum: { $size: { $ifNull: ["$bookmarks", []] } } } } },
       ]),
-      Poem.find({ poet: poetId })
+      Poem.find({ author: poetId })
         .sort({ createdAt: -1 })
         .limit(5)
-        .select("title status createdAt stats"),
-      Poem.find({ poet: poetId, status: "published" })
-        .sort({ "stats.views": -1 })
+        .select("title status createdAt views"),
+      Poem.find({ author: poetId, status: "published" })
+        .sort({ views: -1 })
         .limit(5)
-        .select("title stats"),
+        .select("title views"),
     ]);
 
     // Calculate engagement rate
@@ -180,15 +180,15 @@ router.get("/overview", poetAuth, async (req, res) => {
     // Get monthly growth (last 30 days)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const [newPoemsThisMonth, newViewsThisMonth] = await Promise.all([
-      Poem.countDocuments({ poet: poetId, createdAt: { $gte: thirtyDaysAgo } }),
+      Poem.countDocuments({ author: poetId, createdAt: { $gte: thirtyDaysAgo } }),
       Poem.aggregate([
         {
           $match: {
-            poet: poetId,
+            author: poetId,
             createdAt: { $gte: thirtyDaysAgo },
           },
         },
-        { $group: { _id: null, total: { $sum: "$stats.views" } } },
+        { $group: { _id: null, total: { $sum: "$views" } } },
       ]),
     ]);
 
@@ -405,7 +405,7 @@ router.get("/poems", poetAuth, async (req, res) => {
     } = req.query;
 
     // Build filter object for poet's poems only
-    const filter = { poet: req.user._id };
+    const filter = { author: req.user._id };
     if (status && status !== "all") filter.status = status;
     if (category && category !== "all") filter.category = category;
     if (search) {
@@ -425,7 +425,7 @@ router.get("/poems", poetAuth, async (req, res) => {
         .sort(sortObj)
         .skip(skip)
         .limit(parseInt(limit))
-        .select("title content category status stats createdAt translations"),
+        .select("title content category status views likes bookmarks createdAt translations"),
       Poem.countDocuments(filter),
     ]);
 
@@ -487,13 +487,9 @@ router.post(
 
       const poemData = {
         ...req.body,
-        poet: req.user._id,
+        poet: req.user._id, // Reference to Poet model (optional)
+        author: req.user._id, // Reference to User model (required)
         status: "pending", // New poems need approval
-        stats: {
-          views: 0,
-          favorites: 0,
-          shares: 0,
-        },
       };
 
       const poem = new Poem(poemData);
@@ -553,7 +549,7 @@ router.put(
       const { id } = req.params;
 
       // Check if poem belongs to the poet
-      const poem = await Poem.findOne({ _id: id, poet: req.user._id });
+      const poem = await Poem.findOne({ _id: id, author: req.user._id });
       if (!poem) {
         return res.status(404).json({
           success: false,
@@ -597,7 +593,7 @@ router.delete("/poems/:id", poetAuth, async (req, res) => {
     const { id } = req.params;
 
     // Check if poem belongs to the poet
-    const poem = await Poem.findOne({ _id: id, poet: req.user._id });
+    const poem = await Poem.findOne({ _id: id, author: req.user._id });
     if (!poem) {
       return res.status(404).json({
         success: false,
@@ -852,7 +848,7 @@ router.get("/analytics", poetAuth, async (req, res) => {
     ] = await Promise.all([
       // Poem creation over time
       Poem.aggregate([
-        { $match: { poet: poetId, createdAt: { $gte: startDate } } },
+        { $match: { author: poetId, createdAt: { $gte: startDate } } },
         {
           $group: {
             _id: {
@@ -866,41 +862,41 @@ router.get("/analytics", poetAuth, async (req, res) => {
 
       // Views over time
       Poem.aggregate([
-        { $match: { poet: poetId, createdAt: { $gte: startDate } } },
+        { $match: { author: poetId, createdAt: { $gte: startDate } } },
         {
           $group: {
             _id: {
               $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
             },
-            views: { $sum: "$stats.views" },
+            views: { $sum: "$views" },
           },
         },
         { $sort: { _id: 1 } },
       ]),
 
-      // Favorites over time
+      // Favorites over time (using bookmarks array length)
       Poem.aggregate([
-        { $match: { poet: poetId, createdAt: { $gte: startDate } } },
+        { $match: { author: poetId, createdAt: { $gte: startDate } } },
         {
           $group: {
             _id: {
               $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
             },
-            favorites: { $sum: "$stats.favorites" },
+            favorites: { $sum: { $size: { $ifNull: ["$bookmarks", []] } } },
           },
         },
         { $sort: { _id: 1 } },
       ]),
 
       // Top performing poems
-      Poem.find({ poet: poetId, status: "published" })
-        .sort({ "stats.views": -1 })
+      Poem.find({ author: poetId, status: "published" })
+        .sort({ views: -1 })
         .limit(10)
-        .select("title stats category createdAt"),
+        .select("title views category createdAt"),
 
       // Category distribution
       Poem.aggregate([
-        { $match: { poet: poetId, status: "published" } },
+        { $match: { author: poetId, status: "published" } },
         { $group: { _id: "$category", count: { $sum: 1 } } },
         { $sort: { count: -1 } },
       ]),

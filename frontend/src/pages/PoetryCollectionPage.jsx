@@ -17,9 +17,10 @@ const PoetryCollectionPage = () => {
 
   const [poems, setPoems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState(0); // Total count from API
   const [filters, setFilters] = useState({
     page: 1,
-    limit: 20,
+    limit: 1000, // Fetch all poems at once (increased from 20)
     category: "all",
     era: "all",
     poetryLanguage: "urdu",
@@ -50,8 +51,10 @@ const PoetryCollectionPage = () => {
 
       if (response.data.success) {
         const poemsData = response.data.poems || [];
-        console.log(`📚 Got ${poemsData.length} poems from DB`);
+        const total = response.data.pagination?.total || poemsData.length;
+        console.log(`📚 Got ${poemsData.length} poems from DB (Total: ${total})`);
         setPoems(poemsData);
+        setTotalCount(total); // Store total count for display
       } else {
         console.error("Failed to fetch poems:", response.data.message);
         setPoems([]);
@@ -122,6 +125,8 @@ const PoetryCollectionPage = () => {
       <PoemList
         poems={poems}
         loading={loading}
+        totalCount={totalCount}
+        hasMore={false}
         showActions={user?.role === "poet" || user?.role === "admin"}
         onEdit={handleEdit}
         onDelete={handleDelete}

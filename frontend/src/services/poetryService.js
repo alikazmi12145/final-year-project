@@ -85,10 +85,15 @@ class PoetryService {
    * @returns {boolean} - Whether error is retryable
    */
   isRetryableError(error) {
+    // Don't retry timeout errors - they just make things worse
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      return false;
+    }
+    
     const retryableCodes = [408, 429, 500, 502, 503, 504];
     return error.response?.status
       ? retryableCodes.includes(error.response.status)
-      : true;
+      : false; // Changed: Don't retry network errors by default
   }
 
   /**
@@ -706,8 +711,8 @@ class PoetryService {
     if (cached) return cached;
 
     try {
-      // Get all available poems for AI analysis
-      const allPoemsResponse = await this.fetchPoems({ limit: 100 });
+      // Fetch fewer poems for better performance (was 100, now 30)
+      const allPoemsResponse = await this.fetchPoems({ limit: 30 });
       const availablePoems = allPoemsResponse.poems || [];
 
       // Use enhanced OpenAI service for similarity matching

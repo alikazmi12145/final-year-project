@@ -52,7 +52,7 @@ class UserController {
         followersCount,
         followingCount,
       ] = await Promise.all([
-        Poem.countDocuments({ author: user._id, status: "published" }),
+        Poem.countDocuments({ author: user._id }), // Count ALL poems, not just published
         Collection.countDocuments({ author: user._id, isPublic: true }),
         Review.countDocuments({ author: user._id }),
         User.countDocuments({ following: user._id }),

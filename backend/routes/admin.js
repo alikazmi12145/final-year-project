@@ -394,8 +394,19 @@ router.delete("/users/:id", adminAuth, async (req, res) => {
 });
 
 // User Approval System
-router.put("/users/:id/approve", adminAuth, async (req, res) => {
+router.put("/users/:id/approve", adminAuth, [
+  body("approvedReason").optional().trim().isLength({ max: 500 }),
+], async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array(),
+      });
+    }
+
     const { approvedReason } = req.body;
     const user = await User.findById(req.params.id);
 
@@ -403,6 +414,14 @@ router.put("/users/:id/approve", adminAuth, async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "User not found",
+      });
+    }
+
+    // Check if already approved
+    if (user.status === "active" && user.isApproved) {
+      return res.status(400).json({
+        success: false,
+        message: "User is already approved",
       });
     }
 
@@ -486,8 +505,24 @@ router.put("/users/:id/approve", adminAuth, async (req, res) => {
   }
 });
 
-router.put("/users/:id/reject", adminAuth, async (req, res) => {
+router.put("/users/:id/reject", adminAuth, [
+  body("rejectedReason")
+    .optional()
+    .trim()
+    .isLength({ min: 10, max: 500 })
+    .withMessage("Rejection reason must be between 10 and 500 characters"),
+], async (req, res) => {
   try {
+    // Validate input
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation errors",
+        errors: errors.array(),
+      });
+    }
+
     const { rejectedBy, rejectedReason } = req.body;
     const user = await User.findById(req.params.id);
 
@@ -495,6 +530,14 @@ router.put("/users/:id/reject", adminAuth, async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "User not found",
+      });
+    }
+
+    // Check if user is already rejected
+    if (user.status === "rejected") {
+      return res.status(400).json({
+        success: false,
+        message: "User is already rejected",
       });
     }
 
@@ -565,8 +608,34 @@ router.put("/users/:id/reject", adminAuth, async (req, res) => {
   }
 });
 
-router.put("/users/:id/suspend", adminAuth, async (req, res) => {
+router.put("/users/:id/suspend", adminAuth, [
+  body("suspendedReason")
+    .optional()
+    .trim()
+    .isLength({ min: 10, max: 500 })
+    .withMessage("Suspension reason must be between 10 and 500 characters"),
+  body("suspendedUntil")
+    .optional()
+    .isISO8601()
+    .withMessage("Invalid date format for suspension end date")
+    .custom((value) => {
+      if (new Date(value) <= new Date()) {
+        throw new Error("Suspension end date must be in the future");
+      }
+      return true;
+    }),
+], async (req, res) => {
   try {
+    // Validate input
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation errors",
+        errors: errors.array(),
+      });
+    }
+
     const { suspendedBy, suspendedReason, suspendedUntil } = req.body;
     const user = await User.findById(req.params.id);
 
@@ -574,6 +643,14 @@ router.put("/users/:id/suspend", adminAuth, async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "User not found",
+      });
+    }
+
+    // Check if user is already suspended
+    if (user.status === "suspended") {
+      return res.status(400).json({
+        success: false,
+        message: "User is already suspended",
       });
     }
 
@@ -637,16 +714,26 @@ router.put("/users/:id/suspend", adminAuth, async (req, res) => {
 });
 
 // Bulk user approval
-router.put("/users/bulk-approve", adminAuth, async (req, res) => {
+router.put("/users/bulk-approve", adminAuth, [
+  body("userIds")
+    .isArray({ min: 1 })
+    .withMessage("User IDs array is required and must contain at least one ID"),
+  body("userIds.*")
+    .isMongoId()
+    .withMessage("Each user ID must be a valid MongoDB ID"),
+], async (req, res) => {
   try {
-    const { userIds } = req.body;
-
-    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+    // Validate input
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        message: "User IDs array is required",
+        message: "Validation errors",
+        errors: errors.array(),
       });
     }
+
+    const { userIds } = req.body;
 
     // Update all users
     const updateResult = await User.updateMany(
@@ -752,16 +839,33 @@ router.get("/users/pending", adminAuth, async (req, res) => {
 });
 
 // Bulk user operations
-router.put("/users/bulk", adminAuth, async (req, res) => {
+router.put("/users/bulk", adminAuth, [
+  body("userIds")
+    .isArray({ min: 1 })
+    .withMessage("User IDs array is required and must contain at least one ID"),
+  body("userIds.*")
+    .isMongoId()
+    .withMessage("Each user ID must be a valid MongoDB ID"),
+  body("updateData")
+    .isObject()
+    .withMessage("Update data must be an object"),
+  body("updateData.status")
+    .optional()
+    .isIn(["active", "pending", "suspended", "banned", "rejected"])
+    .withMessage("Invalid status value"),
+], async (req, res) => {
   try {
-    const { userIds, updateData } = req.body;
-
-    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+    // Validate input
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        message: "User IDs array is required",
+        message: "Validation errors",
+        errors: errors.array(),
       });
     }
+
+    const { userIds, updateData } = req.body;
 
     // Add admin metadata
     updateData.updatedBy = req.user._id;
@@ -902,6 +1006,180 @@ router.put(
   }
 );
 
+// Poem Management - Get all poems with filtering
+router.get("/poems", adminAuth, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status, category, search } = req.query;
+    const skip = (page - 1) * limit;
+
+    // Build query
+    const query = {};
+    if (status && status !== "all") query.status = status;
+    if (category && category !== "all") query.category = category;
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { content: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const poems = await Poem.find(query)
+      .populate("author", "name email")
+      .populate("poet", "name")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .select("title content category status views likes bookmarks createdAt updatedAt");
+
+    const total = await Poem.countDocuments(query);
+
+    res.json({
+      success: true,
+      poems,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("Get poems error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch poems",
+    });
+  }
+});
+
+// Get single poem by ID
+router.get("/poems/:id", adminAuth, async (req, res) => {
+  try {
+    const poem = await Poem.findById(req.params.id)
+      .populate("author", "name email role")
+      .populate("poet", "name bio")
+      .populate("moderatedBy", "name email");
+
+    if (!poem) {
+      return res.status(404).json({
+        success: false,
+        message: "Poem not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      poem,
+    });
+  } catch (error) {
+    console.error("Get poem error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch poem",
+    });
+  }
+});
+
+// Update poem
+router.put("/poems/:id", adminAuth, [
+  body("title").optional().trim().isLength({ min: 2, max: 200 }),
+  body("content").optional().trim().isLength({ min: 10 }),
+  body("category").optional().trim(),
+  body("status").optional().isIn(["draft", "pending", "approved", "rejected", "published"]),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array(),
+      });
+    }
+
+    const poem = await Poem.findByIdAndUpdate(
+      req.params.id,
+      { ...req.body, updatedAt: new Date() },
+      { new: true, runValidators: true }
+    );
+
+    if (!poem) {
+      return res.status(404).json({
+        success: false,
+        message: "Poem not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Poem updated successfully",
+      poem,
+    });
+  } catch (error) {
+    console.error("Update poem error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update poem",
+    });
+  }
+});
+
+// Delete poem
+router.delete("/poems/:id", adminAuth, async (req, res) => {
+  try {
+    const poem = await Poem.findByIdAndDelete(req.params.id);
+
+    if (!poem) {
+      return res.status(404).json({
+        success: false,
+        message: "Poem not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Poem deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete poem error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete poem",
+    });
+  }
+});
+
+// Feature/Unfeature poem
+router.put("/poems/:id/feature", adminAuth, async (req, res) => {
+  try {
+    const { featured } = req.body;
+    const poem = await Poem.findById(req.params.id);
+
+    if (!poem) {
+      return res.status(404).json({
+        success: false,
+        message: "Poem not found",
+      });
+    }
+
+    poem.featured = featured;
+    poem.featuredAt = featured ? new Date() : null;
+    await poem.save();
+
+    res.json({
+      success: true,
+      message: `Poem ${featured ? "featured" : "unfeatured"} successfully`,
+      poem,
+    });
+  } catch (error) {
+    console.error("Feature poem error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to feature poem",
+    });
+  }
+});
+
 // Content Moderation
 router.get("/content/flagged", moderatorAuth, async (req, res) => {
   try {
@@ -984,10 +1262,19 @@ router.put(
 
       // Update moderation status
       if (type === "poem") {
-        content.status = action === "approve" ? "approved" : "rejected";
+        // Use proper Poem model status values
+        content.status = action === "approve" ? "published" : "rejected";
         content.moderatedBy = req.user._id;
         content.moderatedAt = new Date();
         content.moderationNotes = moderationNotes;
+        
+        // If approving, set published flag and date
+        if (action === "approve") {
+          content.published = true;
+          if (!content.publishedAt) {
+            content.publishedAt = new Date();
+          }
+        }
       } else if (type === "news") {
         content.moderationStatus =
           action === "approve" ? "approved" : "rejected";
@@ -1001,12 +1288,14 @@ router.put(
       res.json({
         success: true,
         message: `Content ${action}ed successfully`,
+        content,
       });
     } catch (error) {
       console.error("Moderate content error:", error);
       res.status(500).json({
         success: false,
         message: "Failed to moderate content",
+        error: error.message,
       });
     }
   }

@@ -80,71 +80,84 @@ const StatsCard = ({ title, value, change, icon: Icon, color, trend }) => (
   </div>
 );
 
-// Poem Card Component
-const PoemCard = ({ poem, onEdit, onDelete, onView }) => (
-  <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-100 hover:shadow-2xl transition-all duration-300">
-    <div className="flex justify-between items-start mb-4">
-      <div className="flex-1">
-        <h3 className="text-xl font-bold text-gray-800 mb-2 line-clamp-1">
-          {poem.title}
-        </h3>
-        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-          {poem.content?.substring(0, 100)}...
-        </p>
-        <div className="flex items-center space-x-4 text-sm text-gray-500">
-          <span className="flex items-center">
-            <Eye className="w-4 h-4 mr-1" />
-            {poem.stats?.views || 0}
-          </span>
-          <span className="flex items-center">
-            <Heart className="w-4 h-4 mr-1" />
-            {poem.stats?.favorites || 0}
-          </span>
+// Poem Card Component - Matching Image Design
+const PoemCard = ({ poem, onEdit, onDelete, onView }) => {
+  const getStatusBadge = (status) => {
+    const badges = {
+      published: { text: "شائع شدہ", class: "bg-green-100 text-green-800" },
+      pending: { text: "زیر نظر", class: "bg-yellow-100 text-yellow-800" },
+      rejected: { text: "مسترد", class: "bg-red-100 text-red-800" },
+    };
+    return badges[status] || badges.pending;
+  };
+
+  const statusBadge = getStatusBadge(poem.status);
+
+  return (
+    <div className="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100">
+      {/* Header with Title and Actions */}
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex-1">
+          <h3 className="text-xl font-bold text-gray-800 mb-2 line-clamp-1 urdu-text">
+            {poem.title}
+          </h3>
           <span
-            className={`px-2 py-1 rounded-full text-xs ${
-              poem.status === "published"
-                ? "bg-green-100 text-green-800"
-                : poem.status === "pending"
-                ? "bg-yellow-100 text-yellow-800"
-                : "bg-red-100 text-red-800"
-            }`}
+            className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${statusBadge.class}`}
           >
-            {poem.status === "published"
-              ? "شائع شدہ"
-              : poem.status === "pending"
-              ? "زیر نظر"
-              : "مسترد"}
+            {statusBadge.text}
           </span>
         </div>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => onEdit(poem)}
+            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="ترمیم"
+          >
+            <Edit className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => onDelete(poem._id)}
+            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            title="حذف کریں"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        </div>
       </div>
-      <div className="flex space-x-2">
+
+      {/* Poem Content Preview */}
+      <p className="text-gray-600 text-sm mb-4 line-clamp-3 leading-relaxed urdu-text" dir="rtl">
+        {poem.content?.substring(0, 150)}
+        {poem.content?.length > 150 && "..."}
+      </p>
+
+      {/* Stats and Info */}
+      <div className="flex items-center justify-between border-t border-gray-100 pt-4">
+        <div className="flex items-center space-x-4 text-sm text-gray-500">
+          <span className="flex items-center">
+            <Eye className="w-4 h-4 ml-1" />
+            {poem.views || 0}
+          </span>
+          <span className="flex items-center">
+            <Heart className="w-4 h-4 ml-1" />
+            {poem.bookmarks?.length || 0}
+          </span>
+        </div>
         <button
-          onClick={() => onEdit(poem)}
-          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          onClick={() => onView(poem)}
+          className="text-blue-600 hover:text-blue-800 text-sm font-medium urdu-text"
         >
-          <Edit className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => onDelete(poem._id)}
-          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-        >
-          <Trash2 className="w-4 h-4" />
+          تفصیل دیکھیں
         </button>
       </div>
-    </div>
-    <div className="flex justify-between items-center">
-      <span className="text-xs text-gray-400">
+
+      {/* Date */}
+      <div className="mt-2 text-xs text-gray-400 text-right">
         {new Date(poem.createdAt).toLocaleDateString("ur-PK")}
-      </span>
-      <button
-        onClick={() => onView(poem)}
-        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-      >
-        تفصیل دیکھیں
-      </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Poem Form Modal Component
 const urduToEnglishCategory = {
@@ -336,7 +349,7 @@ const PoetDashboard = () => {
   const { user, logout } = useAuth();
   const { showConfirm, showSuccess } = useMessage();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("poems");
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
   const [poems, setPoems] = useState([]);
@@ -353,90 +366,111 @@ const PoetDashboard = () => {
     try {
       setLoading(true);
 
-      // Load poet's poems using the existing poetryAPI
-      const poemsResponse = await poetryAPI.getMyPoems({ limit: 20 });
-      const poetPoems = poemsResponse.data?.poems || [];
+      // Fetch dynamic data from poet dashboard API
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        navigate("/auth");
+        return;
+      }
+
+      // Fetch overview data from backend
+      const overviewResponse = await axios.get(
+        `${API_BASE_URL}/poet-dashboard/overview`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const overviewData = overviewResponse.data.data;
+
+      // Fetch poems data
+      const poemsResponse = await axios.get(
+        `${API_BASE_URL}/poet-dashboard/poems`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { limit: 20, sortBy: "createdAt", sortOrder: "desc" },
+        }
+      );
+
+      const poetPoems = poemsResponse.data.data.poems || [];
       setPoems(poetPoems);
 
-      // Calculate dashboard statistics from actual data
-      const totalPoems = poetPoems.length;
-      const publishedPoems = poetPoems.filter(
-        (p) => p.status === "published"
-      ).length;
-      const pendingPoems = poetPoems.filter(
-        (p) => p.status === "pending"
-      ).length;
-      const totalViews = poetPoems.reduce(
-        (sum, poem) => sum + (poem.views || 0),
-        0
-      );
-      const totalLikes = poetPoems.reduce(
-        (sum, poem) => sum + (poem.likes || 0),
-        0
+      // Fetch analytics data
+      const analyticsResponse = await axios.get(
+        `${API_BASE_URL}/poet-dashboard/analytics`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { period: "month" },
+        }
       );
 
-      // Mock analytics data until we have real analytics API
-      const mockAnalytics = {
-        viewsOverTime: [
-          { date: "1 Jan", views: 45 },
-          { date: "15 Jan", views: 52 },
-          { date: "1 Feb", views: 61 },
-          { date: "15 Feb", views: 58 },
-          { date: "1 Mar", views: 67 },
-          { date: "15 Mar", views: 74 },
-        ],
-        topPoems: poetPoems.slice(0, 5).map((poem) => ({
-          title: poem.title,
-          views: poem.views || Math.floor(Math.random() * 100),
-          likes: poem.likes || Math.floor(Math.random() * 50),
-        })),
-      };
+      const analyticsData = analyticsResponse.data.data;
 
+      // Fetch profile data
+      const profileResponse = await axios.get(
+        `${API_BASE_URL}/poet-dashboard/profile`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const profileData = profileResponse.data.data;
+
+      // Set dashboard data with real API response
       setDashboardData({
-        totalPoems,
-        publishedPoems,
-        pendingPoems,
-        totalViews,
-        totalLikes,
-        followers: user?.followers?.length || 0,
-        avgRating:
-          poetPoems.reduce((sum, poem) => sum + (poem.rating || 0), 0) /
-            poetPoems.length || 0,
+        overview: overviewData.overview,
+        recentPoems: overviewData.recentPoems || [],
+        topPoems: overviewData.topPoems || [],
       });
 
-      setAnalytics(mockAnalytics);
-
-      // Set profile from user context
-      setProfile({
-        name: user?.fullName || user?.name || "",
-        bio: user?.bio || "",
-        avatar: user?.avatar || "",
-        joinDate: user?.createdAt,
-        specialization: user?.genre || "عمومی",
-        location: user?.location || "",
+      // Set analytics with real data
+      setAnalytics({
+        viewsOverTime: analyticsData.viewsOverTime || [],
+        favoritesOverTime: analyticsData.favoritesOverTime || [],
+        topPerformingPoems: analyticsData.topPerformingPoems || [],
+        categoryDistribution: analyticsData.categoryDistribution || [],
+        poemGrowth: analyticsData.poemGrowth || [],
       });
+
+      // Set profile with real data
+      setProfile(profileData);
+
     } catch (error) {
       console.error("Error loading dashboard:", error);
 
-      // Set fallback data if API calls fail
+      // Fallback to basic user data if API fails
       setDashboardData({
-        totalPoems: 0,
-        publishedPoems: 0,
-        pendingPoems: 0,
-        totalViews: 0,
-        totalLikes: 0,
-        followers: 0,
-        avgRating: 0,
+        overview: {
+          totalPoems: 0,
+          publishedPoems: 0,
+          pendingPoems: 0,
+          totalViews: 0,
+          totalFavorites: 0,
+          engagementRate: 0,
+          newPoemsThisMonth: 0,
+          newViewsThisMonth: 0,
+        },
+        recentPoems: [],
+        topPoems: [],
       });
       setPoems([]);
-      setAnalytics({ viewsOverTime: [], topPoems: [] });
+      setAnalytics({
+        viewsOverTime: [],
+        favoritesOverTime: [],
+        topPerformingPoems: [],
+        categoryDistribution: [],
+        poemGrowth: [],
+      });
       setProfile({
-        name: user?.fullName || user?.name || "",
-        bio: user?.bio || "",
-        avatar: user?.avatar || "",
-        joinDate: user?.createdAt,
-        specialization: "عمومی",
-        location: "",
+        name: user?.name || "",
+        email: user?.email || "",
+        profile: {
+          bio: "",
+          location: "",
+          avatar: "",
+        },
       });
     } finally {
       setLoading(false);
@@ -454,23 +488,46 @@ const PoetDashboard = () => {
     }
   };
 
-  const handleSavePoem = async (poemData) => {
+  const handleSavePoem = async (poemData, setApiErrors) => {
     try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+      const token = localStorage.getItem("token");
+
       if (selectedPoem) {
-        // Update existing poem using poetryAPI
-        await poetryAPI.updatePoem(selectedPoem._id, poemData);
-        toast.success("نظم کامیابی سے اپ ڈیٹ ہوئی");
+        // Update existing poem
+        await axios.put(
+          `${API_BASE_URL}/poet-dashboard/poems/${selectedPoem._id}`,
+          poemData,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        showSuccess("نظم کامیابی سے اپ ڈیٹ ہوئی / Poem updated successfully");
       } else {
-        // Create new poem using poetryAPI
-        await poetryAPI.createPoem(poemData);
-        toast.success("نظم کامیابی سے جمع ہوئی");
+        // Create new poem
+        await axios.post(
+          `${API_BASE_URL}/poet-dashboard/poems`,
+          poemData,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        showSuccess("نظم کامیابی سے جمع ہوئی / Poem submitted successfully");
       }
 
       loadDashboardData(); // Reload data
       setSelectedPoem(null);
+      setIsModalOpen(false);
     } catch (error) {
       console.error("Error saving poem:", error);
-      toast.error("نظم محفوظ کرنے میں خرابی");
+      if (error.response?.data?.errors) {
+        setApiErrors(error.response.data.errors.map((err) => err.msg));
+      } else if (error.response?.data?.message) {
+        setApiErrors([error.response.data.message]);
+      } else {
+        setApiErrors(["نظم محفوظ کرنے میں خرابی / Error saving poem"]);
+      }
+      throw error;
     }
   };
 
@@ -482,12 +539,21 @@ const PoetDashboard = () => {
     if (!confirmed) return;
 
     try {
-      await poetryAPI.deletePoem(poemId);
-      toast.success("نظم کامیابی سے حذف ہوئی");
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+      const token = localStorage.getItem("token");
+
+      await axios.delete(
+        `${API_BASE_URL}/poet-dashboard/poems/${poemId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      
+      showSuccess("نظم کامیابی سے حذف ہوئی / Poem deleted successfully");
       loadDashboardData(); // Reload data
     } catch (error) {
       console.error("Error deleting poem:", error);
-      toast.error("نظم حذف کرنے میں خرابی");
+      showSuccess("نظم حذف کرنے میں خرابی / Error deleting poem", "error");
     }
   };
 
@@ -509,59 +575,53 @@ const PoetDashboard = () => {
       className="min-h-screen bg-gradient-to-br from-amber-50 via-rose-50 to-purple-50"
       dir="rtl"
     >
-      {/* Enhanced Header with Beautiful Gradient */}
-      <div className="relative bg-gradient-to-r from-amber-100 via-rose-100 to-purple-100 shadow-xl border-b border-amber-200">
-        <div className="absolute inset-0 bg-gradient-to-r from-amber-100/20 to-rose-100/20"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-8">
+      {/* Enhanced Header with Beautiful Gradient - Matching Image Design */}
+      <div className="relative bg-gradient-to-br from-pink-50 via-rose-50 to-amber-50 shadow-lg border-b border-pink-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex justify-between items-center">
+            {/* Left - Profile Info */}
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg ring-4 ring-white">
+                {(profile?.name || user?.name)?.charAt(0)?.toUpperCase() || "ش"}
+              </div>
+              <div className="text-right">
+                <h2 className="text-2xl font-bold text-gray-800 urdu-text">
+                  {profile?.name || user?.name || "شاعر"}
+                </h2>
+                <p className="text-sm text-gray-600">شاعر</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  آپ کی شاعری کی تخلیقی دنیا
+                </p>
+              </div>
+            </div>
+
+            {/* Center - Welcome Message */}
+            <div className="text-center hidden md:block">
+              <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-1">
+                👑 شاعر ڈیش بورڈ
+              </h1>
+              <p className="text-sm text-gray-600">
+                آج کا دن شاعری کے لیے مبارک ہو
+              </p>
+            </div>
+
+            {/* Right - Logout Button */}
             <button
               onClick={handleLogout}
-              className="text-red-600 hover:text-red-800 flex items-center space-x-2 bg-white/70 px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all"
+              className="flex items-center space-x-2 px-4 py-2 bg-white text-red-600 rounded-xl hover:bg-red-50 shadow-md hover:shadow-lg transition-all duration-300 border border-red-200"
             >
+              <span className="font-medium urdu-text">لاگ آؤٹ</span>
               <LogOut className="w-5 h-5" />
-              <span className="font-medium">لاگ آؤٹ</span>
             </button>
-
-            <div className="text-center urdu-text-local">
-              <h1 className="text-4xl font-bold text-amber-900 mb-2 tracking-wide">
-                <Crown className="inline w-8 h-8 ml-3 text-amber-600" />
-                شاعر ڈیش بورڈ
-              </h1>
-              <p className="text-lg text-amber-700 font-medium">
-                آپ کی شاعری کی تخلیقی دنیا
-              </p>
-              <p className="text-sm text-amber-600 mt-1">
-                خوش آمدید، {profile?.name || user?.name} - آج کا دن شاعری کے لیے
-                مبارک ہو
-              </p>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm text-amber-800 font-medium">
-                  {profile?.name || user?.name}
-                </p>
-                <p className="text-xs text-amber-600">شاعر</p>
-              </div>
-              <div className="w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
-                {(profile?.name || user?.name)?.charAt(0) || "ش"}
-              </div>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Enhanced Navigation Tabs */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-amber-200 shadow-md">
+      {/* Enhanced Navigation Tabs - Matching Image Design */}
+      <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-1 py-2">
+          <nav className="flex space-x-1">
             {[
-              {
-                id: "overview",
-                label: "جائزہ",
-                icon: BarChart3,
-                color: "from-blue-500 to-purple-600",
-              },
               {
                 id: "poems",
                 label: "نظمیں",
@@ -569,22 +629,22 @@ const PoetDashboard = () => {
                 color: "from-green-500 to-teal-600",
               },
               {
-                id: "analytics",
-                label: "تجزیات",
-                icon: TrendingUp,
-                color: "from-orange-500 to-red-600",
+                id: "ai",
+                label: "AI مدد",
+                icon: Brain,
+                color: "from-purple-500 to-indigo-600",
               },
               {
                 id: "profile",
                 label: "پروفائل",
                 icon: User,
-                color: "from-purple-500 to-pink-600",
+                color: "from-blue-500 to-cyan-600",
               },
               {
-                id: "ai",
-                label: "AI مدد",
-                icon: Brain,
-                color: "from-indigo-500 to-blue-600",
+                id: "achievements",
+                label: "منتخبات",
+                icon: Award,
+                color: "from-yellow-500 to-orange-600",
               },
               {
                 id: "settings",
@@ -598,14 +658,14 @@ const PoetDashboard = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 py-3 px-6 rounded-t-lg font-medium text-sm transition-all duration-300 ${
+                  className={`flex items-center space-x-2 py-4 px-6 font-medium text-sm transition-all duration-300 border-b-4 ${
                     activeTab === tab.id
-                      ? `bg-gradient-to-r ${tab.color} text-white shadow-lg transform -translate-y-1`
-                      : "text-gray-600 hover:text-gray-800 hover:bg-gray-100 bg-transparent"
+                      ? "border-green-500 text-green-600 bg-green-50"
+                      : "border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50"
                   }`}
                 >
                   <Icon className="w-5 h-5" />
-                  <span>{tab.label}</span>
+                  <span className="urdu-text">{tab.label}</span>
                 </button>
               );
             })}
@@ -782,12 +842,13 @@ const PoetDashboard = () => {
           </div>
         )}
 
-        {/* Poems Management Tab */}
+        {/* Poems Management Tab - Matching Image Design */}
         {activeTab === "poems" && (
-          <div className="space-y-8">
-            <div className="flex justify-between items-center">
-              <h2 className="text-3xl font-bold text-gray-800 flex items-center">
-                <BookOpen className="w-8 h-8 ml-3 text-green-600" />
+          <div className="space-y-6">
+            {/* Header Section */}
+            <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <h2 className="text-2xl font-bold text-gray-800 urdu-text flex items-center">
+                <BookOpen className="w-7 h-7 ml-3 text-green-600" />
                 نظموں کا انتظام
               </h2>
               <button
@@ -795,47 +856,58 @@ const PoetDashboard = () => {
                   setSelectedPoem(null);
                   setIsModalOpen(true);
                 }}
-                className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white px-6 py-3 rounded-xl flex items-center space-x-2 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-xl flex items-center space-x-2 shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5"
               >
                 <Plus className="w-5 h-5" />
-                <span className="font-medium">نئی نظم</span>
+                <span className="font-medium urdu-text">نئی نظم</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {poems.map((poem) => (
-                <PoemCard
-                  key={poem._id}
-                  poem={poem}
-                  onEdit={(poem) => {
-                    setSelectedPoem(poem);
-                    setIsModalOpen(true);
-                  }}
-                  onDelete={handleDeletePoem}
-                  onView={(poem) => {
-                    // Navigate to poem detail or open view modal
-                    console.log("View poem:", poem);
-                  }}
-                />
-              ))}
-            </div>
-
-            {poems.length === 0 && (
-              <div className="text-center py-12">
-                <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-medium text-gray-500 mb-2">
+            {/* Poems Grid */}
+            {poems.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {poems.map((poem) => (
+                  <PoemCard
+                    key={poem._id}
+                    poem={poem}
+                    onEdit={(poem) => {
+                      setSelectedPoem(poem);
+                      setIsModalOpen(true);
+                    }}
+                    onDelete={handleDeletePoem}
+                    onView={(poem) => {
+                      navigate(`/poems/${poem._id}`);
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-gray-100">
+                <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl font-medium text-gray-500 mb-2 urdu-text">
                   ابھی کوئی نظم نہیں
                 </h3>
-                <p className="text-gray-400 mb-4">اپنی پہلی نظم شامل کریں</p>
+                <p className="text-gray-400 mb-6 urdu-text">
+                  اپنی پہلی نظم شامل کریں
+                </p>
                 <button
                   onClick={() => {
                     setSelectedPoem(null);
                     setIsModalOpen(true);
                   }}
-                  className="bg-gradient-to-r from-green-500 to-teal-600 text-white px-6 py-3 rounded-xl"
+                  className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-green-700 transition-all shadow-md urdu-text"
                 >
                   نئی نظم لکھیں
                 </button>
+              </div>
+            )}
+
+            {/* Pagination if needed */}
+            {poems.length > 0 && (
+              <div className="flex justify-center items-center space-x-2 bg-white p-4 rounded-xl shadow-sm">
+                <span className="text-sm text-gray-600 urdu-text">
+                  کل {poems.length} نظمیں
+                </span>
               </div>
             )}
           </div>
@@ -1089,7 +1161,146 @@ const PoetDashboard = () => {
           </div>
         )}
 
-        {/* Settings Tab */}
+        {/* Achievements Tab */}
+        {activeTab === "achievements" && dashboardData && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-800 urdu-text flex items-center">
+              <Award className="w-7 h-7 ml-3 text-yellow-600" />
+              منتخبات اور کامیابیاں
+            </h2>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <FileText className="w-8 h-8 opacity-80" />
+                  <span className="text-3xl font-bold">
+                    {dashboardData.overview?.totalPoems || 0}
+                  </span>
+                </div>
+                <p className="text-sm opacity-90 urdu-text">کل نظمیں</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <Eye className="w-8 h-8 opacity-80" />
+                  <span className="text-3xl font-bold">
+                    {dashboardData.overview?.totalViews || 0}
+                  </span>
+                </div>
+                <p className="text-sm opacity-90 urdu-text">کل نظارات</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl p-6 text-white shadow-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <Heart className="w-8 h-8 opacity-80" />
+                  <span className="text-3xl font-bold">
+                    {dashboardData.overview?.totalFavorites || 0}
+                  </span>
+                </div>
+                <p className="text-sm opacity-90 urdu-text">پسندیدہ</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <Star className="w-8 h-8 opacity-80" />
+                  <span className="text-3xl font-bold">
+                    {dashboardData.overview?.publishedPoems || 0}
+                  </span>
+                </div>
+                <p className="text-sm opacity-90 urdu-text">شائع شدہ</p>
+              </div>
+            </div>
+
+            {/* Recent and Top Poems */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Recent Poems */}
+              <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-800 mb-4 urdu-text">
+                  حالیہ نظمیں
+                </h3>
+                <div className="space-y-3">
+                  {dashboardData.recentPoems?.slice(0, 5).map((poem) => (
+                    <div
+                      key={poem._id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-800 urdu-text">
+                          {poem.title}
+                        </h4>
+                        <p className="text-xs text-gray-500">
+                          {new Date(poem.createdAt).toLocaleDateString("ur-PK")}
+                        </p>
+                      </div>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs ${
+                          poem.status === "published"
+                            ? "bg-green-100 text-green-800"
+                            : poem.status === "pending"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {poem.status === "published"
+                          ? "شائع"
+                          : poem.status === "pending"
+                          ? "زیر نظر"
+                          : "مسترد"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Top Poems */}
+              <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-800 mb-4 urdu-text">
+                  مقبول نظمیں
+                </h3>
+                <div className="space-y-3">
+                  {dashboardData.topPoems?.slice(0, 5).map((poem, index) => (
+                    <div
+                      key={poem._id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                            index === 0
+                              ? "bg-yellow-500"
+                              : index === 1
+                              ? "bg-gray-400"
+                              : index === 2
+                              ? "bg-amber-600"
+                              : "bg-blue-500"
+                          }`}
+                        >
+                          {index + 1}
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-800 urdu-text">
+                            {poem.title}
+                          </h4>
+                          <div className="flex items-center space-x-3 text-xs text-gray-500">
+                            <span className="flex items-center">
+                              <Eye className="w-3 h-3 ml-1" />
+                              {poem.views || 0}
+                            </span>
+                            <span className="flex items-center">
+                              <Heart className="w-3 h-3 ml-1" />
+                              {poem.bookmarks?.length || 0}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         {activeTab === "settings" && (
           <div className="space-y-8">
             <h2 className="text-3xl font-bold text-gray-800 flex items-center">

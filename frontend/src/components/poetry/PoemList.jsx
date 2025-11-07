@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   Filter,
@@ -41,6 +42,10 @@ const throttle = (func, delay) => {
 const PoemList = ({
   poems: poemsProp, // Accept poems as prop
   loading: loadingProp, // Accept loading as prop
+  loadingMore: loadingMoreProp, // Accept loadingMore as prop
+  totalCount: totalCountProp, // Accept total count as prop
+  hasMore: hasMoreProp, // Accept hasMore as prop
+  onLoadMore, // Accept onLoadMore callback
   initialCategory = "all",
   initialSortBy = "popularity",
   showActions = false,
@@ -75,6 +80,9 @@ const PoemList = ({
   // Use props if provided, otherwise use hook data
   const poems = poemsProp !== undefined ? poemsProp : poemsFromHook;
   const loading = loadingProp !== undefined ? loadingProp : loadingFromHook;
+  const totalCount = totalCountProp !== undefined ? totalCountProp : poems.length;
+  const loadingMore = loadingMoreProp !== undefined ? loadingMoreProp : false;
+  const hasMorePoems = hasMoreProp !== undefined ? hasMoreProp : hasMore;
 
   // Debug logging
   React.useEffect(() => {
@@ -312,7 +320,7 @@ const PoemList = ({
                 <div className="flex justify-center items-center space-x-8 mb-6">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-urdu-gold">
-                      {poems.length}
+                      {totalCount}
                     </div>
                     <div className="text-sm text-urdu-maroon">نظمیں</div>
                   </div>
@@ -606,7 +614,7 @@ const PoemList = ({
             </div>
 
             {/* Loading more indicator */}
-            {loading && poems.length > 0 && (
+            {loadingMore && poems.length > 0 && (
               <div className="flex justify-center py-8">
                 <div className="flex items-center gap-3 text-urdu-gold">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-urdu-gold"></div>
@@ -617,11 +625,23 @@ const PoemList = ({
               </div>
             )}
 
+            {/* Load More Button */}
+            {hasMorePoems && !loadingMore && poems.length > 0 && (
+              <div className="flex justify-center py-8">
+                <button
+                  onClick={onLoadMore || loadMore}
+                  className="px-8 py-3 bg-gradient-to-r from-urdu-gold to-urdu-maroon text-white rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105 urdu-text font-semibold"
+                >
+                  مزید نظمیں دیکھیں ({poems.length} / {totalCount})
+                </button>
+              </div>
+            )}
+
             {/* End of results */}
-            {!hasMore && poems.length > 0 && (
+            {!hasMorePoems && poems.length > 0 && (
               <div className="text-center py-8 text-gray-500 urdu-text">
                 <div className="bg-urdu-cream/30 rounded-lg p-4">
-                  تمام شاعری دکھائی گئی ہے
+                  تمام شاعری دکھائی گئی ہے ({totalCount} نظمیں)
                 </div>
               </div>
             )}
@@ -664,6 +684,7 @@ const EnhancedPoemCard = ({
   onBookmark,
   isBookmarked = false,
 }) => {
+  const navigate = useNavigate();
   const {
     liked,
     favorited,
@@ -678,6 +699,15 @@ const EnhancedPoemCard = ({
   const [showFullContent, setShowFullContent] = useState(false);
   const [shareMessage, setShareMessage] = useState("");
   const [localBookmarked, setLocalBookmarked] = useState(isBookmarked);
+
+  // Navigate to poem detail page
+  const handlePoemClick = (e) => {
+    // Don't navigate if clicking on action buttons
+    if (e.target.closest('.action-button') || e.target.closest('button')) {
+      return;
+    }
+    navigate(`/poems/${poem._id || poem.id}`);
+  };
 
   // Handle bookmark
   const handleBookmarkClick = async () => {
@@ -707,7 +737,10 @@ const EnhancedPoemCard = ({
 
   if (viewMode === "list") {
     return (
-      <div className="bg-white/90 backdrop-blur-sm border border-cultural-pearl rounded-lg p-6 hover:shadow-lg transition-all duration-300 w-full">
+      <div 
+        className="bg-white/90 backdrop-blur-sm border border-cultural-pearl rounded-lg p-6 hover:shadow-lg transition-all duration-300 w-full cursor-pointer"
+        onClick={handlePoemClick}
+      >
         <div className="flex flex-col md:flex-row gap-4">
           {/* Content */}
           <div className="flex-1">
@@ -729,7 +762,7 @@ const EnhancedPoemCard = ({
 
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-500 urdu-body">
-                <span>شاعر: {poem.poet?.name || poem.author || "نامعلوم"}</span>
+                <span>شاعر: {typeof poem.poet === 'object' ? poem.poet?.name : poem.poet || poem.author || "نامعلوم"}</span>
                 {poem.metadata?.era && (
                   <span className="mr-4">دور: {poem.metadata.era}</span>
                 )}
@@ -799,7 +832,10 @@ const EnhancedPoemCard = ({
 
   // Grid view - Enhanced
   return (
-    <div className="bg-white/90 backdrop-blur-sm border border-cultural-pearl rounded-lg overflow-hidden hover:shadow-lg transition-all duration-300 group w-full">
+    <div 
+      className="bg-white/90 backdrop-blur-sm border border-cultural-pearl rounded-lg overflow-hidden hover:shadow-lg transition-all duration-300 group w-full cursor-pointer"
+      onClick={handlePoemClick}
+    >
       {/* Header */}
       <div className="p-4 bg-gradient-to-r from-urdu-cream to-cultural-pearl/20">
         <div className="flex items-start justify-between mb-2">
@@ -811,7 +847,7 @@ const EnhancedPoemCard = ({
           </span>
         </div>
         <p className="text-sm text-gray-600 urdu-body">
-          {poem.poet?.name || poem.author || "نامعلوم"}
+          {typeof poem.poet === 'object' ? poem.poet?.name : poem.poet || poem.author || "نامعلوم"}
         </p>
       </div>
 
@@ -915,10 +951,13 @@ const ActionButton = ({
 
   return (
     <button
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation(); // Prevent card click when clicking action button
+        onClick?.();
+      }}
       disabled={loading}
       title={tooltip}
-      className={`${
+      className={`action-button ${
         sizeClasses[size]
       } rounded-lg border transition-all duration-200 ${
         active

@@ -144,6 +144,14 @@ export const adminDashboardAPI = {
     return response.data;
   },
 
+  // Get pending poems for moderation
+  getPendingPoems: async (params = {}) => {
+    const response = await api.get("/admin/poems", {
+      params: { ...params, status: "pending" },
+    });
+    return response.data;
+  },
+
   approvePoem: async (poemId, approved, reason) => {
     const response = await api.put(`/admin/content/poem/${poemId}/moderate`, {
       action: approved ? "approve" : "reject",
