@@ -199,13 +199,13 @@ const ForgotPasswordPage = () => {
             {...register("password", {
               required: "Password is required",
               minLength: {
-                value: 6,
-                message: "Password must be at least 6 characters",
+                value: 8,
+                message: "Password must be at least 8 characters",
               },
               pattern: {
-                value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+                value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
                 message:
-                  "Password must contain uppercase, lowercase and number",
+                  "Password must contain uppercase, lowercase, number and special character",
               },
             })}
             type={showPassword ? "text" : "password"}
@@ -266,22 +266,30 @@ const ForgotPasswordPage = () => {
       </div>
 
       {/* Password Requirements */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-        <h5 className="font-medium text-gray-800 mb-2 nastaleeq-primary">
-          پاس ورڈ کی شرائط:
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h5 className="font-medium text-blue-800 mb-2 nastaleeq-primary">
+          پاس ورڈ کی شرائط / Password Requirements:
         </h5>
-        <ul className="text-sm text-gray-600 space-y-1">
+        <ul className="text-xs text-blue-700 space-y-1">
           <li className="flex items-center">
-            <CheckCircle className="w-3 h-3 text-green-500 mr-2" />
-            کم از کم 6 حروف
+            <CheckCircle className="w-3 h-3 text-blue-500 mr-2" />
+            کم از کم 8 حروف / Minimum 8 characters
           </li>
           <li className="flex items-center">
-            <CheckCircle className="w-3 h-3 text-green-500 mr-2" />
-            کم از کم ایک بڑا اور چھوٹا حرف
+            <CheckCircle className="w-3 h-3 text-blue-500 mr-2" />
+            ایک بڑا حرف / One uppercase letter (A-Z)
           </li>
           <li className="flex items-center">
-            <CheckCircle className="w-3 h-3 text-green-500 mr-2" />
-            کم از کم ایک نمبر
+            <CheckCircle className="w-3 h-3 text-blue-500 mr-2" />
+            ایک چھوٹا حرف / One lowercase letter (a-z)
+          </li>
+          <li className="flex items-center">
+            <CheckCircle className="w-3 h-3 text-blue-500 mr-2" />
+            ایک نمبر / One number (0-9)
+          </li>
+          <li className="flex items-center">
+            <CheckCircle className="w-3 h-3 text-blue-500 mr-2" />
+            ایک خاص علامت / One special character (@$!%*?&)
           </li>
         </ul>
       </div>

@@ -56,25 +56,18 @@ const Auth = () => {
     setAlertType(type);
     setShowAlert(true);
 
-    // Auto-dismiss after 3 seconds
+    // Auto-dismiss after 5 seconds
     setTimeout(() => {
       setShowAlert(false);
       setTimeout(() => {
         setAlertMessage("");
         setAlertType("");
       }, 300); // Wait for fade-out animation
-    }, 3000);
+    }, 5000);
   };
 
+  // Handle initial load and URL parameters
   useEffect(() => {
-    setError("");
-    setSuccessMessage("");
-    setSelectedRole("reader"); // Reset role selection
-    setShowAlert(false);
-    setAlertMessage("");
-    setAlertType("");
-    reset();
-
     // Check for reset token in URL
     const urlParams = new URLSearchParams(location.search);
     const token = urlParams.get("token");
@@ -105,14 +98,18 @@ const Auth = () => {
       // Clear URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [
-    isLogin,
-    isForgotPassword,
-    isResetPassword,
-    setError,
-    reset,
-    location.search,
-  ]);
+  }, [location.search]);
+
+  // Handle mode switching (login/register/forgot/reset)
+  useEffect(() => {
+    // Only reset form when switching between modes
+    setError("");
+    setSuccessMessage("");
+    if (!isResetPassword) {
+      setSelectedRole("reader"); // Reset role selection only when not in reset mode
+    }
+    reset();
+  }, [isLogin, isForgotPassword, isResetPassword, setError, reset]);
 
   // Handle error state changes from AuthContext
   useEffect(() => {
@@ -311,7 +308,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-urdu-cream via-white to-urdu-gold/10 flex items-center justify-center py-12 px-4 relative overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-urdu-cream via-white to-urdu-gold/10 flex items-center justify-center py-6 px-4 relative overflow-hidden">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute top-20 left-10 text-8xl text-urdu-maroon nastaleeq-heading">
@@ -328,9 +325,9 @@ const Auth = () => {
         </div>
       </div>
 
-      <div className="max-w-6xl w-full flex gap-8 items-center">
+      <div className="max-w-6xl w-full h-full flex gap-8 items-center overflow-y-auto py-4">
         {/* Reader Auto-Registration Info Card */}
-        <div className="hidden lg:block w-1/3">
+        <div className="hidden lg:block w-1/3 flex-shrink-0">
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-urdu-gold/20">
             <div className="text-center mb-4">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full mb-4">
@@ -391,8 +388,8 @@ const Auth = () => {
         </div>
 
         {/* Auth Form */}
-        <div className="w-full lg:w-2/3 max-w-md mx-auto">
-          <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-urdu-gold/20">
+        <div className="w-full lg:w-2/3 max-w-md mx-auto flex-shrink-0">
+          <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-6 border border-urdu-gold/20 max-h-[90vh] overflow-y-auto">
             {/* Dynamic Alert Message */}
             {alertMessage && (
               <div
@@ -493,7 +490,7 @@ const Auth = () => {
             )}
 
             {/* Header */}
-            <div className="text-center mb-8">
+            <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-urdu-maroon to-urdu-brown rounded-full mb-4 shadow-lg">
                 {isForgotPassword ? (
                   <Mail className="w-10 h-10 text-white" />
@@ -535,7 +532,7 @@ const Auth = () => {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {/* Name Field - Only for Registration */}
               {!isLogin && !isForgotPassword && !isResetPassword && (
                 <div>
@@ -549,6 +546,10 @@ const Auth = () => {
                       minLength: {
                         value: 2,
                         message: "Name must be at least 2 characters",
+                      },
+                      pattern: {
+                        value: /^[a-zA-Z\s\u0600-\u06FF]+$/,
+                        message: "Name should not contain numbers or special characters",
                       },
                     })}
                     type="text"
@@ -685,8 +686,12 @@ const Auth = () => {
                       {...registerField("password", {
                         required: "Password is required",
                         minLength: {
-                          value: 6,
-                          message: "Password must be at least 6 characters",
+                          value: 8,
+                          message: "Password must be at least 8 characters",
+                        },
+                        pattern: {
+                          value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+                          message: "Password must contain uppercase, lowercase, number and special character",
                         },
                       })}
                       type={showPassword ? "text" : "password"}
@@ -713,6 +718,21 @@ const Auth = () => {
                     <p className="text-red-500 text-xs mt-1">
                       {errors.password.message}
                     </p>
+                  )}
+                  {/* Password Requirements Hint - Only show during registration or reset */}
+                  {(!isLogin || isResetPassword) && (
+                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-xs font-medium text-blue-800 mb-1 nastaleeq-primary">
+                        پاس ورڈ کی شرائط / Password Requirements:
+                      </p>
+                      <ul className="text-xs text-blue-700 space-y-1">
+                        <li>• کم از کم 8 حروف / Minimum 8 characters</li>
+                        <li>• ایک بڑا حرف / One uppercase letter (A-Z)</li>
+                        <li>• ایک چھوٹا حرف / One lowercase letter (a-z)</li>
+                        <li>• ایک نمبر / One number (0-9)</li>
+                        <li>• ایک خاص علامت / One special character (@$!%*?&)</li>
+                      </ul>
+                    </div>
                   )}
                 </div>
               )}
@@ -778,7 +798,7 @@ const Auth = () => {
             {/* Social Login - Only show for login and main register (not forgot/reset password) */}
             {(isLogin ||
               (!isLogin && !isForgotPassword && !isResetPassword)) && (
-              <div className="mt-6">
+              <div className="mt-4">
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-gray-300" />
@@ -790,7 +810,7 @@ const Auth = () => {
                   </div>
                 </div>
 
-                <div className="mt-6">
+                <div className="mt-4">
                   <Button
                     type="button"
                     onClick={() => socialLogin("google")}
@@ -826,7 +846,7 @@ const Auth = () => {
             )}
 
             {/* Navigation Links */}
-            <div className="mt-8 text-center space-y-4">
+            <div className="mt-6 text-center space-y-3">
               {!isResetPassword && (
                 <>
                   <div>
@@ -875,7 +895,7 @@ const Auth = () => {
 
             {/* Features for Users or Reset Password Info */}
             {!isResetPassword ? (
-              <div className="mt-8 border-t border-gray-200 pt-6">
+              <div className="mt-6 border-t border-gray-200 pt-4">
                 {isForgotPassword ? (
                   <div className="text-center">
                     <h3 className="text-lg font-semibold text-urdu-brown mb-3 nastaleeq-heading">
@@ -916,7 +936,7 @@ const Auth = () => {
                 )}
               </div>
             ) : (
-              <div className="mt-8 border-t border-gray-200 pt-6">
+              <div className="mt-6 border-t border-gray-200 pt-4">
                 <div className="text-center">
                   <h3 className="text-lg font-semibold text-urdu-brown mb-3 nastaleeq-heading">
                     نیا پاس ورڈ بنانے کی ہدایات

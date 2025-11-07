@@ -48,10 +48,19 @@ class AuthController {
       }
 
       // Password strength validation
-      if (password.length < 6) {
+      if (password.length < 8) {
         return res.status(400).json({
           success: false,
-          message: "پاس ورڈ کم سے کم 6 حروف کا ہونا چاہیے",
+          message: "پاس ورڈ کم سے کم 8 حروف کا ہونا چاہیے",
+        });
+      }
+
+      // Password complexity validation
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+      if (!passwordRegex.test(password)) {
+        return res.status(400).json({
+          success: false,
+          message: "پاس ورڈ میں بڑا حرف، چھوٹا حرف، نمبر اور خاص علامت ہونی چاہیے",
         });
       }
 
@@ -389,10 +398,19 @@ class AuthController {
         });
       }
 
-      if (newPassword.length < 6) {
+      if (newPassword.length < 8) {
         return res.status(400).json({
           success: false,
-          message: "پاس ورڈ کم سے کم 6 حروف کا ہونا چاہیے",
+          message: "پاس ورڈ کم سے کم 8 حروف کا ہونا چاہیے",
+        });
+      }
+
+      // Password complexity validation
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+      if (!passwordRegex.test(newPassword)) {
+        return res.status(400).json({
+          success: false,
+          message: "پاس ورڈ میں بڑا حرف، چھوٹا حرف، نمبر اور خاص علامت ہونی چاہیے",
         });
       }
 
@@ -653,10 +671,19 @@ class AuthController {
         });
       }
 
-      if (newPassword.length < 6) {
+      if (newPassword.length < 8) {
         return res.status(400).json({
           success: false,
-          message: "نیا پاس ورڈ کم سے کم 6 حروف کا ہونا چاہیے",
+          message: "نیا پاس ورڈ کم سے کم 8 حروف کا ہونا چاہیے",
+        });
+      }
+
+      // Password complexity validation
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+      if (!passwordRegex.test(newPassword)) {
+        return res.status(400).json({
+          success: false,
+          message: "نیا پاس ورڈ میں بڑا حرف، چھوٹا حرف، نمبر اور خاص علامت ہونی چاہیے",
         });
       }
 

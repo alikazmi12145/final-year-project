@@ -1673,9 +1673,10 @@ const ContentModerationTab = ({ poems, onPoemModeration, refreshing }) => {
   const [filterStatus, setFilterStatus] = useState("all");
 
   const filteredPoems = poems.filter((poem) => {
+    const authorName = typeof poem.author === 'object' ? (poem.author?.name || poem.author?.fullName || '') : (poem.author || '');
     const matchesSearch =
       poem.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      poem.author.toLowerCase().includes(searchTerm.toLowerCase());
+      authorName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       filterStatus === "all" || poem.status === filterStatus;
     return matchesSearch && matchesStatus;
@@ -1726,8 +1727,10 @@ const ContentModerationTab = ({ poems, onPoemModeration, refreshing }) => {
                 <h3 className="font-bold text-lg text-gray-900">
                   {poem.title}
                 </h3>
-                <p className="text-gray-600">شاعر: {poem.author}</p>
-                <p className="text-sm text-gray-500">صنف: {poem.genre}</p>
+                <p className="text-gray-600">
+                  شاعر: {typeof poem.author === 'object' ? (poem.author?.fullName || poem.author?.name || 'نامعلوم') : (poem.author || 'نامعلوم')}
+                </p>
+                <p className="text-sm text-gray-500">صنف: {poem.category || poem.genre || 'نظم'}</p>
               </div>
               <span
                 className={`px-3 py-1 rounded-full text-xs font-medium
@@ -1754,11 +1757,11 @@ const ContentModerationTab = ({ poems, onPoemModeration, refreshing }) => {
             <div className="flex justify-between text-sm text-gray-600 mb-4">
               <div className="flex items-center">
                 <Eye className="w-4 h-4 ml-1" />
-                <span>{poem.views} مناظر</span>
+                <span>{poem.viewsCount || poem.views || 0} مناظر</span>
               </div>
               <div className="flex items-center">
                 <Heart className="w-4 h-4 ml-1" />
-                <span>{poem.likes} پسند</span>
+                <span>{poem.likes?.length || poem.likesCount || 0} پسند</span>
               </div>
               <div className="flex items-center">
                 <Calendar className="w-4 h-4 ml-1" />

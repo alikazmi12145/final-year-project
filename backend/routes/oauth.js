@@ -31,9 +31,10 @@ const generateTokens = (user) => {
 // Check if Google OAuth is configured
 const isGoogleConfigured =
   process.env.GOOGLE_CLIENT_ID &&
-  process.env.GOOGLE_CLIENT_SECRET &&
+  (process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_SECRET_KEY) &&
   process.env.GOOGLE_CLIENT_ID !== "your-google-client-id-from-console" &&
-  process.env.GOOGLE_CLIENT_SECRET !== "your-google-client-secret-from-console";
+  (process.env.GOOGLE_CLIENT_SECRET !== "your-google-client-secret-from-console" ||
+   process.env.GOOGLE_SECRET_KEY !== "your-google-secret-key");
 
 // Development mode: Allow bypass for testing (remove in production)
 const isDevelopment = process.env.NODE_ENV === "development";
@@ -106,61 +107,5 @@ router.get("/google/callback", (req, res, next) => {
     }
   })(req, res, next);
 });
-
-// Facebook OAuth routes
-router.get(
-  "/facebook",
-  passport.authenticate("facebook", {
-    scope: ["email"],
-  })
-);
-
-router.get(
-  "/facebook/callback",
-  passport.authenticate("facebook", { session: false }),
-  (req, res) => {
-    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
-
-    try {
-      const { accessToken, refreshToken } = generateTokens(req.user);
-
-      const redirectUrl = `${clientUrl}/auth/oauth-success?accessToken=${accessToken}&refreshToken=${refreshToken}`;
-      res.redirect(redirectUrl);
-    } catch (error) {
-      console.error("Facebook OAuth callback error:", error);
-      res.redirect(
-        `${clientUrl}/auth?error=oauth_failed&message=Facebook authentication failed`
-      );
-    }
-  }
-);
-
-// GitHub OAuth routes
-router.get(
-  "/github",
-  passport.authenticate("github", {
-    scope: ["user:email"],
-  })
-);
-
-router.get(
-  "/github/callback",
-  passport.authenticate("github", { session: false }),
-  (req, res) => {
-    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
-
-    try {
-      const { accessToken, refreshToken } = generateTokens(req.user);
-
-      const redirectUrl = `${clientUrl}/auth/oauth-success?accessToken=${accessToken}&refreshToken=${refreshToken}`;
-      res.redirect(redirectUrl);
-    } catch (error) {
-      console.error("GitHub OAuth callback error:", error);
-      res.redirect(
-        `${clientUrl}/auth?error=oauth_failed&message=GitHub authentication failed`
-      );
-    }
-  }
-);
 
 export default router;

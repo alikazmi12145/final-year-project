@@ -73,39 +73,121 @@ router.get("/", poetOperationLimit, async (req, res) => {
 
     const total = await Poet.countDocuments(query);
 
-    // Add poem counts for each poet
+    // Also get User poets (users with role='poet')
+    // But exclude users that already have a Poet profile to avoid duplicates
+    const poetUserIds = poets.filter(p => p.user?._id).map(p => p.user._id.toString());
+
+    const userPoetQuery = {
+      role: "poet",
+      status: "active",
+      _id: { $nin: poetUserIds } // Exclude users already in Poet collection
+    };
+    if (search) {
+      userPoetQuery.$or = [
+        { fullName: { $regex: search, $options: "i" } },
+        { name: { $regex: search, $options: "i" } },
+        { bio: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const userPoets = await User.find(userPoetQuery)
+      .sort(sortBy === "name" ? { fullName: sortOrder === "desc" ? -1 : 1 } : {})
+      .lean();
+
+    // Add poem counts for each poet from Poet collection
     const poetsWithStats = await Promise.all(
       poets.map(async (poet) => {
-        const poemCount = await Poem.countDocuments({
-          poet: poet._id,
-          published: true,
-          status: "approved",
-        });
+        // If poet has a linked user, query by author (User ID), otherwise by poet ID
+        const queryField = poet.user?._id ? { author: poet.user._id, status: "published" } : { poet: poet._id, published: true, status: "approved" };
 
-        const totalLikes = await Poem.aggregate([
-          { $match: { poet: poet._id, published: true, status: "approved" } },
-          { $group: { _id: null, totalLikes: { $sum: "$likesCount" } } },
+        const poemStats = await Poem.aggregate([
+          { $match: queryField },
+          {
+            $group: {
+              _id: null,
+              poemCount: { $sum: 1 },
+              totalLikes: { $sum: { $cond: [{ $isArray: "$likes" }, { $size: "$likes" }, { $ifNull: ["$likesCount", 0] }] } },
+              totalViews: { $sum: { $ifNull: ["$viewsCount", "$views", 0] } },
+            },
+          },
         ]);
+
+        const stats = poemStats[0] || {
+          poemCount: 0,
+          totalLikes: 0,
+          totalViews: 0,
+        };
 
         return {
           ...poet,
           stats: {
-            poemCount,
-            totalLikes: totalLikes[0]?.totalLikes || 0,
+            poemCount: stats.poemCount,
+            totalLikes: stats.totalLikes,
+            totalViews: stats.totalViews,
             followers: poet.followers?.length || 0,
           },
         };
       })
     );
 
+    // Add poem counts for each user poet
+    const userPoetsWithStats = await Promise.all(
+      userPoets.map(async (userPoet) => {
+        const poemStats = await Poem.aggregate([
+          {
+            $match: {
+              author: userPoet._id,
+              status: "published",
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              poemCount: { $sum: 1 },
+              totalLikes: { $sum: { $size: { $ifNull: ["$likes", []] } } },
+              totalViews: { $sum: { $ifNull: ["$viewsCount", "$views", 0] } },
+            },
+          },
+        ]);
+
+        const stats = poemStats[0] || {
+          poemCount: 0,
+          totalLikes: 0,
+          totalViews: 0,
+        };
+
+        return {
+          _id: userPoet._id,
+          name: userPoet.fullName || userPoet.name,
+          username: userPoet.name,
+          bio: userPoet.bio,
+          profilePicture: userPoet.profileImage?.url || userPoet.avatar,
+          location: userPoet.location,
+          era: "contemporary",
+          status: userPoet.status,
+          isExternal: false,
+          stats: {
+            poemCount: stats.poemCount,
+            totalLikes: stats.totalLikes,
+            totalViews: stats.totalViews,
+            followers: 0,
+          },
+        };
+      })
+    );
+
+    // Combine both lists
+    const allPoets = [...poetsWithStats, ...userPoetsWithStats];
+    const totalAll = total + userPoets.length;
+
     res.json({
       success: true,
-      poets: poetsWithStats,
+      poets: allPoets,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit),
+        total: totalAll,
+        pages: Math.ceil(totalAll / limit),
       },
       filters: {
         eras: await Poet.distinct("era"),
@@ -166,62 +248,145 @@ router.get("/featured", poetOperationLimit, async (req, res) => {
 // Get poet by ID (public)
 router.get("/:id", poetOperationLimit, async (req, res) => {
   try {
-    const poet = await Poet.findById(req.params.id)
+    // First, try to find in Poet collection
+    let poet = await Poet.findById(req.params.id)
       .populate("user", "name email isVerified verificationBadge")
       .populate("verifiedBy", "name")
       .lean();
 
-    if (!poet) {
-      return res.status(404).json({
-        success: false,
-        message: "Poet not found",
-      });
-    }
+    let isUserPoet = false;
+    let poems = [];
+    let poetStats = {};
 
-    // Check if poet is public or user has permission
-    if (poet.status !== "active" && (!req.user || req.user.role !== "admin")) {
-      return res.status(403).json({
-        success: false,
-        message: "This poet profile is not public",
-      });
-    }
+    if (poet) {
+      // Check if poet is public or user has permission
+      if (poet.status !== "active" && (!req.user || req.user.role !== "admin")) {
+        return res.status(403).json({
+          success: false,
+          message: "This poet profile is not public",
+        });
+      }
 
-    // Get poet's poems
-    const poems = await Poem.find({
-      poet: poet._id,
-      published: true,
-      status: "approved",
-    })
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .lean();
+      // If poet has a linked user, query by author (User ID), otherwise by poet ID
+      const hasLinkedUser = poet.user?._id;
+      const queryField = hasLinkedUser
+        ? { author: poet.user._id, status: "published" }
+        : { poet: poet._id, published: true, status: "approved" };
 
-    // Get poet statistics
-    const stats = await Poem.aggregate([
-      { $match: { poet: poet._id, published: true, status: "approved" } },
-      {
-        $group: {
-          _id: null,
-          totalPoems: { $sum: 1 },
-          totalLikes: { $sum: "$likesCount" },
-          totalViews: { $sum: "$viewsCount" },
-          totalComments: { $sum: "$commentsCount" },
-          averageRating: { $avg: "$rating" },
+      // Get poet's poems
+      poems = await Poem.find(queryField)
+        .populate("author", "fullName name")
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean();
+
+      // Get poet statistics
+      const stats = await Poem.aggregate([
+        { $match: queryField },
+        {
+          $group: {
+            _id: null,
+            totalPoems: { $sum: 1 },
+            totalLikes: { $sum: { $cond: [{ $isArray: "$likes" }, { $size: "$likes" }, { $ifNull: ["$likesCount", 0] }] } },
+            totalViews: { $sum: { $ifNull: ["$viewsCount", "$views", 0] } },
+            totalComments: { $sum: { $cond: [{ $isArray: "$comments" }, { $size: "$comments" }, { $ifNull: ["$commentsCount", 0] }] } },
+            averageRating: { $avg: { $ifNull: ["$averageRating", "$rating", 0] } },
+          },
         },
-      },
-    ]);
+      ]);
 
-    const poetStats = stats[0] || {
-      totalPoems: 0,
-      totalLikes: 0,
-      totalViews: 0,
-      totalComments: 0,
-      averageRating: 0,
-    };
+      poetStats = stats[0] || {
+        totalPoems: 0,
+        totalLikes: 0,
+        totalViews: 0,
+        totalComments: 0,
+        averageRating: 0,
+      };
+    } else {
+      // If not found in Poet collection, try User collection
+      const userPoet = await User.findById(req.params.id).lean();
+
+      if (!userPoet || userPoet.role !== "poet") {
+        return res.status(404).json({
+          success: false,
+          message: "Poet not found",
+        });
+      }
+
+      if (userPoet.status !== "active" && (!req.user || req.user.role !== "admin")) {
+        return res.status(403).json({
+          success: false,
+          message: "This poet profile is not public",
+        });
+      }
+
+      isUserPoet = true;
+
+      // Format user as poet
+      poet = {
+        _id: userPoet._id,
+        name: userPoet.fullName || userPoet.name,
+        username: userPoet.name,
+        bio: userPoet.bio,
+        profileImage: userPoet.profileImage,
+        profilePicture: userPoet.profileImage?.url || userPoet.avatar,
+        location: userPoet.location,
+        birthPlace: userPoet.location,
+        era: "contemporary",
+        status: userPoet.status,
+        isExternal: false,
+        dateOfBirth: userPoet.createdAt,
+      };
+
+      // Get user poet's poems
+      poems = await Poem.find({
+        author: userPoet._id,
+        status: "published",
+      })
+        .populate("author", "fullName name")
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean();
+
+      // Get user poet statistics
+      const stats = await Poem.aggregate([
+        { $match: { author: userPoet._id, status: "published" } },
+        {
+          $group: {
+            _id: null,
+            totalPoems: { $sum: 1 },
+            totalLikes: { $sum: { $size: { $ifNull: ["$likes", []] } } },
+            totalViews: {
+              $sum: {
+                $cond: [
+                  { $ifNull: ["$viewsCount", false] },
+                  "$viewsCount",
+                  { $ifNull: ["$views", 0] },
+                ],
+              },
+            },
+            totalComments: { $sum: { $size: { $ifNull: ["$comments", []] } } },
+            averageRating: { $avg: { $ifNull: ["$averageRating", "$rating", 0] } },
+          },
+        },
+      ]);
+
+      poetStats = stats[0] || {
+        totalPoems: 0,
+        totalLikes: 0,
+        totalViews: 0,
+        totalComments: 0,
+        averageRating: 0,
+      };
+    }
 
     // Get poem categories distribution
     const categoryDistribution = await Poem.aggregate([
-      { $match: { poet: poet._id, published: true, status: "approved" } },
+      {
+        $match: isUserPoet
+          ? { author: poet._id, status: "published" }
+          : { poet: poet._id, published: true, status: "approved" },
+      },
       { $group: { _id: "$category", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]);
