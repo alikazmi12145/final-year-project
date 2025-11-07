@@ -80,8 +80,8 @@ const StatsCard = ({ title, value, change, icon: Icon, color, trend }) => (
   </div>
 );
 
-<<<<<<< HEAD
-// Poem Card Component - Matching Image Design
+
+// Poem Card Component
 const PoemCard = ({ poem, onEdit, onDelete, onView }) => {
   const getStatusBadge = (status) => {
     const badges = {
@@ -96,34 +96,11 @@ const PoemCard = ({ poem, onEdit, onDelete, onView }) => {
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100">
-      {/* Header with Title and Actions */}
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
           <h3 className="text-xl font-bold text-gray-800 mb-2 line-clamp-1 urdu-text">
             {poem.title}
           </h3>
-=======
-// Poem Card Component
-const PoemCard = ({ poem, onEdit, onDelete, onView }) => (
-  <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-100 hover:shadow-2xl transition-all duration-300">
-    <div className="flex justify-between items-start mb-4">
-      <div className="flex-1">
-        <h3 className="text-xl font-bold text-gray-800 mb-2 line-clamp-1">
-          {poem.title}
-        </h3>
-        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-          {poem.content?.substring(0, 100)}...
-        </p>
-        <div className="flex items-center space-x-4 text-sm text-gray-500">
-          <span className="flex items-center">
-            <Eye className="w-4 h-4 mr-1" />
-            {poem.viewsCount || poem.views || poem.stats?.views || 0}
-          </span>
-          <span className="flex items-center">
-            <Heart className="w-4 h-4 mr-1" />
-            {poem.stats?.favorites || 0}
-          </span>
->>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
           <span
             className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${statusBadge.class}`}
           >
@@ -384,7 +361,7 @@ const PoetDashboard = () => {
   const { user, logout } = useAuth();
   const { showConfirm, showSuccess } = useMessage();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("poems");
+  const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
   const [poems, setPoems] = useState([]);
@@ -402,13 +379,15 @@ const PoetDashboard = () => {
       setLoading(true);
 
       // Fetch dynamic data from poet dashboard API
-      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
       const token = localStorage.getItem("token");
 
       if (!token) {
         navigate("/auth");
         return;
       }
+
+      console.log("Fetching dashboard data from:", API_BASE_URL);
 
       // Fetch overview data from backend
       const overviewResponse = await axios.get(
@@ -419,6 +398,7 @@ const PoetDashboard = () => {
       );
 
       const overviewData = overviewResponse.data.data;
+      console.log("Overview data:", overviewData);
 
       // Fetch poems data
       const poemsResponse = await axios.get(
@@ -430,32 +410,17 @@ const PoetDashboard = () => {
       );
 
       const poetPoems = poemsResponse.data.data.poems || [];
+      console.log("Poems fetched:", poetPoems.length);
       setPoems(poetPoems);
 
-<<<<<<< HEAD
-      // Fetch analytics data
-      const analyticsResponse = await axios.get(
-        `${API_BASE_URL}/poet-dashboard/analytics`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          params: { period: "month" },
-        }
-      );
-
-      const analyticsData = analyticsResponse.data.data;
-=======
-      // Calculate dashboard statistics from actual data
-      const totalPoems = poetPoems.length;
-      const publishedPoems = poetPoems.filter(
-        (p) => p.status === "published" || p.published === true
-      ).length;
-      const pendingPoems = poetPoems.filter(
-        (p) => p.status === "pending"
-      ).length;
-      const totalViews = poetPoems.reduce(
-        (sum, poem) => sum + (poem.viewsCount || poem.views || poem.stats?.views || 0),
-        0
-      );
+      // Use backend overview data for statistics
+      const totalPoems = overviewData.overview.totalPoems;
+      const publishedPoems = overviewData.overview.publishedPoems;
+      const pendingPoems = overviewData.overview.pendingPoems;
+      const totalViews = overviewData.overview.totalViews;
+      const totalFavorites = overviewData.overview.totalFavorites;
+      
+      // Calculate likes and comments from poems array (not in overview)
       const totalLikes = poetPoems.reduce(
         (sum, poem) => sum + (poem.likesCount || poem.likes || poem.stats?.likes || 0),
         0
@@ -514,7 +479,7 @@ const PoetDashboard = () => {
         topPerformingPoems: topPoems,
         categoryDistribution: categoryDistribution,
       };
->>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
+
 
       // Fetch profile data
       const profileResponse = await axios.get(
@@ -528,16 +493,11 @@ const PoetDashboard = () => {
 
       // Set dashboard data with real API response
       setDashboardData({
-<<<<<<< HEAD
-        overview: overviewData.overview,
-        recentPoems: overviewData.recentPoems || [],
-        topPoems: overviewData.topPoems || [],
-=======
         totalPoems,
         publishedPoems,
         pendingPoems,
         totalViews,
-        totalLikes,
+        totalLikes: totalFavorites, // Use favorites from backend overview
         totalComments,
         followers: user?.followers?.length || 0,
         avgRating:
@@ -545,19 +505,28 @@ const PoetDashboard = () => {
             ? poetPoems.reduce((sum, poem) => sum + (poem.rating || poem.averageRating || 0), 0) / totalPoems
             : 0,
         topPoems: topPoems, // Add top poems to dashboard data
->>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
+      });
+
+      console.log("Dashboard data set:", {
+        totalPoems,
+        publishedPoems,
+        pendingPoems,
+        totalViews,
+        totalFavorites,
       });
 
       // Set analytics with real data
       setAnalytics({
-        viewsOverTime: analyticsData.viewsOverTime || [],
-        favoritesOverTime: analyticsData.favoritesOverTime || [],
-        topPerformingPoems: analyticsData.topPerformingPoems || [],
-        categoryDistribution: analyticsData.categoryDistribution || [],
-        poemGrowth: analyticsData.poemGrowth || [],
+        viewsOverTime: mockAnalytics.viewsOverTime || [],
+        favoritesOverTime: mockAnalytics.favoritesOverTime || [],
+        topPerformingPoems: mockAnalytics.topPerformingPoems || [],
+        categoryDistribution: mockAnalytics.categoryDistribution || [],
+        poemGrowth: mockAnalytics.poemGrowth || [],
       });
 
       // Set profile with real data
+      console.log("Profile data loaded:", profileData);
+      console.log("Profile avatar:", profileData.profileImage?.url);
       setProfile(profileData);
 
     } catch (error) {
@@ -565,29 +534,7 @@ const PoetDashboard = () => {
 
       // Fallback to basic user data if API fails
       setDashboardData({
-<<<<<<< HEAD
-        overview: {
-          totalPoems: 0,
-          publishedPoems: 0,
-          pendingPoems: 0,
-          totalViews: 0,
-          totalFavorites: 0,
-          engagementRate: 0,
-          newPoemsThisMonth: 0,
-          newViewsThisMonth: 0,
-        },
-        recentPoems: [],
-        topPoems: [],
-      });
-      setPoems([]);
-      setAnalytics({
-        viewsOverTime: [],
-        favoritesOverTime: [],
-        topPerformingPoems: [],
-        categoryDistribution: [],
-        poemGrowth: [],
-      });
-=======
+
         totalPoems: 0,
         publishedPoems: 0,
         pendingPoems: 0,
@@ -600,7 +547,7 @@ const PoetDashboard = () => {
       });
       setPoems([]);
       setAnalytics({ viewsOverTime: [], topPerformingPoems: [], categoryDistribution: [] });
->>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
+
       setProfile({
         name: user?.name || "",
         email: user?.email || "",
@@ -628,46 +575,11 @@ const PoetDashboard = () => {
 
   const handleSavePoem = async (poemData, setApiErrors) => {
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
       const token = localStorage.getItem("token");
 
       if (selectedPoem) {
-<<<<<<< HEAD
-        // Update existing poem
-        await axios.put(
-          `${API_BASE_URL}/poet-dashboard/poems/${selectedPoem._id}`,
-          poemData,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        showSuccess("نظم کامیابی سے اپ ڈیٹ ہوئی / Poem updated successfully");
-      } else {
-        // Create new poem
-        await axios.post(
-          `${API_BASE_URL}/poet-dashboard/poems`,
-          poemData,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        showSuccess("نظم کامیابی سے جمع ہوئی / Poem submitted successfully");
-      }
 
-      loadDashboardData(); // Reload data
-      setSelectedPoem(null);
-      setIsModalOpen(false);
-    } catch (error) {
-      console.error("Error saving poem:", error);
-      if (error.response?.data?.errors) {
-        setApiErrors(error.response.data.errors.map((err) => err.msg));
-      } else if (error.response?.data?.message) {
-        setApiErrors([error.response.data.message]);
-      } else {
-        setApiErrors(["نظم محفوظ کرنے میں خرابی / Error saving poem"]);
-      }
-      throw error;
-=======
         // Update existing poem using poetryAPI
         const response = await poetryAPI.updatePoem(selectedPoem._id, poemData);
         if (response.data.success) {
@@ -701,7 +613,7 @@ const PoetDashboard = () => {
         toast.error("نظم محفوظ کرنے میں خرابی / Error saving poem");
       }
       throw error; // Re-throw to be caught by modal's error handling
->>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
+
     }
   };
 
@@ -713,7 +625,7 @@ const PoetDashboard = () => {
     if (!confirmed) return;
 
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
       const token = localStorage.getItem("token");
 
       await axios.delete(
@@ -728,6 +640,142 @@ const PoetDashboard = () => {
     } catch (error) {
       console.error("Error deleting poem:", error);
       showSuccess("نظم حذف کرنے میں خرابی / Error deleting poem", "error");
+    }
+  };
+
+  const handleImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showSuccess("برائے مہربانی ایک تصویر منتخب کریں / Please select an image file", "error");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showSuccess("تصویر کا سائز 5MB سے زیادہ نہیں ہونا چاہیے / Image size should not exceed 5MB", "error");
+      return;
+    }
+
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        showSuccess("براہ کرم دوبارہ لاگ ان کریں / Please login again", "error");
+        navigate("/auth");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      const response = await axios.post(
+        `${API_BASE_URL}/poet-dashboard/profile/avatar`,
+        formData,
+        {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          },
+        }
+      );
+
+      if (response.data.success) {
+        showSuccess("تصویر کامیابی سے اپ لوڈ ہوئی / Image uploaded successfully");
+        console.log("Upload response:", response.data);
+        console.log("New avatar URL:", response.data.data?.avatar);
+        
+        // Update profile state immediately with new avatar
+        if (response.data.data?.avatar) {
+          setProfile(prev => ({
+            ...prev,
+            profileImage: {
+              url: response.data.data.avatar,
+              publicId: response.data.data.poet?.profileImage?.publicId
+            }
+          }));
+        }
+        
+        // Also reload full dashboard data
+        await loadDashboardData();
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      console.error("Error response:", error.response?.data);
+      
+      // Handle token expiration
+      if (error.response?.status === 401 || error.response?.data?.code === 'TOKEN_EXPIRED') {
+        showSuccess("آپ کا سیشن ختم ہو گیا ہے، براہ کرم دوبارہ لاگ ان کریں / Your session has expired, please login again", "error");
+        localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
+        setTimeout(() => {
+          navigate("/auth");
+        }, 2000);
+        return;
+      }
+      
+      const errorMsg = error.response?.data?.message || error.response?.data?.error || "تصویر اپ لوڈ کرنے میں خرابی / Error uploading image";
+      showSuccess(errorMsg, "error");
+    }
+  };
+
+  const handleProfileUpdate = async (event) => {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const profileData = {
+      name: formData.get('name'),
+      email: formData.get('email'),
+      profile: {
+        bio: formData.get('bio'),
+      },
+      dateOfBirth: formData.get('dateOfBirth') || null,
+      dateOfDeath: formData.get('dateOfDeath') || null,
+    };
+
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        showSuccess("براہ کرم دوبارہ لاگ ان کریں / Please login again", "error");
+        navigate("/auth");
+        return;
+      }
+
+      const response = await axios.put(
+        `${API_BASE_URL}/poet-dashboard/profile`,
+        profileData,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (response.data.success) {
+        showSuccess("پروفائل کامیابی سے اپ ڈیٹ ہوئی / Profile updated successfully");
+        loadDashboardData(); // Reload profile data
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      
+      // Handle token expiration
+      if (error.response?.status === 401 || error.response?.data?.code === 'TOKEN_EXPIRED') {
+        showSuccess("آپ کا سیشن ختم ہو گیا ہے، براہ کرم دوبارہ لاگ ان کریں / Your session has expired, please login again", "error");
+        localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
+        setTimeout(() => {
+          navigate("/auth");
+        }, 2000);
+        return;
+      }
+      
+      showSuccess(
+        error.response?.data?.message || "پروفائل اپ ڈیٹ کرنے میں خرابی / Error updating profile",
+        "error"
+      );
     }
   };
 
@@ -749,39 +797,7 @@ const PoetDashboard = () => {
       className="min-h-screen bg-gradient-to-br from-amber-50 via-rose-50 to-purple-50"
       dir="rtl"
     >
-<<<<<<< HEAD
-      {/* Enhanced Header with Beautiful Gradient - Matching Image Design */}
-      <div className="relative bg-gradient-to-br from-pink-50 via-rose-50 to-amber-50 shadow-lg border-b border-pink-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            {/* Left - Profile Info */}
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg ring-4 ring-white">
-                {(profile?.name || user?.name)?.charAt(0)?.toUpperCase() || "ش"}
-              </div>
-              <div className="text-right">
-                <h2 className="text-2xl font-bold text-gray-800 urdu-text">
-                  {profile?.name || user?.name || "شاعر"}
-                </h2>
-                <p className="text-sm text-gray-600">شاعر</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  آپ کی شاعری کی تخلیقی دنیا
-                </p>
-              </div>
-            </div>
 
-            {/* Center - Welcome Message */}
-            <div className="text-center hidden md:block">
-              <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-1">
-                👑 شاعر ڈیش بورڈ
-              </h1>
-              <p className="text-sm text-gray-600">
-                آج کا دن شاعری کے لیے مبارک ہو
-              </p>
-            </div>
-
-            {/* Right - Logout Button */}
-=======
       {/* Approval Status Notice */}
       {user?.status === "pending" && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
@@ -807,7 +823,27 @@ const PoetDashboard = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-amber-100/20 to-rose-100/20"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-8">
->>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
+            {/* Poet Profile Image and Name */}
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <img
+                  src={profile?.profileImage?.url 
+                    ? (profile.profileImage.url.startsWith('http') 
+                        ? profile.profileImage.url 
+                        : `http://localhost:5001${profile.profileImage.url}`)
+                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Poet')}&background=random&size=128`
+                  }
+                  alt={user?.name || "شاعر"}
+                  className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
+                />
+                <div className="absolute bottom-0 right-0 w-6 h-6 bg-green-500 rounded-full border-2 border-white"></div>
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800 urdu-text">{user?.name || "شاعر"}</h1>
+                <p className="text-gray-600 urdu-text">{user?.email}</p>
+              </div>
+            </div>
+
             <button
               onClick={handleLogout}
               className="flex items-center space-x-2 px-4 py-2 bg-white text-red-600 rounded-xl hover:bg-red-50 shadow-md hover:shadow-lg transition-all duration-300 border border-red-200"
@@ -1241,10 +1277,51 @@ const PoetDashboard = () => {
                   پروفائل تصویر
                 </h3>
                 <div className="text-center">
-                  <div className="w-32 h-32 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-4xl mx-auto mb-4">
-                    {profile.name?.charAt(0) || "ش"}
-                  </div>
-                  <button className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 mx-auto">
+                  {profile.profileImage?.url ? (
+                    <>
+                      <img
+                        src={profile.profileImage.url.startsWith('http') 
+                          ? profile.profileImage.url 
+                          : `http://localhost:5001${profile.profileImage.url}`}
+                        alt={profile.name}
+                        className="w-32 h-32 rounded-full object-cover mx-auto mb-4 border-4 border-purple-200"
+                        onError={(e) => {
+                          console.error('Image failed to load:', e.target.src);
+                          e.target.style.display = 'none';
+                          if (e.target.nextElementSibling) {
+                            e.target.nextElementSibling.style.display = 'flex';
+                          }
+                        }}
+                        onLoad={(e) => {
+                          console.log('Image loaded successfully:', e.target.src);
+                        }}
+                      />
+                      <div 
+                        className="w-32 h-32 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-4xl mx-auto mb-4"
+                        style={{ display: 'none' }}
+                      >
+                        {profile.name?.charAt(0) || "ش"}
+                      </div>
+                    </>
+                  ) : (
+                    <div 
+                      className="w-32 h-32 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-4xl mx-auto mb-4"
+                    >
+                      {profile.name?.charAt(0) || "ش"}
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    id="avatar-upload"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => document.getElementById('avatar-upload').click()}
+                    className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 mx-auto hover:from-blue-600 hover:to-purple-700 transition-all"
+                  >
                     <Camera className="w-4 h-4" />
                     <span>تصویر اپ لوڈ کریں</span>
                   </button>
@@ -1256,47 +1333,85 @@ const PoetDashboard = () => {
                 <h3 className="text-xl font-bold text-gray-800 mb-6">
                   ذاتی معلومات
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 text-right mb-2">
-                      نام
-                    </label>
-                    <input
-                      type="text"
-                      defaultValue={profile.name || ""}
-                      className="w-full p-3 border border-gray-300 rounded-lg text-right"
-                      dir="rtl"
-                    />
+                <form onSubmit={handleProfileUpdate}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                        نام
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        defaultValue={profile.name || ""}
+                        className="w-full p-3 border border-gray-300 rounded-lg text-right"
+                        dir="rtl"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                        ای میل
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        defaultValue={profile.email || ""}
+                        className="w-full p-3 border border-gray-300 rounded-lg text-right"
+                        dir="rtl"
+                        required
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                        تعارف
+                      </label>
+                      <textarea
+                        name="bio"
+                        rows="4"
+                        defaultValue={profile.bio || ""}
+                        className="w-full p-3 border border-gray-300 rounded-lg text-right"
+                        placeholder="اپنے بارے میں کچھ بتائیں..."
+                        dir="rtl"
+                      />
+                    </div>
+                    
+                    {/* Birth and Death Dates */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                        تاریخ پیدائش
+                      </label>
+                      <input
+                        type="date"
+                        name="dateOfBirth"
+                        defaultValue={profile.dateOfBirth ? new Date(profile.dateOfBirth).toISOString().split('T')[0] : ""}
+                        className="w-full p-3 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                        تاریخ وفات
+                      </label>
+                      <input
+                        type="date"
+                        name="dateOfDeath"
+                        defaultValue={profile.dateOfDeath ? new Date(profile.dateOfDeath).toISOString().split('T')[0] : ""}
+                        className="w-full p-3 border border-gray-300 rounded-lg"
+                      />
+                      <p className="text-xs text-gray-500 text-right mt-1">
+                        (اگر شاعر فوت ہو چکے ہیں تو بھریں)
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 text-right mb-2">
-                      ای میل
-                    </label>
-                    <input
-                      type="email"
-                      defaultValue={profile.email || ""}
-                      className="w-full p-3 border border-gray-300 rounded-lg text-right"
-                      dir="rtl"
-                    />
+                  <div className="mt-6">
+                    <button 
+                      type="submit"
+                      className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all"
+                    >
+                      تبدیلیاں محفوظ کریں
+                    </button>
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 text-right mb-2">
-                      تعارف
-                    </label>
-                    <textarea
-                      rows="4"
-                      defaultValue={profile.profile?.bio || ""}
-                      className="w-full p-3 border border-gray-300 rounded-lg text-right"
-                      placeholder="اپنے بارے میں کچھ بتائیں..."
-                      dir="rtl"
-                    />
-                  </div>
-                </div>
-                <div className="mt-6">
-                  <button className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-lg">
-                    تبدیلیاں محفوظ کریں
-                  </button>
-                </div>
+                </form>
               </div>
             </div>
           </div>
@@ -1609,3 +1724,4 @@ const PoetDashboard = () => {
 };
 
 export default PoetDashboard;
+

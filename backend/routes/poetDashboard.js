@@ -239,9 +239,20 @@ router.get("/profile", poetAuth, async (req, res) => {
       });
     }
 
+    // Fetch additional poet data from Poet collection if exists
+    const poetData = await Poet.findOne({ user: req.user._id }).select("dateOfBirth dateOfDeath isDeceased");
+    
+    // Merge the data
+    const profileData = {
+      ...poet.toObject(),
+      dateOfBirth: poetData?.dateOfBirth || null,
+      dateOfDeath: poetData?.dateOfDeath || null,
+      isDeceased: poetData?.isDeceased || false,
+    };
+
     res.json({
       success: true,
-      data: poet,
+      data: profileData,
     });
   } catch (error) {
     console.error("Get profile error:", error);
@@ -293,17 +304,48 @@ router.put(
 
       if (name) updateData.name = name;
       if (profile) {
+        // Save bio directly on User model
+        if (profile.bio !== undefined) {
+          updateData.bio = profile.bio;
+        }
+        // Keep other profile fields nested
         updateData.profile = {
           ...req.user.profile,
           ...profile,
         };
       }
 
+      console.log("Updating poet profile with:", updateData);
+
       const updatedPoet = await User.findByIdAndUpdate(
         req.user._id,
         updateData,
         { new: true, runValidators: true }
       ).select("-password");
+
+      console.log("Updated poet bio:", updatedPoet.bio);
+
+      // Also update the Poet collection if this user has a Poet profile
+      const poetUpdateData = {};
+      if (profile?.bio) {
+        poetUpdateData.bio = profile.bio;
+      }
+      if (req.body.dateOfBirth) {
+        poetUpdateData.dateOfBirth = req.body.dateOfBirth;
+      }
+      if (req.body.dateOfDeath) {
+        poetUpdateData.dateOfDeath = req.body.dateOfDeath;
+        poetUpdateData.isDeceased = true;
+      }
+      
+      if (Object.keys(poetUpdateData).length > 0) {
+        await Poet.findOneAndUpdate(
+          { user: req.user._id },
+          { $set: poetUpdateData },
+          { new: true }
+        );
+        console.log("Updated Poet collection for user:", req.user._id, poetUpdateData);
+      }
 
       res.json({
         success: true,
@@ -338,46 +380,114 @@ router.post(
         });
       }
 
-      // Upload to Cloudinary
-      const result = await new Promise((resolve, reject) => {
-        cloudinary.uploader
-          .upload_stream(
-            {
-              folder: "poet-avatars",
-              public_id: `poet_${req.user._id}`,
-              overwrite: true,
-            },
-            (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
-            }
-          )
-          .end(req.file.buffer);
+      console.log("Uploading avatar for user:", req.user._id);
+      console.log("File details:", {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size
       });
 
+      let avatarUrl;
+      let publicId;
+
+      // Check if Cloudinary is properly configured
+      const cloudinaryConfigured = 
+        process.env.CLOUDINARY_CLOUD_NAME && 
+        process.env.CLOUDINARY_API_KEY && 
+        process.env.CLOUDINARY_API_SECRET &&
+        process.env.CLOUDINARY_API_KEY !== 'your-api-key' &&
+        process.env.CLOUDINARY_CLOUD_NAME !== 'your-cloud-name';
+
+      if (cloudinaryConfigured) {
+        try {
+          // Upload to Cloudinary
+          const result = await new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+              {
+                folder: "poet-avatars",
+                public_id: `poet_${req.user._id}`,
+                overwrite: true,
+                resource_type: "auto",
+              },
+              (error, result) => {
+                if (error) {
+                  console.error("Cloudinary upload error:", error);
+                  reject(error);
+                } else {
+                  console.log("Cloudinary upload success:", result.secure_url);
+                  resolve(result);
+                }
+              }
+            );
+            uploadStream.end(req.file.buffer);
+          });
+          
+          avatarUrl = result.secure_url;
+          publicId = result.public_id;
+        } catch (cloudinaryError) {
+          console.error("Cloudinary upload failed, falling back to local storage:", cloudinaryError.message);
+          // Fallback to local storage if Cloudinary fails
+          const fs = await import('fs/promises');
+          const path = await import('path');
+          
+          const uploadsDir = path.join(process.cwd(), 'uploads', 'profiles');
+          await fs.mkdir(uploadsDir, { recursive: true });
+          
+          const filename = `poet_${req.user._id}_${Date.now()}${path.extname(req.file.originalname)}`;
+          const filepath = path.join(uploadsDir, filename);
+          
+          await fs.writeFile(filepath, req.file.buffer);
+          avatarUrl = `/uploads/profiles/${filename}`;
+          publicId = filename;
+        }
+      } else {
+        console.log("Cloudinary not configured, using local storage");
+        // Save locally if Cloudinary is not configured
+        const fs = await import('fs/promises');
+        const path = await import('path');
+        
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'profiles');
+        await fs.mkdir(uploadsDir, { recursive: true });
+        
+        const filename = `poet_${req.user._id}_${Date.now()}${path.extname(req.file.originalname)}`;
+        const filepath = path.join(uploadsDir, filename);
+        
+        await fs.writeFile(filepath, req.file.buffer);
+        avatarUrl = `/uploads/profiles/${filename}`;
+        publicId = filename;
+      }
+
       // Update user profile with new avatar URL
+      console.log("Updating user with avatar:", avatarUrl);
       const updatedPoet = await User.findByIdAndUpdate(
         req.user._id,
         {
-          "profile.avatar": result.secure_url,
-          "profile.avatarPublicId": result.public_id,
+          $set: {
+            "profileImage.url": avatarUrl,
+            "profileImage.publicId": publicId,
+          }
         },
-        { new: true }
+        { new: true, runValidators: true }
       ).select("-password");
+
+      console.log("Updated poet profile image:", updatedPoet.profileImage);
 
       res.json({
         success: true,
         message: "Avatar uploaded successfully",
         data: {
-          avatar: result.secure_url,
+          avatar: avatarUrl,
           poet: updatedPoet,
         },
       });
     } catch (error) {
       console.error("Avatar upload error:", error);
+      console.error("Error details:", error.message);
+      console.error("Error stack:", error.stack);
       res.status(500).json({
         success: false,
-        message: "Error uploading avatar",
+        message: error.message || "Error uploading avatar",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
       });
     }
   }

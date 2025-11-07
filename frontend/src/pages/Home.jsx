@@ -150,12 +150,12 @@ const Home = () => {
             </div>
 
             <p
-              className="nastaleeq-primary text-slate-600 max-w-2xl mx-auto leading-relaxed text-lg"
+              className="nastaleeq-primary text-slate-600 max-w-2xl mx-auto leading-relaxed text-xl"
               dir="rtl"
             >
-              جدید ٹیکنالوجی کے ذریعے اردو شاعری کی خوبصورتی کا تجربہ کریں۔
-              کلاسیکی اشعار دریافت کریں، مشہور شعراء کی تلاش کریں، اور بھرپور
-              ادبی ورثے میں ڈوب جائیں۔
+              نہیں کھیل اے داغؔ یاروں سے کہہ دو
+              <br />
+              کہ آتی ہے اردو زباں آتے آتے
             </p>
           </div>
 
