@@ -186,19 +186,34 @@ router.get("/:id", poetOperationLimit, async (req, res) => {
       });
     }
 
-    // Get poet's poems
-    const poems = await Poem.find({
-      poet: poet._id,
+    // Get poet's poems - search by both poet field AND author field (if poet has linked user)
+    const poemQuery = {
+      $or: [
+        { poet: poet._id },
+        // Also search by author if poet has a linked user
+        ...(poet.user ? [{ author: poet.user._id || poet.user }] : [])
+      ],
       published: true,
       status: "approved",
-    })
+    };
+    
+    const poems = await Poem.find(poemQuery)
       .sort({ createdAt: -1 })
       .limit(20)
       .lean();
 
-    // Get poet statistics
+    // Get poet statistics - count poems by both poet field AND author field
+    const statsMatch = {
+      $or: [
+        { poet: poet._id },
+        ...(poet.user ? [{ author: poet.user._id || poet.user }] : [])
+      ],
+      published: true,
+      status: "approved"
+    };
+    
     const stats = await Poem.aggregate([
-      { $match: { poet: poet._id, published: true, status: "approved" } },
+      { $match: statsMatch },
       {
         $group: {
           _id: null,
@@ -221,7 +236,7 @@ router.get("/:id", poetOperationLimit, async (req, res) => {
 
     // Get poem categories distribution
     const categoryDistribution = await Poem.aggregate([
-      { $match: { poet: poet._id, published: true, status: "approved" } },
+      { $match: statsMatch },
       { $group: { _id: "$category", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]);

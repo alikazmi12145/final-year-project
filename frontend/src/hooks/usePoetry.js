@@ -657,12 +657,13 @@ export const usePoemInteractions = (poem) => {
     [poem]
   );
 
-  // Load related poems on poem change
-  useEffect(() => {
-    if (poem) {
-      getRelatedPoems();
-    }
-  }, [poem, getRelatedPoems]);
+  // DON'T auto-load related poems - they should be fetched manually when needed
+  // This was causing massive performance issues when rendering poem lists
+  // useEffect(() => {
+  //   if (poem) {
+  //     getRelatedPoems();
+  //   }
+  // }, [poem, getRelatedPoems]);
 
   // Cleanup on unmount
   useEffect(() => {

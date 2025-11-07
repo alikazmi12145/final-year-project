@@ -87,10 +87,19 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    loadDashboardData();
-    loadUsers();
-    loadPoems();
-    loadContests();
+    let isMounted = true;
+    let intervalId = null;
+
+    const initializeDashboard = async () => {
+      if (isMounted) {
+        await loadDashboardData();
+        await loadUsers();
+        await loadPoems();
+        await loadContests();
+      }
+    };
+
+    initializeDashboard();
 
     // Online status detection
     const handleOnline = () => setIsOnline(true);
@@ -99,19 +108,22 @@ const AdminDashboard = () => {
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
-    // Auto refresh every 30 seconds
-    const intervalId = setInterval(() => {
-      if (!refreshing) {
+    // Auto refresh every 30 seconds (only if not already refreshing)
+    intervalId = setInterval(() => {
+      if (!refreshing && isMounted) {
         loadDashboardData();
       }
     }, 30000);
 
     return () => {
+      isMounted = false;
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
-      clearInterval(intervalId);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
 
   const loadDashboardData = async () => {
     try {
@@ -466,14 +478,15 @@ const AdminDashboard = () => {
 
   const loadPoems = async () => {
     try {
-      // Fetch pending poems from backend API
-      const response = await adminDashboardAPI.getPendingPoems();
+      // Fetch poems from admin endpoint with pending status filter
+      const response = await adminDashboardAPI.getPoems({ status: 'pending', limit: 50 });
       if (response.success) {
         setPoems(response.poems || []);
       } else {
         throw new Error("Failed to load pending poems from API");
       }
     } catch (err) {
+      console.error("Load poems error:", err);
       setError("شاعری کی فہرست لوڈ کرنے میں خرابی");
       setPoems([]);
     }
@@ -1673,9 +1686,10 @@ const ContentModerationTab = ({ poems, onPoemModeration, refreshing }) => {
   const [filterStatus, setFilterStatus] = useState("all");
 
   const filteredPoems = poems.filter((poem) => {
+    const authorName = typeof poem.author === 'object' ? (poem.author?.name || poem.author?.fullName || '') : poem.author;
     const matchesSearch =
       poem.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      poem.author.toLowerCase().includes(searchTerm.toLowerCase());
+      authorName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       filterStatus === "all" || poem.status === filterStatus;
     return matchesSearch && matchesStatus;
@@ -1726,7 +1740,9 @@ const ContentModerationTab = ({ poems, onPoemModeration, refreshing }) => {
                 <h3 className="font-bold text-lg text-gray-900">
                   {poem.title}
                 </h3>
-                <p className="text-gray-600">شاعر: {poem.author}</p>
+                <p className="text-gray-600">
+                  شاعر: {typeof poem.author === 'object' ? (poem.author?.name || poem.author?.fullName || 'نامعلوم') : poem.author}
+                </p>
                 <p className="text-sm text-gray-500">صنف: {poem.genre}</p>
               </div>
               <span
@@ -2150,7 +2166,9 @@ const ActivityCard = ({ activity }) => {
           {getActivityIcon(activity.type)}
         </div>
         <div className="mr-4">
-          <p className="font-medium">{activity.user}</p>
+          <p className="font-medium">
+            {typeof activity.user === 'object' ? (activity.user?.name || activity.user?.fullName || 'نامعلوم') : activity.user}
+          </p>
           <p className="text-sm text-gray-600">{activity.description}</p>
           <p className="text-xs text-gray-500">{activity.time}</p>
         </div>
