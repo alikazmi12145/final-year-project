@@ -144,6 +144,7 @@ export const adminDashboardAPI = {
     return response.data;
   },
 
+<<<<<<< HEAD
   // Get pending poems for moderation
   getPendingPoems: async (params = {}) => {
     const response = await api.get("/admin/poems", {
@@ -157,7 +158,22 @@ export const adminDashboardAPI = {
       action: approved ? "approve" : "reject",
       moderationNotes: reason,
     });
+=======
+  getPendingPoems: async (params = {}) => {
+    const response = await api.get("/poems/pending", { params });
+>>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
     return response.data;
+  },
+
+  approvePoem: async (poemId, approved, reason) => {
+    // Use the correct endpoint that exists in the backend
+    if (approved) {
+      const response = await api.put(`/poems/${poemId}/approve`);
+      return response.data;
+    } else {
+      const response = await api.put(`/poems/${poemId}/reject`, { reason });
+      return response.data;
+    }
   },
 
   featurePoem: async (poemId, featured) => {

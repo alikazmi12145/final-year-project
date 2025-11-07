@@ -256,7 +256,52 @@ router.get("/bookmarks", auth, poemOperationLimit, async (req, res) => {
   }
 });
 
-// Get poem by ID
+// Get pending poems for admin review (MUST come before /:id route)
+router.get("/pending", auth, moderatorAuth, async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = req.query;
+
+    const skip = (page - 1) * limit;
+    const sort = {};
+    sort[sortBy] = sortOrder === "desc" ? -1 : 1;
+
+    const poems = await Poem.find({ status: "pending" })
+      .populate("author", "name email fullName")
+      .populate("poet", "name bio")
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    const total = await Poem.countDocuments({ status: "pending" });
+
+    res.json({
+      success: true,
+      poems,
+      pagination: {
+        current: parseInt(page),
+        total: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1,
+      },
+      total,
+    });
+  } catch (error) {
+    console.error("Get pending poems error:", error);
+    console.error("Error stack:", error.stack);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch pending poems",
+      error: error.message,
+    });
+  }
+});
+
 // Get poem by ID
 router.get("/:id", optionalAuth, poemOperationLimit, async (req, res) => {
   try {
@@ -297,7 +342,8 @@ router.get("/:id", optionalAuth, poemOperationLimit, async (req, res) => {
 
       // If user is logged in, check if they have permission
       if (req.user) {
-        const isAuthor = req.user.userId === poem.author._id.toString();
+        const authorId = poem.author?._id?.toString() || poem.author?.toString();
+        const isAuthor = authorId && req.user.userId === authorId;
         const isAdmin = req.user.role === "admin";
         const isModerator = req.user.role === "moderator";
 
@@ -374,23 +420,32 @@ router.post(
   auth,
   createPoemLimit,
   [
-    body("title").isLength({ min: 2, max: 200 }).trim(),
-    body("content").isLength({ min: 10, max: 10000 }).trim(),
-    body("category").isIn([
-      "ghazal",
-      "nazm",
-      "rubai",
-      "qasida",
-      "masnavi",
-      "free_verse",
-      "hamd",
-      "naat",
-      "manqabat",
-      "marsiya",
-    ]),
+    body("title")
+      .isLength({ min: 2, max: 200 })
+      .withMessage("عنوان 2 سے 200 حروف کے درمیان ہونا چاہیے / Title must be between 2 and 200 characters")
+      .trim(),
+    body("content")
+      .isLength({ min: 10, max: 10000 })
+      .withMessage("نظم کم از کم 10 حروف اور زیادہ سے زیادہ 10000 حروف کی ہونی چاہیے / Poem content must be between 10 and 10000 characters")
+      .trim(),
+    body("category")
+      .isIn([
+        "ghazal",
+        "nazm",
+        "rubai",
+        "qasida",
+        "masnavi",
+        "free_verse",
+        "hamd",
+        "naat",
+        "manqabat",
+        "marsiya",
+      ])
+      .withMessage("براہ کرم درست قسم منتخب کریں / Please select a valid category"),
     body("poetryLanguage")
       .optional()
-      .isIn(["urdu", "punjabi", "arabic", "persian"]),
+      .isIn(["urdu", "punjabi", "arabic", "persian", "english"])
+      .withMessage("براہ کرم درست زبان منتخب کریں / Please select a valid language"),
     body("description").optional().isLength({ max: 500 }).trim(),
     body("tags").optional().isArray({ max: 10 }),
   ],
@@ -815,50 +870,6 @@ router.put("/:id/reject", auth, moderatorAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to reject poem",
-    });
-  }
-});
-
-// Get pending poems for admin review
-router.get("/pending", auth, moderatorAuth, async (req, res) => {
-  try {
-    const {
-      page = 1,
-      limit = 20,
-      sortBy = "createdAt",
-      sortOrder = "desc",
-    } = req.query;
-
-    const skip = (page - 1) * limit;
-    const sort = {};
-    sort[sortBy] = sortOrder === "desc" ? -1 : 1;
-
-    const poems = await Poem.find({ status: "pending" })
-      .populate("author", "name email")
-      .populate("poet", "name bio")
-      .sort(sort)
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
-
-    const total = await Poem.countDocuments({ status: "pending" });
-
-    res.json({
-      success: true,
-      poems,
-      pagination: {
-        current: parseInt(page),
-        total: Math.ceil(total / limit),
-        hasNext: page * limit < total,
-        hasPrev: page > 1,
-      },
-      total,
-    });
-  } catch (error) {
-    console.error("Get pending poems error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch pending poems",
     });
   }
 });

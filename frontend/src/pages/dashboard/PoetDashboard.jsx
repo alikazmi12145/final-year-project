@@ -80,6 +80,7 @@ const StatsCard = ({ title, value, change, icon: Icon, color, trend }) => (
   </div>
 );
 
+<<<<<<< HEAD
 // Poem Card Component - Matching Image Design
 const PoemCard = ({ poem, onEdit, onDelete, onView }) => {
   const getStatusBadge = (status) => {
@@ -101,6 +102,28 @@ const PoemCard = ({ poem, onEdit, onDelete, onView }) => {
           <h3 className="text-xl font-bold text-gray-800 mb-2 line-clamp-1 urdu-text">
             {poem.title}
           </h3>
+=======
+// Poem Card Component
+const PoemCard = ({ poem, onEdit, onDelete, onView }) => (
+  <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-100 hover:shadow-2xl transition-all duration-300">
+    <div className="flex justify-between items-start mb-4">
+      <div className="flex-1">
+        <h3 className="text-xl font-bold text-gray-800 mb-2 line-clamp-1">
+          {poem.title}
+        </h3>
+        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+          {poem.content?.substring(0, 100)}...
+        </p>
+        <div className="flex items-center space-x-4 text-sm text-gray-500">
+          <span className="flex items-center">
+            <Eye className="w-4 h-4 mr-1" />
+            {poem.viewsCount || poem.views || poem.stats?.views || 0}
+          </span>
+          <span className="flex items-center">
+            <Heart className="w-4 h-4 mr-1" />
+            {poem.stats?.favorites || 0}
+          </span>
+>>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
           <span
             className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${statusBadge.class}`}
           >
@@ -260,8 +283,14 @@ const PoemFormModal = ({ isOpen, onClose, poem, onSave }) => {
               }
               className="w-full p-4 border-2 border-gray-200 rounded-xl text-right focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
               required
+              minLength={2}
+              maxLength={200}
               dir="rtl"
+              placeholder="نظم کا عنوان / Poem title"
             />
+            <p className="text-xs text-gray-500 text-right mt-1">
+              {formData.title.length} / 200 حروف
+            </p>
           </div>
 
           <div>
@@ -276,8 +305,14 @@ const PoemFormModal = ({ isOpen, onClose, poem, onSave }) => {
               rows="8"
               className="w-full p-4 border-2 border-gray-200 rounded-xl text-right focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all resize-none"
               required
+              minLength={10}
+              maxLength={10000}
               dir="rtl"
+              placeholder="کم از کم 10 حروف / Minimum 10 characters"
             />
+            <p className="text-xs text-gray-500 text-right mt-1">
+              {formData.content.length} / 10000 حروف
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -397,6 +432,7 @@ const PoetDashboard = () => {
       const poetPoems = poemsResponse.data.data.poems || [];
       setPoems(poetPoems);
 
+<<<<<<< HEAD
       // Fetch analytics data
       const analyticsResponse = await axios.get(
         `${API_BASE_URL}/poet-dashboard/analytics`,
@@ -407,6 +443,78 @@ const PoetDashboard = () => {
       );
 
       const analyticsData = analyticsResponse.data.data;
+=======
+      // Calculate dashboard statistics from actual data
+      const totalPoems = poetPoems.length;
+      const publishedPoems = poetPoems.filter(
+        (p) => p.status === "published" || p.published === true
+      ).length;
+      const pendingPoems = poetPoems.filter(
+        (p) => p.status === "pending"
+      ).length;
+      const totalViews = poetPoems.reduce(
+        (sum, poem) => sum + (poem.viewsCount || poem.views || poem.stats?.views || 0),
+        0
+      );
+      const totalLikes = poetPoems.reduce(
+        (sum, poem) => sum + (poem.likesCount || poem.likes || poem.stats?.likes || 0),
+        0
+      );
+      const totalComments = poetPoems.reduce(
+        (sum, poem) => sum + (poem.commentsCount || poem.comments?.length || poem.stats?.comments || 0),
+        0
+      );
+
+      // Calculate top performing poems based on engagement score
+      const poemsWithScore = poetPoems.map((poem) => {
+        const views = poem.viewsCount || poem.views || poem.stats?.views || 0;
+        const likes = poem.likesCount || poem.likes || poem.stats?.likes || 0;
+        const favorites = poem.stats?.favorites || 0;
+        const comments = poem.commentsCount || poem.comments?.length || poem.stats?.comments || 0;
+
+        // Engagement score calculation
+        const engagementScore = views + (likes * 2) + (favorites * 3) + (comments * 5);
+
+        return {
+          ...poem,
+          views,
+          likes,
+          favorites,
+          comments,
+          score: engagementScore,
+        };
+      });
+
+      // Sort by engagement score and get top poems
+      const topPoems = [...poemsWithScore]
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+
+      // Calculate category distribution
+      const categoryCount = {};
+      poetPoems.forEach((poem) => {
+        const cat = poem.category || "دیگر";
+        categoryCount[cat] = (categoryCount[cat] || 0) + 1;
+      });
+      const categoryDistribution = Object.entries(categoryCount).map(([name, count]) => ({
+        name,
+        count,
+      }));
+
+      // Mock analytics data for views over time (until we have real time-series data)
+      const mockAnalytics = {
+        viewsOverTime: [
+          { _id: "1 Jan", views: 45 },
+          { _id: "15 Jan", views: 52 },
+          { _id: "1 Feb", views: 61 },
+          { _id: "15 Feb", views: 58 },
+          { _id: "1 Mar", views: 67 },
+          { _id: "15 Mar", views: 74 },
+        ],
+        topPerformingPoems: topPoems,
+        categoryDistribution: categoryDistribution,
+      };
+>>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
 
       // Fetch profile data
       const profileResponse = await axios.get(
@@ -420,9 +528,24 @@ const PoetDashboard = () => {
 
       // Set dashboard data with real API response
       setDashboardData({
+<<<<<<< HEAD
         overview: overviewData.overview,
         recentPoems: overviewData.recentPoems || [],
         topPoems: overviewData.topPoems || [],
+=======
+        totalPoems,
+        publishedPoems,
+        pendingPoems,
+        totalViews,
+        totalLikes,
+        totalComments,
+        followers: user?.followers?.length || 0,
+        avgRating:
+          totalPoems > 0
+            ? poetPoems.reduce((sum, poem) => sum + (poem.rating || poem.averageRating || 0), 0) / totalPoems
+            : 0,
+        topPoems: topPoems, // Add top poems to dashboard data
+>>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
       });
 
       // Set analytics with real data
@@ -442,6 +565,7 @@ const PoetDashboard = () => {
 
       // Fallback to basic user data if API fails
       setDashboardData({
+<<<<<<< HEAD
         overview: {
           totalPoems: 0,
           publishedPoems: 0,
@@ -463,6 +587,20 @@ const PoetDashboard = () => {
         categoryDistribution: [],
         poemGrowth: [],
       });
+=======
+        totalPoems: 0,
+        publishedPoems: 0,
+        pendingPoems: 0,
+        totalViews: 0,
+        totalLikes: 0,
+        totalComments: 0,
+        followers: 0,
+        avgRating: 0,
+        topPoems: [],
+      });
+      setPoems([]);
+      setAnalytics({ viewsOverTime: [], topPerformingPoems: [], categoryDistribution: [] });
+>>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
       setProfile({
         name: user?.name || "",
         email: user?.email || "",
@@ -494,6 +632,7 @@ const PoetDashboard = () => {
       const token = localStorage.getItem("token");
 
       if (selectedPoem) {
+<<<<<<< HEAD
         // Update existing poem
         await axios.put(
           `${API_BASE_URL}/poet-dashboard/poems/${selectedPoem._id}`,
@@ -528,6 +667,41 @@ const PoetDashboard = () => {
         setApiErrors(["نظم محفوظ کرنے میں خرابی / Error saving poem"]);
       }
       throw error;
+=======
+        // Update existing poem using poetryAPI
+        const response = await poetryAPI.updatePoem(selectedPoem._id, poemData);
+        if (response.data.success) {
+          toast.success("نظم کامیابی سے اپ ڈیٹ ہوئی / Poem updated successfully");
+          loadDashboardData(); // Reload data
+          setSelectedPoem(null);
+          setIsModalOpen(false);
+        }
+      } else {
+        // Create new poem using poetryAPI
+        const response = await poetryAPI.createPoem(poemData);
+        if (response.data.success) {
+          toast.success("نظم کامیابی سے جمع ہوئی / Poem submitted successfully");
+          loadDashboardData(); // Reload data
+          setSelectedPoem(null);
+          setIsModalOpen(false);
+        }
+      }
+    } catch (error) {
+      console.error("Error saving poem:", error);
+
+      // Show specific error message
+      const errorMessage = error.response?.data?.message || error.response?.data?.errors?.[0]?.msg;
+      if (errorMessage) {
+        toast.error(errorMessage);
+      } else if (error.response?.status === 403) {
+        toast.error("آپ کے اکاؤنٹ کی منظوری باقی ہے / Your account is pending approval");
+      } else if (error.response?.status === 401) {
+        toast.error("براہ کرم دوبارہ لاگ ان کریں / Please login again");
+      } else {
+        toast.error("نظم محفوظ کرنے میں خرابی / Error saving poem");
+      }
+      throw error; // Re-throw to be caught by modal's error handling
+>>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
     }
   };
 
@@ -575,6 +749,7 @@ const PoetDashboard = () => {
       className="min-h-screen bg-gradient-to-br from-amber-50 via-rose-50 to-purple-50"
       dir="rtl"
     >
+<<<<<<< HEAD
       {/* Enhanced Header with Beautiful Gradient - Matching Image Design */}
       <div className="relative bg-gradient-to-br from-pink-50 via-rose-50 to-amber-50 shadow-lg border-b border-pink-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -606,6 +781,33 @@ const PoetDashboard = () => {
             </div>
 
             {/* Right - Logout Button */}
+=======
+      {/* Approval Status Notice */}
+      {user?.status === "pending" && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700">
+                  <strong className="font-medium">منظوری کے انتظار میں / Pending Approval:</strong> آپ کا شاعر اکاؤنٹ ایڈمن کی منظوری کے انتظار میں ہے۔ آپ نظمیں لکھ سکتے ہیں لیکن وہ منظوری کے بعد ہی شائع ہوں گی۔ / Your poet account is pending admin approval. You can write poems but they will be published after approval.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced Header with Beautiful Gradient */}
+      <div className="relative bg-gradient-to-r from-amber-100 via-rose-100 to-purple-100 shadow-xl border-b border-amber-200">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-100/20 to-rose-100/20"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-8">
+>>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
             <button
               onClick={handleLogout}
               className="flex items-center space-x-2 px-4 py-2 bg-white text-red-600 rounded-xl hover:bg-red-50 shadow-md hover:shadow-lg transition-all duration-300 border border-red-200"
@@ -682,10 +884,8 @@ const PoetDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatsCard
                 title="کل نظمیں"
-                value={dashboardData.overview?.totalPoems || 0}
-                change={`+${
-                  dashboardData.overview?.newPoemsThisMonth || 0
-                } اس مہینے`}
+                value={dashboardData.totalPoems || 0}
+                change={`${dashboardData.publishedPoems || 0} شائع شدہ`}
                 icon={FileText}
                 color="from-blue-500 via-purple-600 to-indigo-700"
                 trend="up"
@@ -693,31 +893,27 @@ const PoetDashboard = () => {
 
               <StatsCard
                 title="کل نظارات"
-                value={dashboardData.overview?.totalViews || 0}
-                change={`+${
-                  dashboardData.overview?.newViewsThisMonth || 0
-                } اس مہینے`}
+                value={dashboardData.totalViews || 0}
+                change={`${dashboardData.pendingPoems || 0} زیر نظر`}
                 icon={Eye}
                 color="from-green-500 via-teal-600 to-emerald-700"
                 trend="up"
               />
 
               <StatsCard
-                title="پسندیدہ"
-                value={dashboardData.overview?.totalFavorites || 0}
-                change={`${
-                  dashboardData.overview?.engagementRate || 0
-                }% مشغولیت`}
+                title="پسندیدگی"
+                value={dashboardData.totalLikes || 0}
+                change={`${dashboardData.totalPoems > 0 ? Math.round((dashboardData.totalLikes / dashboardData.totalPoems) * 100) / 100 : 0} اوسط`}
                 icon={Heart}
                 color="from-pink-500 via-red-600 to-rose-700"
                 trend="up"
               />
 
               <StatsCard
-                title="شائع شدہ"
-                value={dashboardData.overview?.publishedPoems || 0}
-                change={`${dashboardData.overview?.pendingPoems || 0} زیر نظر`}
-                icon={Award}
+                title="پیروکار"
+                value={dashboardData.followers || 0}
+                change={`${dashboardData.avgRating ? dashboardData.avgRating.toFixed(1) : 0}⭐ درجہ`}
+                icon={Users}
                 color="from-orange-500 via-yellow-600 to-amber-700"
                 trend="up"
               />
@@ -732,7 +928,7 @@ const PoetDashboard = () => {
                   حالیہ نظمیں
                 </h3>
                 <div className="space-y-4">
-                  {dashboardData.recentPoems?.slice(0, 5).map((poem, index) => (
+                  {poems.slice(0, 5).map((poem, index) => (
                     <div
                       key={poem._id}
                       className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
@@ -772,43 +968,50 @@ const PoetDashboard = () => {
                   بہترین نظمیں
                 </h3>
                 <div className="space-y-4">
-                  {dashboardData.topPoems?.slice(0, 5).map((poem, index) => (
-                    <div
-                      key={poem._id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                            index === 0
-                              ? "bg-yellow-500"
-                              : index === 1
-                              ? "bg-gray-400"
-                              : index === 2
-                              ? "bg-amber-600"
-                              : "bg-blue-500"
-                          }`}
-                        >
-                          {index + 1}
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-gray-800">
-                            {poem.title}
-                          </h4>
-                          <div className="flex items-center space-x-4 text-sm text-gray-500">
-                            <span className="flex items-center">
-                              <Eye className="w-3 h-3 mr-1" />
-                              {poem.views}
-                            </span>
-                            <span className="flex items-center">
-                              <Heart className="w-3 h-3 mr-1" />
-                              {poem.favorites}
-                            </span>
+                  {dashboardData.topPoems && dashboardData.topPoems.length > 0 ? (
+                    dashboardData.topPoems.slice(0, 5).map((poem, index) => (
+                      <div
+                        key={poem._id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                              index === 0
+                                ? "bg-yellow-500"
+                                : index === 1
+                                ? "bg-gray-400"
+                                : index === 2
+                                ? "bg-amber-600"
+                                : "bg-blue-500"
+                            }`}
+                          >
+                            {index + 1}
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-gray-800">
+                              {poem.title}
+                            </h4>
+                            <div className="flex items-center space-x-4 text-sm text-gray-500">
+                              <span className="flex items-center">
+                                <Eye className="w-3 h-3 mr-1" />
+                                {poem.views || 0}
+                              </span>
+                              <span className="flex items-center">
+                                <Heart className="w-3 h-3 mr-1" />
+                                {poem.favorites || 0}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <Target className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-500 text-sm">ابھی کوئی نظم نہیں</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </div>
@@ -984,34 +1187,41 @@ const PoetDashboard = () => {
               <h3 className="text-xl font-bold text-gray-800 mb-4">
                 بہترین کارکردگی
               </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-right py-3 px-4">نظم</th>
-                      <th className="text-right py-3 px-4">نظارات</th>
-                      <th className="text-right py-3 px-4">پسندیدہ</th>
-                      <th className="text-right py-3 px-4">تبصرے</th>
-                      <th className="text-right py-3 px-4">اسکور</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {analytics.topPerformingPoems?.map((poem, index) => (
-                      <tr key={index} className="border-b border-gray-100">
-                        <td className="py-3 px-4 font-medium">{poem.title}</td>
-                        <td className="py-3 px-4">{poem.views}</td>
-                        <td className="py-3 px-4">{poem.favorites}</td>
-                        <td className="py-3 px-4">{poem.comments}</td>
-                        <td className="py-3 px-4">
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">
-                            {poem.score}
-                          </span>
-                        </td>
+              {analytics.topPerformingPoems && analytics.topPerformingPoems.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-right py-3 px-4">نظم</th>
+                        <th className="text-right py-3 px-4">نظارات</th>
+                        <th className="text-right py-3 px-4">پسندیدہ</th>
+                        <th className="text-right py-3 px-4">تبصرے</th>
+                        <th className="text-right py-3 px-4">اسکور</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {analytics.topPerformingPoems.map((poem, index) => (
+                        <tr key={index} className="border-b border-gray-100">
+                          <td className="py-3 px-4 font-medium">{poem.title}</td>
+                          <td className="py-3 px-4">{poem.views || 0}</td>
+                          <td className="py-3 px-4">{poem.favorites || 0}</td>
+                          <td className="py-3 px-4">{poem.comments || 0}</td>
+                          <td className="py-3 px-4">
+                            <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">
+                              {poem.score || 0}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-500 text-sm">ابھی کوئی تجزیات نہیں</p>
+                </div>
+              )}
             </div>
           </div>
         )}
