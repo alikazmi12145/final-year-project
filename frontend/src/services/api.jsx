@@ -4,8 +4,6 @@ import axios from "axios";
 const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 const API_BASE_URL = baseUrl.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
 
-console.log("🔧 API Base URL configured as:", API_BASE_URL);
-
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -31,29 +29,20 @@ axiosInstance.interceptors.request.use(
 // Response interceptor
 axiosInstance.interceptors.response.use(
   (response) => {
-    console.log("✅ API Response:", response.config.url, response.data);
     return response;
   },
   (error) => {
-    console.error(
-      "❌ API Error:",
-      error.config?.url,
-      error.response?.data || error.message
-    );
-
     // Handle different error scenarios
     if (error.response?.status === 401) {
-      console.warn("🔒 Unauthorized - removing token");
       localStorage.removeItem("token");
       // Don't redirect automatically for login endpoints
       if (!error.config?.url?.includes("/auth/login")) {
         window.location.href = "/auth";
       }
     } else if (error.response?.status === 403) {
-      console.warn("🚫 Forbidden access");
       // Don't redirect for 403 errors, let the component handle it
     } else if (error.code === "NETWORK_ERROR" || !error.response) {
-      console.error("🌐 Network error - server may be down");
+      console.error("Network error - server may be down");
     }
 
     return Promise.reject(error);
@@ -388,9 +377,6 @@ export const poetryAPI = {
     } catch (error) {
       // Handle 500 error gracefully for bookmarks endpoint
       if (error.response?.status === 500) {
-        console.warn(
-          "📚 Bookmarks endpoint not fully implemented, returning empty result"
-        );
         return {
           data: {
             success: true,
@@ -447,7 +433,6 @@ export const searchAPI = {
         ...filters,
       });
     } catch (error) {
-      console.warn("🔍 Text search failed, trying basic search");
       // Fallback to basic search without AI
       return await axiosInstance.post("/search/text", {
         query,
@@ -474,7 +459,6 @@ export const searchAPI = {
         confidence,
       });
     } catch (error) {
-      console.warn("🎤 Voice search failed, falling back to text search");
       // Fallback to text search
       return await axiosInstance.post("/search/text", {
         query: transcribedText,
@@ -489,7 +473,6 @@ export const searchAPI = {
     try {
       return await axiosInstance.post("/search/image", { image });
     } catch (error) {
-      console.error("📷 Image search failed:", error);
       throw error;
     }
   },
@@ -503,7 +486,6 @@ export const searchAPI = {
     try {
       return await axiosInstance.post("/search/suggestions", { partialQuery });
     } catch (error) {
-      console.warn("💡 Smart suggestions failed");
       return { data: { success: false, suggestions: [] } };
     }
   },

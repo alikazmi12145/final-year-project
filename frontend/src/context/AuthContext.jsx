@@ -27,37 +27,26 @@ export const AuthProvider = ({ children }) => {
   const checkAuthStatus = async () => {
     try {
       const token = localStorage.getItem("token");
-      console.log("🔍 Checking auth status, token exists:", !!token);
 
       if (token) {
         const response = await authAPI.getMe();
-        console.log("✅ Auth check response:", response.data);
 
         if (response.data.success) {
           setUser(response.data.user);
-          console.log("👤 User set:", response.data.user);
         } else {
           localStorage.removeItem("token");
-          console.log("❌ Auth check failed");
         }
       }
     } catch (error) {
-      console.error("💥 Auth check error:", error);
+      console.error("Auth check error:", error);
       localStorage.removeItem("token");
     } finally {
       setLoading(false);
-      console.log("🏁 Auth check completed");
     }
   };
 
   const login = async (credentials) => {
     try {
-      console.log("🔄 Login attempt:", credentials.email);
-      console.log(
-        "🔄 API Base URL:",
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
-      );
-
       // Clear any existing tokens first
       localStorage.removeItem("token");
       localStorage.removeItem("refreshToken");
@@ -66,32 +55,25 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
 
       const response = await authAPI.login(credentials);
-      console.log("📡 Login response:", response.data);
 
       if (response.data.success) {
         const token = response.data.accessToken || response.data.token;
         localStorage.setItem("token", token);
         setUser(response.data.user);
 
-        console.log("✅ Login successful, user role:", response.data.user.role);
-
         // Redirect based on role or intended path
         const intendedPath =
           location.state?.from?.pathname ||
           getDefaultRoute(response.data.user.role);
-        console.log("🔀 Redirecting to:", intendedPath);
 
         navigate(intendedPath, { replace: true });
         return { success: true };
       } else {
         setError(response.data.message || "Login failed");
-        console.log("❌ Login failed:", response.data.message);
         return { success: false, message: response.data.message };
       }
     } catch (error) {
-      console.error("💥 Login error:", error);
-      console.error("💥 Error response:", error.response?.data);
-      console.error("💥 Error status:", error.response?.status);
+      console.error("Login error:", error);
 
       let message = "Login failed. Please try again.";
 
@@ -130,17 +112,14 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      console.log("🔄 Registration attempt:", userData.email);
       setError("");
       setLoading(true);
 
       const response = await authAPI.register(userData);
-      console.log("📡 Registration response:", response.data);
 
       if (response.data.success) {
         // For poet accounts requiring approval, don't log them in yet
         if (response.data.requiresApproval) {
-          console.log("📋 Poet registration successful but requires approval");
           return {
             success: true,
             requiresApproval: true,
@@ -153,19 +132,14 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("token", token);
         setUser(response.data.user);
 
-        console.log(
-          "✅ Registration successful, user role:",
-          response.data.user.role
-        );
         navigate(getDefaultRoute(response.data.user.role), { replace: true });
         return { success: true };
       } else {
         setError(response.data.message || "Registration failed");
-        console.log("❌ Registration failed:", response.data.message);
         return { success: false, message: response.data.message };
       }
     } catch (error) {
-      console.error("💥 Registration error:", error);
+      console.error("Registration error:", error);
       const message =
         error.response?.data?.message ||
         "Registration failed. Please try again.";
@@ -178,19 +152,16 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     try {
-      console.log("🚪 Logout attempt");
       localStorage.removeItem("token");
       setUser(null);
       setError("");
-      console.log("✅ Logout successful");
     } catch (error) {
-      console.error("💥 Logout error:", error);
+      console.error("Logout error:", error);
     }
   };
 
   const socialLogin = async (provider) => {
     try {
-      console.log(`🔄 Social login attempt with ${provider}`);
       setError("");
       setLoading(true);
 
@@ -201,7 +172,7 @@ export const AuthProvider = ({ children }) => {
       const cleanBaseURL = baseURL.replace(/\/api$/, "");
       window.location.href = `${cleanBaseURL}/api/auth/${provider}`;
     } catch (error) {
-      console.error(`💥 ${provider} login error:`, error);
+      console.error(`${provider} login error:`, error);
       setError(`${provider} login failed. Please try again.`);
       setLoading(false);
     }
@@ -209,7 +180,6 @@ export const AuthProvider = ({ children }) => {
 
   const loginWithTokens = async (accessToken, refreshToken) => {
     try {
-      console.log("🔄 Login with tokens");
       setError("");
       setLoading(true);
 
@@ -221,20 +191,15 @@ export const AuthProvider = ({ children }) => {
 
       // Get user profile
       const response = await authAPI.getMe();
-      console.log("📡 OAuth user response:", response.data);
 
       if (response.data.success) {
         setUser(response.data.user);
-        console.log(
-          "✅ OAuth login successful, user role:",
-          response.data.user.role
-        );
         return { success: true };
       } else {
         throw new Error(response.data.message || "Failed to get user profile");
       }
     } catch (error) {
-      console.error("💥 OAuth login error:", error);
+      console.error("OAuth login error:", error);
       localStorage.removeItem("token");
       localStorage.removeItem("refreshToken");
       setError("OAuth login failed. Please try again.");
@@ -246,12 +211,10 @@ export const AuthProvider = ({ children }) => {
 
   const forgotPassword = async (email) => {
     try {
-      console.log("� Forgot password request for:", email);
       setError("");
       setLoading(true);
 
       const response = await authAPI.forgotPassword(email);
-      console.log("📡 Forgot password response:", response.data);
 
       if (response.data.success) {
         return { success: true };
@@ -260,7 +223,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: response.data.message };
       }
     } catch (error) {
-      console.error("💥 Forgot password error:", error);
+      console.error("Forgot password error:", error);
       const message =
         error.response?.data?.message || "Failed to send reset email";
       setError(message);
@@ -272,12 +235,10 @@ export const AuthProvider = ({ children }) => {
 
   const resetPassword = async (token, password) => {
     try {
-      console.log("🔄 Reset password request");
       setError("");
       setLoading(true);
 
       const response = await authAPI.resetPassword({ token, password });
-      console.log("📡 Reset password response:", response.data);
 
       if (response.data.success) {
         return { success: true };
@@ -286,7 +247,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: response.data.message };
       }
     } catch (error) {
-      console.error("💥 Reset password error:", error);
+      console.error("Reset password error:", error);
       const message =
         error.response?.data?.message || "Failed to reset password";
       setError(message);
@@ -298,12 +259,10 @@ export const AuthProvider = ({ children }) => {
 
   const verifyEmail = async (token) => {
     try {
-      console.log("🔄 Email verification request");
       setError("");
       setLoading(true);
 
       const response = await authAPI.verifyEmail(token);
-      console.log("📡 Email verification response:", response.data);
 
       if (response.data.success) {
         // Update user data after verification
@@ -314,7 +273,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: response.data.message };
       }
     } catch (error) {
-      console.error("💥 Email verification error:", error);
+      console.error("Email verification error:", error);
       const message =
         error.response?.data?.message || "Email verification failed";
       setError(message);
@@ -326,12 +285,10 @@ export const AuthProvider = ({ children }) => {
 
   const resendVerificationEmail = async () => {
     try {
-      console.log("🔄 Resend verification email request");
       setError("");
       setLoading(true);
 
       const response = await authAPI.resendVerificationEmail();
-      console.log("📡 Resend verification response:", response.data);
 
       if (response.data.success) {
         return { success: true };
@@ -340,7 +297,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: response.data.message };
       }
     } catch (error) {
-      console.error("💥 Resend verification error:", error);
+      console.error("Resend verification error:", error);
       const message =
         error.response?.data?.message || "Failed to send verification email";
       setError(message);
@@ -381,7 +338,6 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (profileData) => {
     try {
-      console.log("🔄 Profile update attempt:", profileData);
       setError("");
       setLoading(true);
 
@@ -402,18 +358,16 @@ export const AuthProvider = ({ children }) => {
       );
 
       const result = await updatedResponse.json();
-      console.log("📡 Profile update response:", result);
 
       if (result.success) {
         setUser(result.user);
-        console.log("✅ Profile updated successfully");
         return { success: true, user: result.user };
       } else {
         setError(result.message || "Profile update failed");
         return { success: false, message: result.message };
       }
     } catch (error) {
-      console.error("💥 Profile update error:", error);
+      console.error("Profile update error:", error);
       const message = error.response?.data?.message || "Profile update failed";
       setError(message);
       return { success: false, message };

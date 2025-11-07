@@ -459,8 +459,8 @@ export const emailService = {
     const resetUrl = `${
       process.env.CLIENT_URL ||
       process.env.FRONTEND_URL ||
-      "http://localhost:3000"
-    }/reset-password?token=${resetToken}`;
+      "http://localhost:5173"
+    }/forgot-password?token=${resetToken}`;
     return this.sendEmail(user.email, "passwordReset", { user, url: resetUrl });
   },
 
