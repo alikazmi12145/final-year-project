@@ -229,7 +229,7 @@ const ReaderDashboard = () => {
         setBookmarkedPoems(bookmarksRes.data.bookmarks || []);
       }
     } catch (error) {
-      console.log("Bookmarks API not available");
+      // Bookmarks API not available yet
     }
 
     // Fetch recommendations
@@ -239,7 +239,7 @@ const ReaderDashboard = () => {
         setRecommendations(recommendationsRes.data.poems || []);
       }
     } catch (error) {
-      console.log("Recommendations API not available");
+      // Recommendations API not available yet
     }
   };
 
