@@ -65,17 +65,25 @@ router.get("/", poetOperationLimit, async (req, res) => {
     sort[sortBy] = sortOrder === "desc" ? -1 : 1;
 
     const poets = await Poet.find(query)
-      .populate("user", "name email isVerified verificationBadge")
+      .populate("user", "name email isVerified verificationBadge profileImage bio")
       .sort(sort)
       .skip(skip)
       .limit(parseInt(limit))
       .lean();
+
+    console.log("Poets from Poet collection:", poets.map(p => ({
+      name: p.name,
+      user: p.user,
+      profileImage: p.profileImage
+    })));
 
     const total = await Poet.countDocuments(query);
 
     // Also get User poets (users with role='poet')
     // But exclude users that already have a Poet profile to avoid duplicates
     const poetUserIds = poets.filter(p => p.user?._id).map(p => p.user._id.toString());
+    
+    console.log("Poet user IDs to exclude:", poetUserIds);
 
     const userPoetQuery = {
       role: "poet",
@@ -93,6 +101,22 @@ router.get("/", poetOperationLimit, async (req, res) => {
     const userPoets = await User.find(userPoetQuery)
       .sort(sortBy === "name" ? { fullName: sortOrder === "desc" ? -1 : 1 } : {})
       .lean();
+
+    console.log("User poets with images:", userPoets.map(u => ({
+      name: u.name,
+      fullName: u.fullName,
+      profileImage: u.profileImage,
+      avatar: u.avatar
+    })));
+
+    // Check ALL poet users (for debugging)
+    const allPoetUsers = await User.find({ role: "poet", status: "active" }).lean();
+    console.log("ALL poet users:", allPoetUsers.map(u => ({
+      _id: u._id,
+      name: u.name,
+      fullName: u.fullName,
+      profileImage: u.profileImage
+    })));
 
     // Add poem counts for each poet from Poet collection
     const poetsWithStats = await Promise.all(
@@ -120,6 +144,10 @@ router.get("/", poetOperationLimit, async (req, res) => {
 
         return {
           ...poet,
+          // If Poet has a linked user with profileImage, use that; otherwise use Poet's profileImage
+          profileImage: poet.user?.profileImage || poet.profileImage,
+          // If Poet has a linked user with bio, use that; otherwise use Poet's bio
+          bio: poet.user?.bio || poet.bio,
           stats: {
             poemCount: stats.poemCount,
             totalLikes: stats.totalLikes,
@@ -161,7 +189,9 @@ router.get("/", poetOperationLimit, async (req, res) => {
           name: userPoet.fullName || userPoet.name,
           username: userPoet.name,
           bio: userPoet.bio,
+          profileImage: userPoet.profileImage,
           profilePicture: userPoet.profileImage?.url || userPoet.avatar,
+          avatar: userPoet.profileImage?.url || userPoet.avatar,
           location: userPoet.location,
           era: "contemporary",
           status: userPoet.status,
@@ -248,17 +278,38 @@ router.get("/featured", poetOperationLimit, async (req, res) => {
 // Get poet by ID (public)
 router.get("/:id", poetOperationLimit, async (req, res) => {
   try {
+    console.log("Getting poet by ID:", req.params.id);
+    
     // First, try to find in Poet collection
     let poet = await Poet.findById(req.params.id)
-      .populate("user", "name email isVerified verificationBadge")
+      .populate("user", "name email isVerified verificationBadge profileImage bio")
       .populate("verifiedBy", "name")
       .lean();
+
+    console.log("Poet found in Poet collection:", poet ? poet.name : "Not found");
 
     let isUserPoet = false;
     let poems = [];
     let poetStats = {};
 
     if (poet) {
+      // If poet has a linked user with profileImage, use that
+      if (poet.user?.profileImage && !poet.profileImage) {
+        poet.profileImage = poet.user.profileImage;
+      }
+
+      // If poet has a linked user with bio, use that
+      if (poet.user?.bio && !poet.bio) {
+        poet.bio = poet.user.bio;
+      }
+
+      console.log("Poet detail - After merging:", {
+        name: poet.name,
+        bio: poet.bio,
+        userBio: poet.user?.bio,
+        profileImage: poet.profileImage
+      });
+
       // Check if poet is public or user has permission
       if (poet.status !== "active" && (!req.user || req.user.role !== "admin")) {
         return res.status(403).json({
@@ -267,44 +318,7 @@ router.get("/:id", poetOperationLimit, async (req, res) => {
         });
       }
 
-<<<<<<< HEAD
-    // Get poet's poems - search by both poet field AND author field (if poet has linked user)
-    const poemQuery = {
-      $or: [
-        { poet: poet._id },
-        // Also search by author if poet has a linked user
-        ...(poet.user ? [{ author: poet.user._id || poet.user }] : [])
-      ],
-      published: true,
-      status: "approved",
-    };
-    
-    const poems = await Poem.find(poemQuery)
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .lean();
 
-    // Get poet statistics - count poems by both poet field AND author field
-    const statsMatch = {
-      $or: [
-        { poet: poet._id },
-        ...(poet.user ? [{ author: poet.user._id || poet.user }] : [])
-      ],
-      published: true,
-      status: "approved"
-    };
-    
-    const stats = await Poem.aggregate([
-      { $match: statsMatch },
-      {
-        $group: {
-          _id: null,
-          totalPoems: { $sum: 1 },
-          totalLikes: { $sum: "$likesCount" },
-          totalViews: { $sum: "$viewsCount" },
-          totalComments: { $sum: "$commentsCount" },
-          averageRating: { $avg: "$rating" },
-=======
       // If poet has a linked user, query by author (User ID), otherwise by poet ID
       const hasLinkedUser = poet.user?._id;
       const queryField = hasLinkedUser
@@ -330,7 +344,7 @@ router.get("/:id", poetOperationLimit, async (req, res) => {
             totalComments: { $sum: { $cond: [{ $isArray: "$comments" }, { $size: "$comments" }, { $ifNull: ["$commentsCount", 0] }] } },
             averageRating: { $avg: { $ifNull: ["$averageRating", "$rating", 0] } },
           },
->>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
+
         },
       ]);
 
@@ -421,15 +435,13 @@ router.get("/:id", poetOperationLimit, async (req, res) => {
 
     // Get poem categories distribution
     const categoryDistribution = await Poem.aggregate([
-<<<<<<< HEAD
-      { $match: statsMatch },
-=======
+
       {
         $match: isUserPoet
           ? { author: poet._id, status: "published" }
           : { poet: poet._id, published: true, status: "approved" },
       },
->>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
+
       { $group: { _id: "$category", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]);
@@ -874,3 +886,4 @@ router.get("/analytics", poetAuth, async (req, res) => {
 });
 
 export default router;
+

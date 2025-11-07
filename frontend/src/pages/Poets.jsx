@@ -73,6 +73,17 @@ const Poets = () => {
         allPoets = response.data.poets || response.data.data || [];
       }
 
+      console.log("Fetched poets with images:");
+      allPoets.forEach(p => {
+        console.log(`${p.name}:`, {
+          profileImage: p.profileImage,
+          'profileImage.url': p.profileImage?.url,
+          avatar: p.avatar,
+          image: p.image,
+          profilePicture: p.profilePicture
+        });
+      });
+
       setPoets(Array.isArray(allPoets) ? allPoets : []);
 
       if (allPoets.length === 0) {
@@ -120,6 +131,11 @@ const Poets = () => {
             followers: response.data.poet?.stats?.followers || 0,
           }
         };
+        console.log("Fetched poet detail:", {
+          name: poetWithStats.name,
+          bio: poetWithStats.bio,
+          profileImage: poetWithStats.profileImage
+        });
         setSelectedPoet(poetWithStats);
         setPoetPoems(response.data.poems || []);
       } else {
@@ -137,32 +153,17 @@ const Poets = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [selectedTab, setSelectedTab] = useState("biography");
 
-  // Sample extended poet data
-  const extendedPoetData = {
-    birthYear: 1877,
-    deathYear: 1938,
-    birthPlace: "Sialkot",
-    deathPlace: "Lahore",
-    education: "Law, Philosophy, Literature",
-    era: "modern",
-    style: ["ghazal", "nazm", "qasida"],
-    themes: ["spiritual", "philosophy", "social"],
-    isAlive: false,
-    awards: ["Sir", "Knighthood"],
-    famousQuote: "Rise above sectional interests and private ambitions",
-    famousQuoteUrdu: "فرقہ واریت اور ذاتی مفادات سے اوپر اٹھو",
-    stats: {
-      totalPoems: 200,
-      totalAwards: 5,
-      totalLikes: 15000,
-      followers: 25000,
-    },
-  };
-
   const poet = id ? (selectedPoet || poets.find((p) => p._id === id)) : null;
-  const enhancedPoet = poet ? { ...poet, ...extendedPoetData } : null;
 
-  if (id && enhancedPoet) {
+  if (id && poet) {
+    console.log("Poet detail page - poet data:", {
+      name: poet.name,
+      bio: poet.bio,
+      profileImage: poet.profileImage,
+      avatar: poet.avatar,
+      profilePicture: poet.profilePicture
+    });
+
     return (
       <div className="min-h-screen cultural-bg pt-20 py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -176,9 +177,13 @@ const Poets = () => {
 
             <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8">
               <div className="w-40 h-40 bg-gradient-to-r from-urdu-gold via-cultural-amber to-urdu-brown rounded-full flex items-center justify-center overflow-hidden shadow-cultural ring-4 ring-urdu-gold/20">
-                {(poet.profileImage?.url || poet.profilePicture) ? (
+                {(poet.profileImage?.url || poet.avatar || poet.profilePicture) ? (
                   <img
-                    src={poet.profileImage?.url || poet.profilePicture}
+                    src={
+                      (poet.profileImage?.url || poet.avatar || poet.profilePicture).startsWith('http')
+                        ? (poet.profileImage?.url || poet.avatar || poet.profilePicture)
+                        : `http://localhost:5001${poet.profileImage?.url || poet.avatar || poet.profilePicture}`
+                    }
                     alt={poet.name}
                     className="w-40 h-40 rounded-full object-cover filter grayscale hover:filter-none transition-all duration-500"
                   />
@@ -204,11 +209,30 @@ const Poets = () => {
                   <p className="text-urdu-maroon mb-2 font-urdu urdu-body text-lg leading-relaxed">
                     {poet.bio || "کوئی تعارف دستیاب نہیں"}
                   </p>
-                  {/* Extended bio in Urdu */}
-                  <p className="text-cultural-burgundy font-urdu urdu-body text-base leading-relaxed">
-                    اردو ادب کے منظر نامے میں ایک اہم نام، جو اپنے خوبصورت اشعار
-                    اور گہری سوچ کے لیے مشہور ہے۔
-                  </p>
+                  
+                  {/* Birth and Death Dates */}
+                  {(poet.dateOfBirth || poet.dateOfDeath) && (
+                    <div className="mt-3 pt-3 border-t border-urdu-gold/20">
+                      <div className="flex items-center justify-center gap-4 text-sm">
+                        {poet.dateOfBirth && (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-urdu-gold" />
+                            <span className="text-urdu-brown font-urdu">
+                              پیدائش: {new Date(poet.dateOfBirth).toLocaleDateString('ur-PK', { year: 'numeric', month: 'long', day: 'numeric' })}
+                            </span>
+                          </div>
+                        )}
+                        {poet.dateOfDeath && (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-cultural-burgundy" />
+                            <span className="text-urdu-brown font-urdu">
+                              وفات: {new Date(poet.dateOfDeath).toLocaleDateString('ur-PK', { year: 'numeric', month: 'long', day: 'numeric' })}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm">
@@ -315,20 +339,6 @@ const Poets = () => {
               </div>
             </div>
           )}
-
-          {/* Famous Quote Section */}
-          <div className="bg-gradient-to-r from-cultural-burgundy/5 via-urdu-maroon/5 to-cultural-burgundy/5 p-6 mb-6 rounded-2xl border border-cultural-burgundy/20 shadow-cultural">
-            <div className="text-center">
-              <div className="text-6xl text-urdu-gold/30 mb-2">"</div>
-              <blockquote className="text-xl font-urdu urdu-poetry text-cultural-burgundy mb-4 leading-relaxed">
-                {extendedPoetData.famousQuoteUrdu}
-              </blockquote>
-              <p className="text-base text-urdu-brown font-elegant italic mb-4">
-                "{extendedPoetData.famousQuote}"
-              </p>
-              <div className="w-16 h-1 bg-gradient-to-r from-urdu-gold to-cultural-amber mx-auto"></div>
-            </div>
-          </div>
 
           {/* Enhanced Poems Section */}
           <div className="bg-gradient-to-br from-urdu-cream via-cultural-pearl to-white p-8 rounded-2xl shadow-cultural border border-urdu-gold/20 relative overflow-hidden">
@@ -484,7 +494,11 @@ const Poets = () => {
                     <div className="h-60 bg-gradient-to-br from-cultural-charcoal to-cultural-slate flex items-center justify-center relative overflow-hidden">
                       {poet.profileImage?.url || poet.avatar || poet.image || poet.profilePicture ? (
                         <img
-                          src={poet.profileImage?.url || poet.avatar || poet.image || poet.profilePicture}
+                          src={
+                            (poet.profileImage?.url || poet.avatar || poet.image || poet.profilePicture).startsWith('http')
+                              ? (poet.profileImage?.url || poet.avatar || poet.image || poet.profilePicture)
+                              : `http://localhost:5001${poet.profileImage?.url || poet.avatar || poet.image || poet.profilePicture}`
+                          }
                           alt={poet.name}
                           className="w-full h-full object-cover bg-center filter grayscale hover:filter-none transition-all duration-500"
                         />

@@ -144,24 +144,10 @@ export const adminDashboardAPI = {
     return response.data;
   },
 
-<<<<<<< HEAD
-  // Get pending poems for moderation
-  getPendingPoems: async (params = {}) => {
-    const response = await api.get("/admin/poems", {
-      params: { ...params, status: "pending" },
-    });
-    return response.data;
-  },
 
-  approvePoem: async (poemId, approved, reason) => {
-    const response = await api.put(`/admin/content/poem/${poemId}/moderate`, {
-      action: approved ? "approve" : "reject",
-      moderationNotes: reason,
-    });
-=======
   getPendingPoems: async (params = {}) => {
     const response = await api.get("/poems/pending", { params });
->>>>>>> 15541a0cd17c354d80da14f1df59ad0df0220094
+
     return response.data;
   },
 
@@ -490,3 +476,4 @@ export const getEngagementLevel = (rate) => {
 
 // Export the main api instance for other custom requests
 export default api;
+
