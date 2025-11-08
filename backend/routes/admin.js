@@ -11,8 +11,25 @@ import AdminController from "../controllers/adminController.js";
 import { adminAuth, moderatorAuth } from "../middleware/auth.js";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
+import multer from "multer";
+import cloudinary from "../config/cloudinary.js";
 
 const router = express.Router();
+
+// Configure multer for image uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
 
 // Email transporter setup
 const transporter = nodemailer.createTransport({
@@ -125,10 +142,63 @@ router.get("/dashboard/stats", adminAuth, async (req, res) => {
 // User Management
 router.get("/users", adminAuth, async (req, res) => {
   try {
-    const { page = 1, limit = 20, role, status, search } = req.query;
+    const { page = 1, limit = 1000, role, status, search } = req.query;
     const skip = (page - 1) * limit;
 
-    // Build query
+    // If role is specifically "poet", return ALL poets from Poet collection
+    if (role === "poet") {
+      const poetQuery = {};
+      if (search) {
+        poetQuery.$or = [
+          { name: { $regex: search, $options: "i" } },
+          { penName: { $regex: search, $options: "i" } },
+          { fullName: { $regex: search, $options: "i" } },
+        ];
+      }
+
+      // Get all poets from Poet collection
+      const poets = await Poet.find(poetQuery)
+        .populate("user", "email status createdAt")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean();
+
+      // Transform poets to match User structure
+      const transformedPoets = poets.map(poet => ({
+        _id: poet.user?._id || poet._id,
+        name: poet.name,
+        penName: poet.penName,
+        email: poet.user?.email || "N/A",
+        role: "poet",
+        status: poet.status || poet.user?.status || "active",
+        profileImage: poet.profileImage,
+        isVerified: poet.isVerified,
+        createdAt: poet.createdAt,
+        poetId: poet._id,
+        isDeceased: poet.isDeceased,
+        era: poet.era,
+        bio: poet.shortBio || poet.bio,
+        stats: poet.stats,
+        // Add flag to identify poets without user accounts
+        hasUserAccount: !!poet.user,
+      }));
+
+      const total = await Poet.countDocuments(poetQuery);
+
+      return res.json({
+        success: true,
+        users: transformedPoets,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      });
+    }
+
+    // For non-poet roles or "all" roles, return from User collection
     const query = {};
     if (role && role !== "all") query.role = role;
     if (status && status !== "all") query.status = status;
@@ -145,11 +215,31 @@ router.get("/users", adminAuth, async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit));
 
+    // Get poet info for users who are poets
+    const usersWithPoetInfo = await Promise.all(
+      users.map(async (user) => {
+        const userObj = user.toObject();
+        
+        if (user.role === 'poet') {
+          const poetInfo = await Poet.findOne({ user: user._id });
+          if (poetInfo) {
+            // Merge poet profile image if exists
+            userObj.profileImage = poetInfo.profileImage || user.profileImage;
+            userObj.penName = poetInfo.penName;
+            userObj.poetId = poetInfo._id;
+            userObj.hasUserAccount = true;
+          }
+        }
+        
+        return userObj;
+      })
+    );
+
     const total = await User.countDocuments(query);
 
     res.json({
       success: true,
-      users,
+      users: usersWithPoetInfo,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -1421,5 +1511,494 @@ router.put("/users/:userId/approve", adminAuth, AdminController.approveUser);
 
 // Bulk approve/reject users
 router.put("/users/bulk-action", adminAuth, AdminController.bulkApproveUsers);
+
+// ============= CONTEST MANAGEMENT ROUTES =============
+
+// Get all contests (admin view with all details)
+router.get("/contests", adminAuth, async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 100, 
+      status, 
+      category, 
+      search,
+      sortBy = "createdAt",
+      sortOrder = "desc"
+    } = req.query;
+
+    const skip = (page - 1) * limit;
+    const query = {};
+
+    // Apply filters
+    if (status && status !== "all") {
+      query.status = status;
+    }
+
+    if (category && category !== "all") {
+      query.category = category;
+    }
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { theme: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    // Build sort object
+    const sort = {};
+    sort[sortBy] = sortOrder === "desc" ? -1 : 1;
+
+    const contests = await Contest.find(query)
+      .populate("organizer", "name email")
+      .populate("judges", "name")
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    const total = await Contest.countDocuments(query);
+
+    // Add participation and submission counts
+    const contestsWithStats = contests.map(contest => ({
+      ...contest,
+      participantsCount: contest.participants?.length || 0,
+      submissionsCount: contest.participants?.filter(p => p.submission).length || 0,
+      entries: contest.participants?.length || 0,
+      deadline: contest.submissionDeadline,
+    }));
+
+    res.json({
+      success: true,
+      contests: contestsWithStats,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error("Get contests error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch contests"
+    });
+  }
+});
+
+// Create new contest (admin)
+router.post("/contests", adminAuth, async (req, res) => {
+  try {
+    const {
+      title,
+      description,
+      category,
+      theme,
+      rules,
+      prizes,
+      submissionDeadline,
+      votingDeadline,
+      maxParticipants,
+      entryFee,
+      language = "urdu",
+      judges
+    } = req.body;
+
+    const contest = new Contest({
+      title,
+      description,
+      category,
+      theme,
+      rules,
+      prizes,
+      submissionDeadline: new Date(submissionDeadline),
+      votingDeadline: votingDeadline ? new Date(votingDeadline) : null,
+      maxParticipants,
+      entryFee: entryFee || 0,
+      language,
+      organizer: req.user.userId,
+      judges: judges || [],
+      status: "upcoming"
+    });
+
+    await contest.save();
+    await contest.populate("organizer", "name");
+
+    res.status(201).json({
+      success: true,
+      message: "Contest created successfully",
+      contest
+    });
+  } catch (error) {
+    console.error("Create contest error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create contest"
+    });
+  }
+});
+
+// Update contest
+router.put("/contests/:id", adminAuth, async (req, res) => {
+  try {
+    const contest = await Contest.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true, runValidators: true }
+    ).populate("organizer", "name");
+
+    if (!contest) {
+      return res.status(404).json({
+        success: false,
+        message: "Contest not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Contest updated successfully",
+      contest
+    });
+  } catch (error) {
+    console.error("Update contest error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update contest"
+    });
+  }
+});
+
+// Delete contest
+router.delete("/contests/:id", adminAuth, async (req, res) => {
+  try {
+    const contest = await Contest.findByIdAndDelete(req.params.id);
+
+    if (!contest) {
+      return res.status(404).json({
+        success: false,
+        message: "Contest not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Contest deleted successfully"
+    });
+  } catch (error) {
+    console.error("Delete contest error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete contest"
+    });
+  }
+});
+
+// Get single poet details
+router.get("/poets/:id", adminAuth, async (req, res) => {
+  try {
+    const poet = await Poet.findById(req.params.id);
+    
+    if (!poet) {
+      return res.status(404).json({
+        success: false,
+        message: "Poet not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      poet
+    });
+
+  } catch (error) {
+    console.error("Get poet error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch poet details"
+    });
+  }
+});
+
+// Update poet details
+router.put("/poets/:id", adminAuth, async (req, res) => {
+  try {
+    const {
+      name,
+      penName,
+      fullName,
+      bio,
+      shortBio,
+      nationality,
+      era,
+      schoolOfThought,
+      birthPlace,
+      period,
+      dateOfBirth,
+      dateOfDeath,
+      isDeceased,
+      languages,
+      poeticStyle,
+      isVerified,
+      featured
+    } = req.body;
+
+    const updateData = {
+      name,
+      penName,
+      fullName,
+      bio,
+      shortBio,
+      nationality,
+      era,
+      schoolOfThought,
+      birthPlace,
+      period,
+      dateOfBirth: dateOfBirth || null,
+      dateOfDeath: dateOfDeath || null,
+      isDeceased: isDeceased === true,
+      languages: languages || [],
+      poeticStyle: poeticStyle || [],
+      isVerified: isVerified === true,
+      featured: featured === true
+    };
+
+    const poet = await Poet.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!poet) {
+      return res.status(404).json({
+        success: false,
+        message: "Poet not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Poet details updated successfully",
+      poet
+    });
+
+  } catch (error) {
+    console.error("Update poet error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update poet details"
+    });
+  }
+});
+
+// Upload poet profile image
+router.post("/poets/:id/upload-image", adminAuth, upload.single('avatar'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No image file provided"
+      });
+    }
+
+    const poet = await Poet.findById(req.params.id);
+    
+    if (!poet) {
+      return res.status(404).json({
+        success: false,
+        message: "Poet not found"
+      });
+    }
+
+    // Delete old image from cloudinary if exists
+    if (poet.profileImage?.publicId) {
+      try {
+        await cloudinary.uploader.destroy(poet.profileImage.publicId);
+      } catch (err) {
+        console.error("Error deleting old image:", err);
+      }
+    }
+
+    // Upload new image to cloudinary
+    const uploadPromise = new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'poets',
+          transformation: [
+            { width: 500, height: 500, crop: 'fill', gravity: 'face' },
+            { quality: 'auto:good' }
+          ]
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(req.file.buffer);
+    });
+
+    const result = await uploadPromise;
+
+    // Update poet profile image
+    poet.profileImage = {
+      url: result.secure_url,
+      publicId: result.public_id
+    };
+
+    await poet.save();
+
+    res.json({
+      success: true,
+      message: "Profile image uploaded successfully",
+      profileImage: poet.profileImage,
+      poet
+    });
+
+  } catch (error) {
+    console.error("Upload poet image error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to upload image"
+    });
+  }
+});
+
+// Upload general user (admin, moderator, user) profile image
+router.post("/users/:id/upload-image", adminAuth, upload.single('avatar'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No image file provided"
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    console.log("Uploading avatar for user:", user._id, "Role:", user.role);
+
+    let avatarUrl;
+    let publicId;
+
+    // Check if Cloudinary is properly configured
+    const cloudinaryConfigured = 
+      process.env.CLOUDINARY_CLOUD_NAME && 
+      process.env.CLOUDINARY_API_KEY && 
+      process.env.CLOUDINARY_API_SECRET;
+
+    if (cloudinaryConfigured) {
+      try {
+        // Delete old image from cloudinary if exists
+        if (user.profileImage?.publicId) {
+          try {
+            await cloudinary.uploader.destroy(user.profileImage.publicId);
+            console.log("Deleted old image:", user.profileImage.publicId);
+          } catch (err) {
+            console.error("Error deleting old image:", err);
+          }
+        }
+
+        // Upload new image to cloudinary
+        const result = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            {
+              folder: 'users',
+              public_id: `user_${user._id}`,
+              overwrite: true,
+              transformation: [
+                { width: 500, height: 500, crop: 'fill', gravity: 'face' },
+                { quality: 'auto:good' }
+              ]
+            },
+            (error, result) => {
+              if (error) {
+                console.error("Cloudinary upload error:", error);
+                reject(error);
+              } else {
+                console.log("Cloudinary upload success:", result.secure_url);
+                resolve(result);
+              }
+            }
+          );
+          uploadStream.end(req.file.buffer);
+        });
+
+        avatarUrl = result.secure_url;
+        publicId = result.public_id;
+
+      } catch (cloudinaryError) {
+        console.error("Cloudinary upload failed, falling back to local storage:", cloudinaryError.message);
+        // Fallback to local storage
+        const fs = await import('fs/promises');
+        const path = await import('path');
+        
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'profiles');
+        await fs.mkdir(uploadsDir, { recursive: true });
+        
+        const filename = `user_${user._id}_${Date.now()}${path.extname(req.file.originalname)}`;
+        const filepath = path.join(uploadsDir, filename);
+        
+        await fs.writeFile(filepath, req.file.buffer);
+        avatarUrl = `/uploads/profiles/${filename}`;
+        publicId = filename;
+      }
+    } else {
+      console.log("Cloudinary not configured, using local storage");
+      // Save locally if Cloudinary is not configured
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'profiles');
+      await fs.mkdir(uploadsDir, { recursive: true });
+      
+      const filename = `user_${user._id}_${Date.now()}${path.extname(req.file.originalname)}`;
+      const filepath = path.join(uploadsDir, filename);
+      
+      await fs.writeFile(filepath, req.file.buffer);
+      avatarUrl = `/uploads/profiles/${filename}`;
+      publicId = filename;
+    }
+
+    // Update user profile image
+    user.profileImage = {
+      url: avatarUrl,
+      publicId: publicId
+    };
+
+    await user.save();
+
+    console.log("User profile image updated:", user.profileImage);
+
+    res.json({
+      success: true,
+      message: "Profile image uploaded successfully",
+      profileImage: user.profileImage,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        profileImage: user.profileImage
+      }
+    });
+
+  } catch (error) {
+    console.error("Upload user image error:", error);
+    console.error("Error stack:", error.stack);
+    res.status(500).json({
+      success: false,
+      message: "Failed to upload image",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
 
 export default router;

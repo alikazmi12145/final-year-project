@@ -29,12 +29,16 @@
 }
 
 body {
-  font-family: "Inter", "Tajawal", sans-serif;
+  font-family: "Noto Nastaliq Urdu", "LocalNastaleeq", "Jameel Noori Nastaleeq", "Noto Sans Arabic", "Tajawal", "Inter", sans-serif;
   background: linear-gradient(135deg, #fefce8 0%, #fffbeb 50%, #fef3c7 100%);
   color: var(--text-dark);
   min-height: 100vh;
-  line-height: 1.6;
+  line-height: 2;
   font-weight: 400;
+  direction: rtl;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ==================== TYPOGRAPHY SECTION ==================== */
@@ -544,6 +548,9 @@ body {
     font-size: 0.875rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     backdrop-filter: blur(10px);
+    font-family: "Noto Nastaliq Urdu", "LocalNastaleeq", "Jameel Noori Nastaleeq", "Noto Sans Arabic", sans-serif;
+    direction: rtl;
+    line-height: 1.8;
   }
 
   .input-field:focus {

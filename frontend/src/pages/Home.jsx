@@ -21,48 +21,42 @@ const Home = () => {
       period: "1797-1869",
       description: "اردو شاعری کا بے تاج بادشاہ",
       quote: "ہزاروں خواہشیں ایسی کہ ہر خواہش پہ دم نکلے",
-      image:
-        "/images/images.jpg",
+      image: "/images/images.jpg",
     },
     {
       name: "علامہ اقبال",
       period: "1877-1938",
       description: "شاعر مشرق",
       quote: "خودی کو کر بلند اتنا کہ ہر تقدیر سے پہلے",
-      image:
-        "/images/images (1).jpg",
+      image: "/images/images (1).jpg",
     },
     {
       name: "فیض احمد فیض",
       period: "1911-1984",
       description: "انقلابی شاعر",
       quote: "محبت کرنے والے کم نہ ہوں گے",
-      image:
-        "/images/5-61.jpg",
+      image: "/images/5-61.jpg",
     },
     {
       name: "میر تقی میر",
       period: "1723-1810",
       description: "خدائے سخن",
       quote: "کیا مجھ کو یہ عشق ہوا ہے کہ بس",
-      image:
-        "/images/images (3).jpg",
+      image: "/images/images (3).jpg",
     },
     {
       name: "احمد فراز",
       period: "1931-2008",
       description: "جدید غزل کا استاد",
       quote: "رنج کی شب میں سحر کا انتظار کون کرے",
-      image:
-        "/images/images (2).jpg",
+      image: "/images/images (2).jpg",
     },
     {
       name: "پروین شاکر",
       period: "1952-1994",
       description: "جدید اردو شاعرہ",
       quote: "پتا نہیں کیوں زندگی کی راہوں میں",
-      image:
-        "/images/images (4).jpg",
+      image: "/images/images (4).jpg",
     },
   ];
 

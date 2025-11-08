@@ -110,6 +110,7 @@ const startServer = async () => {
     const dashboardRoutes = await import("./routes/dashboard.js");
     const poetDashboardRoutes = await import("./routes/poetDashboard.js");
     const chatRoutes = await import("./routes/chat.js");
+    const newsletterRoutes = await import("./routes/newsletter.js");
 
     // Apply routes
     app.use("/api/auth", authRoutes.default);
@@ -125,6 +126,7 @@ const startServer = async () => {
     app.use("/api/dashboard", dashboardRoutes.default);
     app.use("/api/poet-dashboard", poetDashboardRoutes.default);
     app.use("/api/chat", chatRoutes.default);
+    app.use("/api/newsletter", newsletterRoutes.default);
 
     console.log("✅ Routes loaded successfully");
   } catch (error) {

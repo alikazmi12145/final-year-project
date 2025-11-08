@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
   Users,
   FileText,
@@ -40,6 +41,7 @@ import {
   User,
   Grid,
   List,
+  Bookmark,
 } from "lucide-react";
 import {
   adminDashboardAPI,
@@ -73,6 +75,51 @@ const AdminDashboard = () => {
   const [userPage, setUserPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Poet details edit states
+  const [showPoetDetailsModal, setShowPoetDetailsModal] = useState(false);
+  const [selectedPoet, setSelectedPoet] = useState(null);
+
+  // Poem management states
+  const [selectedPoem, setSelectedPoem] = useState(null);
+  const [showPoemModal, setShowPoemModal] = useState(false);
+  const [showEditPoemModal, setShowEditPoemModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [poemToDelete, setPoemToDelete] = useState(null);
+  const [poemFilter, setPoemFilter] = useState("all"); // all, pending, approved, published, draft
+  const [poemSearchTerm, setPoemSearchTerm] = useState("");
+  const [poemCategory, setPoemCategory] = useState("all");
+
+  // Helper function to get full image URL
+  const getImageUrl = (profileImage) => {
+    if (!profileImage) return null;
+    
+    // If it's a string
+    if (typeof profileImage === 'string') {
+      // If it starts with http, return as is
+      if (profileImage.startsWith('http')) {
+        return profileImage;
+      }
+      // If it's a relative path, prepend backend URL
+      return `http://localhost:5000${profileImage}`;
+    }
+    
+    // If it's an object with url or secure_url
+    const imageUrl = profileImage.url || profileImage.secure_url;
+    if (!imageUrl) return null;
+    
+    // If it starts with http, return as is
+    if (imageUrl.startsWith('http')) {
+      return imageUrl;
+    }
+    
+    // If it's a relative path, prepend backend URL
+    return `http://localhost:5000${imageUrl}`;
+  };
 
   // Handle logout
   const handleLogout = async () => {
@@ -143,14 +190,14 @@ const AdminDashboard = () => {
           pendingApprovals: stats.users.pending,
           weeklyGrowth: calculateGrowthPercentage(
             stats.users.newThisMonth,
-            100
-          ), // Mock previous month
+            stats.users.previousMonth || 100
+          ),
           topPoets: Math.floor(stats.users.poets * 0.1),
           contentModeration: stats.content.poems.underReview,
-          monthlyRevenue: 25600 + Math.floor(Math.random() * 1000),
-          userSatisfaction: "94.2",
-          onlineNow: Math.floor(Math.random() * 50) + 20,
-          totalViews: 156789 + Math.floor(Math.random() * 1000),
+          monthlyRevenue: stats.revenue?.monthly || 0,
+          userSatisfaction: stats.satisfaction?.rate || "0",
+          onlineNow: stats.users.onlineNow || 0,
+          totalViews: stats.analytics?.totalViews || 0,
           todayRegistrations: stats.users.newThisMonth,
           pendingReviews: stats.content.poems.underReview,
           poets: stats.users.poets,
@@ -191,7 +238,7 @@ const AdminDashboard = () => {
           stats: dashboardStats,
           recentActivity,
           insights: {
-            popularGenres: [
+            popularGenres: stats.analytics?.popularGenres || [
               "غزل",
               "نظم",
               "قطعہ",
@@ -200,112 +247,70 @@ const AdminDashboard = () => {
               "نعت",
               "مرثیہ",
             ],
-            engagementRate: (78.5 + Math.random() * 10).toFixed(1),
-            userSatisfaction: (94.2 + Math.random() * 3).toFixed(1),
-            contentQuality: (89.7 + Math.random() * 5).toFixed(1),
+            engagementRate: stats.analytics?.engagementRate || "0",
+            userSatisfaction: stats.satisfaction?.rate || "0",
+            contentQuality: stats.analytics?.contentQuality || "0",
             weeklyStats: {
               newUsers: stats.users.newThisMonth,
               newPoems: stats.content.poems.newThisMonth,
-              contestEntries: 67 + Math.floor(Math.random() * 20),
+              contestEntries: stats.content.contests.entries || 0,
               activePoets: stats.users.poets,
             },
-            topPerformers: [
-              {
-                name: "احمد علی شاعر",
-                metric: "سب سے زیادہ پسندیدہ نظمیں",
-                value: 245,
-              },
-              { name: "فاطمہ خان", metric: "سب سے زیادہ پیروکار", value: 1234 },
-              { name: "محمد حسن", metric: "سب سے زیادہ مناظر", value: 5678 },
-            ],
+            topPerformers: stats.analytics?.topPerformers || [],
             platformHealth: {
-              serverUptime: "99.9%",
-              responseTime: `${(120 + Math.random() * 50).toFixed(0)}ms`,
-              errorRate: `${(0.1 + Math.random() * 0.3).toFixed(2)}%`,
-              storageUsed: `${(67 + Math.random() * 10).toFixed(1)}%`,
+              serverUptime: stats.system?.uptime || "0%",
+              responseTime: stats.system?.responseTime || "0ms",
+              errorRate: stats.system?.errorRate || "0%",
+              storageUsed: stats.system?.storageUsed || "0%",
             },
           },
-          notifications: [
-            {
-              id: 1,
-              type: "warning",
-              message: "سرور کی گنجائش 80% ہو گئی",
-              time: "1 گھنٹہ پہلے",
-            },
-            {
-              id: 2,
-              type: "info",
-              message: "نیا اپ ڈیٹ دستیاب ہے",
-              time: "2 گھنٹے پہلے",
-            },
-            {
-              id: 3,
-              type: "success",
-              message: "بیک اپ مکمل ہوا",
-              time: "3 گھنٹے پہلے",
-            },
-          ],
+          notifications: stats.notifications || [],
         });
       }
     } catch (err) {
       console.error("Dashboard API error:", err);
       setError("ڈیش بورڈ ڈیٹا لوڈ کرنے میں خرابی - بیک اینڈ سے کنکشن نہیں");
 
-      // Enhanced fallback data for offline functionality
+      // No fallback data - show empty state
       setDashboardData({
         stats: {
-          totalUsers: 1247,
-          totalPoems: 3574,
-          totalContests: 92,
-          activeUsers: 458,
-          pendingApprovals: 5,
-          weeklyGrowth: "12.5",
-          topPoets: 15,
-          contentModeration: 7,
-          monthlyRevenue: 25600,
-          userSatisfaction: "94.2",
-          onlineNow: 25,
-          totalViews: 156789,
-          todayRegistrations: 8,
-          pendingReviews: 3,
-          poets: 245,
-          readers: 567,
-          moderators: 12,
-          admins: 3,
+          totalUsers: 0,
+          totalPoems: 0,
+          totalContests: 0,
+          activeUsers: 0,
+          pendingApprovals: 0,
+          weeklyGrowth: "0",
+          topPoets: 0,
+          contentModeration: 0,
+          monthlyRevenue: 0,
+          userSatisfaction: "0",
+          onlineNow: 0,
+          totalViews: 0,
+          todayRegistrations: 0,
+          pendingReviews: 0,
+          poets: 0,
+          readers: 0,
+          moderators: 0,
+          admins: 0,
         },
-        recentActivity: [
-          {
-            id: 1,
-            type: "user_registration",
-            user: "احمد علی شاعر",
-            time: "2 گھنٹے پہلے",
-            status: "pending",
-            description: "نیا شاعر رجسٹر ہوا",
-          },
-        ],
+        recentActivity: [],
         insights: {
-          popularGenres: ["غزل", "نظم", "قطعہ", "رباعی", "حمد", "نعت", "مرثیہ"],
-          engagementRate: "82.3",
-          userSatisfaction: "94.2",
-          contentQuality: "89.7",
+          popularGenres: [],
+          engagementRate: "0",
+          userSatisfaction: "0",
+          contentQuality: "0",
           weeklyStats: {
-            newUsers: 45,
-            newPoems: 123,
-            contestEntries: 67,
-            activePoets: 89,
+            newUsers: 0,
+            newPoems: 0,
+            contestEntries: 0,
+            activePoets: 0,
           },
-          topPerformers: [
-            {
-              name: "احمد علی شاعر",
-              metric: "سب سے زیادہ پسندیدہ نظمیں",
-              value: 245,
-            },
-          ],
+          topPerformers: [],
           platformHealth: {
-            serverUptime: "99.9%",
-            responseTime: "125ms",
-            errorRate: "0.12%",
-            storageUsed: "72.3%",
+            serverUptime: "0%",
+            responseTime: "0ms",
+            errorRate: "0%",
+            storageUsed: "0%",
           },
         },
         notifications: [],
@@ -321,6 +326,14 @@ const AdminDashboard = () => {
       const response = await adminDashboardAPI.getUsers();
 
       if (response.success) {
+        console.log('📊 Loaded users with images:', response.users.map(u => ({
+          name: u.name,
+          role: u.role,
+          profileImage: u.profileImage,
+          profileImageUrl: u.profileImage?.url,
+          profileImageSecureUrl: u.profileImage?.secure_url,
+          poetId: u.poetId
+        })));
         setUsers(response.users || []);
         setTotalUsers(
           response.pagination?.total || response.users?.length || 0
@@ -331,159 +344,20 @@ const AdminDashboard = () => {
     } catch (err) {
       console.error("Load users API error:", err);
       setError("صارفین کی فہرست لوڈ کرنے میں خرابی - بیک اینڈ سے کنکشن نہیں");
-
-      // Enhanced fallback data with pending users
-      const mockUsers = [
-        {
-          _id: "1",
-          name: "احمد علی شاعر",
-          email: "ahmad@example.com",
-          role: "poet",
-          status: "pending",
-          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-          poems: 23,
-          followers: 156,
-          avatar: "👨‍🎨",
-          lastActive: "آج",
-          location: "کراچی",
-          joinedDate: "2 دن پہلے",
-          profileCompletion: 85,
-          rating: 4.5,
-          totalViews: 1234,
-        },
-        {
-          _id: "2",
-          name: "فاطمہ خان",
-          email: "fatima@example.com",
-          role: "poet",
-          status: "pending",
-          createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-          poems: 15,
-          followers: 89,
-          avatar: "👩‍🎨",
-          lastActive: "کل",
-          location: "لاہور",
-          joinedDate: "1 دن پہلے",
-          profileCompletion: 75,
-          rating: 4.3,
-          totalViews: 897,
-        },
-        {
-          _id: "3",
-          name: "محمد حسن",
-          email: "hassan@example.com",
-          role: "poet",
-          status: "approved",
-          createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-          poems: 67,
-          followers: 432,
-          avatar: "👨‍🏫",
-          lastActive: "2 گھنٹے پہلے",
-          location: "اسلام آباد",
-          joinedDate: "10 دن پہلے",
-          profileCompletion: 100,
-          rating: 4.9,
-          totalViews: 3456,
-        },
-        {
-          _id: "4",
-          name: "عائشہ احمد",
-          email: "ayesha@example.com",
-          role: "moderator",
-          status: "approved",
-          createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-          poems: 12,
-          followers: 78,
-          avatar: "👩‍💻",
-          lastActive: "30 منٹ پہلے",
-          location: "فیصل آباد",
-          joinedDate: "15 دن پہلے",
-          profileCompletion: 90,
-          rating: 4.6,
-          totalViews: 890,
-        },
-        {
-          _id: "5",
-          name: "سلیم رضا",
-          email: "saleem@example.com",
-          role: "poet",
-          status: "pending",
-          createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-          poems: 34,
-          followers: 198,
-          avatar: "🧑‍🎭",
-          lastActive: "5 گھنٹے پہلے",
-          location: "ملتان",
-          joinedDate: "3 دن پہلے",
-          profileCompletion: 75,
-          rating: 4.3,
-          totalViews: 1567,
-        },
-        {
-          _id: "6",
-          name: "زینب بی بی",
-          email: "zainab@example.com",
-          role: "poet",
-          status: "pending",
-          createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-          poems: 19,
-          followers: 87,
-          avatar: "👩‍🎨",
-          lastActive: "1 گھنٹہ پہلے",
-          location: "پشاور",
-          joinedDate: "1 دن پہلے",
-          profileCompletion: 80,
-          rating: 4.4,
-          totalViews: 765,
-        },
-        {
-          _id: "7",
-          name: "علی حسن",
-          email: "ali@example.com",
-          role: "reader",
-          status: "approved",
-          createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          poems: 8,
-          followers: 45,
-          avatar: "👨‍💼",
-          lastActive: "ابھی",
-          location: "حیدرآباد",
-          joinedDate: "1 ہفتہ پہلے",
-          profileCompletion: 70,
-          rating: 4.2,
-          totalViews: 234,
-        },
-        {
-          _id: "8",
-          name: "مریم خان",
-          email: "maryam@example.com",
-          role: "poet",
-          status: "rejected",
-          createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-          poems: 15,
-          followers: 23,
-          avatar: "👩‍🏫",
-          lastActive: "2 دن پہلے",
-          location: "کوئٹہ",
-          joinedDate: "4 دن پہلے",
-          profileCompletion: 60,
-          rating: 3.8,
-          totalViews: 123,
-        },
-      ];
-      setUsers(mockUsers);
-      setTotalUsers(mockUsers.length);
+      // No fallback data - show empty state
+      setUsers([]);
+      setTotalUsers(0);
     }
   };
 
   const loadPoems = async () => {
     try {
-      // Fetch poems from admin endpoint with pending status filter
-      const response = await adminDashboardAPI.getPoems({ status: 'pending', limit: 50 });
+      // Fetch ALL poems from admin endpoint (not just pending)
+      const response = await adminDashboardAPI.getPoems({ limit: 1000 });
       if (response.success) {
         setPoems(response.poems || []);
       } else {
-        throw new Error("Failed to load pending poems from API");
+        throw new Error("Failed to load poems from API");
       }
     } catch (err) {
       console.error("Load poems error:", err);
@@ -494,45 +368,18 @@ const AdminDashboard = () => {
 
   const loadContests = async () => {
     try {
-      // Dynamic contest loading - replace with real API
-      // const contests = await adminDashboardAPI.getContests();
-      const mockContests = [
-        {
-          _id: "1",
-          title: "محبت کی شاعری مقابلہ",
-          status: "active",
-          entries: 45,
-          deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          prize: "Rs. 50,000",
-        },
-        {
-          _id: "2",
-          title: "قومی شاعری کنٹسٹ",
-          status: "upcoming",
-          entries: 0,
-          deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-          prize: "Rs. 75,000",
-        },
-        {
-          _id: "3",
-          title: "کلاسیکل غزل مقابلہ",
-          status: "completed",
-          entries: 78,
-          deadline: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          prize: "Rs. 30,000",
-        },
-        {
-          _id: "4",
-          title: "نئے شعراء کا مقابلہ",
-          status: "active",
-          entries: 23,
-          deadline: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
-          prize: "Rs. 20,000",
-        },
-      ];
-      setContests(mockContests);
+      // Use real API call - assuming adminDashboardAPI.getContests() exists
+      const response = await adminDashboardAPI.getContests();
+      if (response && response.success) {
+        setContests(response.contests || []);
+      } else {
+        // No contests available
+        setContests([]);
+      }
     } catch (err) {
+      console.error("Load contests error:", err);
       setError("مقابلوں کی فہرست لوڈ کرنے میں خرابی");
+      setContests([]);
     }
   };
 
@@ -666,6 +513,263 @@ const AdminDashboard = () => {
     }
   };
 
+  // Handle view user details
+  const handleViewDetails = (user) => {
+    setSelectedUser(user);
+    setShowUserModal(true);
+  };
+
+  // Handle edit user
+  const handleEditUser = (user) => {
+    setSelectedUser(user);
+    // If it's a poet, open detailed poet modal
+    if (user.role === 'poet' && user.poetId) {
+      handleEditPoetDetails(user);
+    } else {
+      setShowEditModal(true);
+    }
+  };
+
+  // Handle edit poet details
+  const handleEditPoetDetails = async (user) => {
+    try {
+      // Fetch full poet data from backend
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await axios.get(`${baseURL}/admin/poets/${user.poetId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.data.success) {
+        setSelectedPoet(response.data.poet);
+        setShowPoetDetailsModal(true);
+      }
+    } catch (err) {
+      console.error('Error fetching poet details:', err);
+      showError('شاعر کی تفصیلات لوڈ کرنے میں خرابی / Failed to load poet details');
+    }
+  };
+
+  // Handle save poet details
+  const handleSavePoetDetails = async (poetData) => {
+    try {
+      setRefreshing(true);
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await axios.put(
+        `${baseURL}/admin/poets/${selectedPoet._id}`,
+        poetData,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+
+      if (response.data.success) {
+        showSuccess('شاعر کی تفصیلات کامیابی سے محفوظ ہوگئیں / Poet details saved successfully');
+        setShowPoetDetailsModal(false);
+        await loadUsers();
+      }
+    } catch (err) {
+      console.error('Error saving poet details:', err);
+      showError('شاعر کی تفصیلات محفوظ کرنے میں خرابی / Failed to save poet details');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Handle profile image upload
+  const handleImageUpload = async (e, userId) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showError('برائے مہربانی ایک تصویر منتخب کریں / Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showError('تصویر کا سائز 5MB سے زیادہ نہیں ہونا چاہیے / Image size should not exceed 5MB');
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      const user = selectedUser;
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      
+      console.log('📤 User data:', { role: user.role, poetId: user.poetId, userId: user._id });
+
+      // Determine upload endpoint based on user role
+      let uploadUrl;
+      if (user.role === 'poet') {
+        // For poets, use the poet-specific endpoint (updates Poet collection)
+        const poetIdToUse = user.poetId || user._id;
+        uploadUrl = `${baseURL}/admin/poets/${poetIdToUse}/upload-image`;
+      } else {
+        // For admin, moderator, user - use general user endpoint
+        uploadUrl = `${baseURL}/admin/users/${userId}/upload-image`;
+      }
+
+      console.log('📤 Uploading image to:', uploadUrl);
+
+      // Upload image to backend
+      const response = await axios.post(
+        uploadUrl,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+
+      if (response.data.success) {
+        const updatedImage = response.data.profileImage || response.data.poet?.profileImage;
+        
+        // Update local state
+        if (selectedUser && selectedUser._id === userId) {
+          setSelectedUser({ ...selectedUser, profileImage: updatedImage });
+        }
+        
+        setUsers(users.map(u => 
+          u._id === userId ? { ...u, profileImage: updatedImage } : u
+        ));
+
+        // Reload users to get fresh data
+        await loadUsers();
+
+        showSuccess('تصویر کامیابی سے اپ لوڈ ہوگئی / Image uploaded successfully');
+      }
+    } catch (err) {
+      console.error('Image upload error:', err);
+      showError('تصویر اپ لوڈ کرنے میں خرابی / Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // ============= POEM MANAGEMENT HANDLERS =============
+  
+  // View poem details
+  const handleViewPoem = (poem) => {
+    setSelectedPoem(poem);
+    setShowPoemModal(true);
+  };
+
+  // Edit poem
+  const handleEditPoem = (poem) => {
+    setSelectedPoem(poem);
+    setShowEditPoemModal(true);
+  };
+
+  // Delete poem
+  const handleDeletePoem = async (poemId) => {
+    const confirmed = await showConfirm(
+      "کیا آپ واقعی اس نظم کو حذف کرنا چاہتے ہیں؟ / Are you sure you want to delete this poem?",
+      "نظم حذف کرنے کی تصدیق / Delete Poem Confirmation"
+    );
+    
+    if (confirmed) {
+      try {
+        setRefreshing(true);
+        const response = await adminDashboardAPI.deletePoem(poemId);
+        
+        if (response.success) {
+          setPoems(poems.filter((poem) => poem._id !== poemId));
+          await loadDashboardData();
+          showSuccess("نظم کامیابی سے حذف ہوگئی / Poem deleted successfully");
+        }
+      } catch (err) {
+        console.error("Delete poem error:", err);
+        showError("نظم حذف کرنے میں خرابی / Failed to delete poem");
+      } finally {
+        setRefreshing(false);
+      }
+    }
+  };
+
+  // Update poem
+  const handleUpdatePoem = async (poemId, updatedData) => {
+    try {
+      setRefreshing(true);
+      const response = await adminDashboardAPI.updatePoem(poemId, updatedData);
+      
+      if (response.success) {
+        setPoems(poems.map((poem) => 
+          poem._id === poemId ? { ...poem, ...updatedData } : poem
+        ));
+        setShowEditPoemModal(false);
+        await loadPoems();
+        showSuccess("نظم کامیابی سے اپ ڈیٹ ہوگئی / Poem updated successfully");
+      }
+    } catch (err) {
+      console.error("Update poem error:", err);
+      showError("نظم اپ ڈیٹ کرنے میں خرابی / Failed to update poem");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Approve/Reject poem
+  const handleApprovePoemAction = async (poemId, approved) => {
+    try {
+      setRefreshing(true);
+      const response = await adminDashboardAPI.approvePoem(poemId, approved);
+      
+      if (response.success) {
+        setPoems(poems.map((poem) =>
+          poem._id === poemId
+            ? { ...poem, status: approved ? "approved" : "rejected" }
+            : poem
+        ));
+        await loadDashboardData();
+        showSuccess(
+          `نظم ${approved ? "منظور" : "مسترد"} کر دی گئی / Poem ${
+            approved ? "approved" : "rejected"
+          } successfully`
+        );
+      }
+    } catch (err) {
+      console.error("Approve poem error:", err);
+      showError(`نظم ${approved ? "منظور" : "مسترد"} کرنے میں خرابی`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Feature/Unfeature poem
+  const handleFeaturePoem = async (poemId, featured) => {
+    try {
+      setRefreshing(true);
+      const response = await adminDashboardAPI.featurePoem(poemId, featured);
+      
+      if (response.success) {
+        setPoems(poems.map((poem) =>
+          poem._id === poemId ? { ...poem, featured } : poem
+        ));
+        showSuccess(
+          `نظم ${featured ? "نمایاں" : "عام"} کر دی گئی / Poem ${
+            featured ? "featured" : "unfeatured"
+          } successfully`
+        );
+      }
+    } catch (err) {
+      console.error("Feature poem error:", err);
+      showError("نظم نمایاں کرنے میں خرابی / Failed to feature poem");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const tabs = [
     { id: "overview", label: "خلاصہ", icon: BarChart3, color: "text-blue-600" },
     {
@@ -740,9 +844,22 @@ const AdminDashboard = () => {
               {/* Avatar and name/role */}
               {user && (
                 <div className="flex items-center mr-8">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center text-4xl font-bold text-white shadow-lg">
-                    {user.avatar || user.name?.charAt(0) || "👤"}
-                  </div>
+                  {/* Profile Image with fallback */}
+                  {user.profileImage ? (
+                    <img
+                      src={getImageUrl(user.profileImage)}
+                      alt={user.name}
+                      className="w-20 h-20 rounded-full object-cover shadow-lg border-4 border-white"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&size=200&bold=true&format=png`;
+                      }}
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center text-3xl font-bold text-white shadow-lg border-4 border-white">
+                      {user.name?.charAt(0)?.toUpperCase() || "A"}
+                    </div>
+                  )}
                   <div className="ml-4">
                     <div className="text-lg font-bold text-amber-900">{user.name}</div>
                     <div className="text-sm text-amber-700">{getRoleTextUrdu(user.role)}</div>
@@ -752,11 +869,11 @@ const AdminDashboard = () => {
               <div>
                 <h1 className="text-4xl font-bold text-amber-900 mb-2 tracking-wide">
                   <Crown className="inline w-8 h-8 ml-3 text-amber-600" />
-                  شاعر ڈیش بورڈ
+                  ایڈمن ڈیش بورڈ
                 </h1>
                 <p className="text-lg text-amber-700 font-medium">
                   {/* Urdu tagline, can be dynamic from config or backend */}
-                  آپ کی شاعری کی تخلیقی دنیا
+                  بزم سخن کا انتظامی پینل
                 </p>
                 <div className="flex items-center mt-2 text-sm text-amber-600">
                   <Globe className="w-4 h-4 ml-2" />
@@ -879,6 +996,9 @@ const AdminDashboard = () => {
                 onUserApproval={handleUserApproval}
                 onUserDelete={handleUserDelete}
                 refreshing={refreshing}
+                onViewDetails={handleViewDetails}
+                onEditUser={handleEditUser}
+                getImageUrl={getImageUrl}
               />
             )}
             {activeTab === "poet-biographies" && <PoetBiographiesTab />}
@@ -886,8 +1006,12 @@ const AdminDashboard = () => {
             {activeTab === "content-moderation" && (
               <ContentModerationTab
                 poems={poems}
-                onPoemModeration={handlePoemModeration}
+                onPoemModeration={handleApprovePoemAction}
                 refreshing={refreshing}
+                onViewPoem={handleViewPoem}
+                onEditPoem={handleEditPoem}
+                onDeletePoem={handleDeletePoem}
+                onFeaturePoem={handleFeaturePoem}
               />
             )}
             {activeTab === "contest-management" && (
@@ -900,6 +1024,784 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* User Details Modal */}
+      {showUserModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">تفصیلات صارف / User Details</h2>
+                <button onClick={() => setShowUserModal(false)} className="text-white hover:text-gray-200">
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="text-center mb-6">
+                {selectedUser.profileImage ? (
+                  <img
+                    src={getImageUrl(selectedUser.profileImage)}
+                    alt={selectedUser.name}
+                    className="w-32 h-32 rounded-full object-cover mx-auto border-4 border-blue-500 shadow-lg"
+                    onError={(e) => {
+                      e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedUser.name)}&background=random&size=300&bold=true&format=png`;
+                    }}
+                  />
+                ) : (
+                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-5xl font-bold mx-auto border-4 border-white shadow-lg">
+                    {selectedUser.name?.charAt(0)?.toUpperCase()}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="text-sm text-gray-500">نام / Name</label>
+                  <p className="font-bold">{selectedUser.name}</p>
+                </div>
+                {selectedUser.penName && (
+                  <div>
+                    <label className="text-sm text-gray-500">تخلص / Pen Name</label>
+                    <p className="font-bold">{selectedUser.penName}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm text-gray-500">ای میل / Email</label>
+                  <p className="font-bold">
+                    {selectedUser.email === "N/A" ? (
+                      <span className="text-gray-400 italic">
+                        {selectedUser.isDeceased ? "کلاسیکی شاعر (متوفی)" : "صارف اکاؤنٹ نہیں"}
+                      </span>
+                    ) : (
+                      selectedUser.email
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-500">کردار / Role</label>
+                  <p className="font-bold">{selectedUser.role}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-500">حالت / Status</label>
+                  <p className="font-bold">{selectedUser.status}</p>
+                </div>
+                {selectedUser.era && (
+                  <div>
+                    <label className="text-sm text-gray-500">دور / Era</label>
+                    <p className="font-bold">{selectedUser.era}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm text-gray-500">مقام / Location</label>
+                  <p className="font-bold">{selectedUser.location || selectedUser.era || 'نامعلوم'}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-500">رجسٹریشن / Registration</label>
+                  <p className="font-bold">{formatDateUrdu(selectedUser.createdAt)}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {selectedUser.stats?.totalPoems || selectedUser.poems || 0}
+                  </div>
+                  <div className="text-sm text-gray-600">نظمیں</div>
+                </div>
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">
+                    {selectedUser.stats?.followers || selectedUser.followers || 0}
+                  </div>
+                  <div className="text-sm text-gray-600">پیروکار</div>
+                </div>
+                <div className="text-center p-4 bg-purple-50 rounded-lg">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {selectedUser.stats?.totalViews || selectedUser.totalViews || 0}
+                  </div>
+                  <div className="text-sm text-gray-600">مناظر</div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowUserModal(false)}
+                className="w-full bg-gray-600 text-white py-3 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                بند کریں / Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-gray-600 to-gray-800 p-6 text-white">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">ترمیم صارف / Edit User</h2>
+                <button onClick={() => setShowEditModal(false)} className="text-white hover:text-gray-200">
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="text-center mb-6">
+                <div className="relative inline-block">
+                  {selectedUser.profileImage ? (
+                    <img
+                      src={getImageUrl(selectedUser.profileImage)}
+                      alt={selectedUser.name}
+                      className="w-32 h-32 rounded-full object-cover mx-auto border-4 border-gray-500 shadow-lg"
+                      onError={(e) => {
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedUser.name)}&background=random&size=300&bold=true&format=png`;
+                      }}
+                    />
+                  ) : (
+                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center text-white text-5xl font-bold mx-auto border-4 border-white shadow-lg">
+                      {selectedUser.name?.charAt(0)?.toUpperCase()}
+                    </div>
+                  )}
+                  
+                  {/* Upload button for all users */}
+                  <label 
+                    htmlFor="profile-upload" 
+                    className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors shadow-lg"
+                  >
+                    <input
+                      id="profile-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, selectedUser._id)}
+                      className="hidden"
+                      disabled={uploadingImage}
+                    />
+                    {uploadingImage ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <Edit className="w-5 h-5" />
+                    )}
+                  </label>
+                </div>
+                <p className="text-sm text-gray-500 mt-2">تصویر تبدیل کرنے کے لیے کلک کریں / Click to change image</p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">نام / Name</label>
+                  <input
+                    type="text"
+                    defaultValue={selectedUser.name}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">ای میل / Email</label>
+                  <input
+                    type="email"
+                    defaultValue={selectedUser.email}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">کردار / Role</label>
+                  <select 
+                    defaultValue={selectedUser.role}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="reader">قاری / Reader</option>
+                    <option value="poet">شاعر / Poet</option>
+                    <option value="admin">ایڈمن / Admin</option>
+                    <option value="moderator">نگران / Moderator</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">حالت / Status</label>
+                  <select 
+                    defaultValue={selectedUser.status}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="pending">منتظر منظوری / Pending</option>
+                    <option value="approved">منظور شدہ / Approved</option>
+                    <option value="active">فعال / Active</option>
+                    <option value="inactive">غیر فعال / Inactive</option>
+                    <option value="blocked">بلاک شدہ / Blocked</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 space-x-reverse mt-6">
+                <button
+                  onClick={() => {
+                    showSuccess('تبدیلیاں محفوظ ہو گئیں / Changes saved successfully');
+                    setShowEditModal(false);
+                  }}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  محفوظ کریں / Save
+                </button>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  منسوخ / Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Poem View Modal */}
+      {showPoemModal && selectedPoem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">نظم کی تفصیلات / Poem Details</h2>
+                <button onClick={() => setShowPoemModal(false)} className="text-white hover:text-gray-200">
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {/* Poem Title and Metadata */}
+              <div className="mb-6">
+                <h3 className="text-3xl font-bold text-gray-900 mb-2 urdu-text-local">{selectedPoem.title}</h3>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    selectedPoem.status === 'published' ? 'bg-green-100 text-green-800' :
+                    selectedPoem.status === 'approved' ? 'bg-blue-100 text-blue-800' :
+                    selectedPoem.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {selectedPoem.status === 'published' ? 'شائع شدہ' :
+                     selectedPoem.status === 'approved' ? 'منظور شدہ' :
+                     selectedPoem.status === 'pending' ? 'منتظر' : 'ڈرافٹ'}
+                  </span>
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                    {selectedPoem.category || 'نظم'}
+                  </span>
+                  {selectedPoem.featured && (
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      <Star className="w-3 h-3 inline ml-1 fill-current" />
+                      نمایاں
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                  <div>
+                    <label className="font-medium">مصنف:</label>
+                    <p>{typeof selectedPoem.author === 'object' 
+                      ? (selectedPoem.author?.name || 'نامعلوم')
+                      : (selectedPoem.author || 'نامعلوم')}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="font-medium">تاریخ:</label>
+                    <p>{new Date(selectedPoem.createdAt).toLocaleDateString("ur-PK", {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Poem Content */}
+              <div className="mb-6 p-6 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border-r-4 border-amber-400">
+                <h4 className="text-lg font-bold text-gray-800 mb-4">مکمل نظم / Full Poem</h4>
+                <div className="prose prose-lg max-w-none urdu-text-local">
+                  <pre className="whitespace-pre-wrap font-urdu text-xl leading-loose text-gray-800">
+                    {selectedPoem.content}
+                  </pre>
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <Eye className="w-6 h-6 mx-auto text-blue-600 mb-2" />
+                  <div className="text-2xl font-bold text-blue-600">{selectedPoem.views || 0}</div>
+                  <div className="text-sm text-gray-600">مناظر</div>
+                </div>
+                <div className="text-center p-4 bg-red-50 rounded-lg">
+                  <Heart className="w-6 h-6 mx-auto text-red-600 mb-2" />
+                  <div className="text-2xl font-bold text-red-600">{selectedPoem.likes?.length || 0}</div>
+                  <div className="text-sm text-gray-600">پسند</div>
+                </div>
+                <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                  <Bookmark className="w-6 h-6 mx-auto text-yellow-600 mb-2" />
+                  <div className="text-2xl font-bold text-yellow-600">{selectedPoem.bookmarks?.length || 0}</div>
+                  <div className="text-sm text-gray-600">بُک مارک</div>
+                </div>
+                <div className="text-center p-4 bg-purple-50 rounded-lg">
+                  <Star className="w-6 h-6 mx-auto text-purple-600 mb-2" />
+                  <div className="text-2xl font-bold text-purple-600">
+                    {selectedPoem.averageRating || '0'}
+                  </div>
+                  <div className="text-sm text-gray-600">ریٹنگ</div>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 space-x-reverse">
+                <button
+                  onClick={() => {
+                    setShowPoemModal(false);
+                    handleEditPoem(selectedPoem);
+                  }}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Edit className="w-4 h-4 inline ml-2" />
+                  ترمیم کریں / Edit
+                </button>
+                <button
+                  onClick={() => setShowPoemModal(false)}
+                  className="flex-1 bg-gray-600 text-white py-3 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  بند کریں / Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Poem Edit Modal */}
+      {showEditPoemModal && selectedPoem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">نظم میں ترمیم / Edit Poem</h2>
+                <button onClick={() => setShowEditPoemModal(false)} className="text-white hover:text-gray-200">
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">عنوان / Title</label>
+                  <input
+                    type="text"
+                    defaultValue={selectedPoem.title}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 urdu-text-local"
+                    id="editPoemTitle"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">صنف / Category</label>
+                  <select
+                    defaultValue={selectedPoem.category}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 urdu-text-local"
+                    id="editPoemCategory"
+                  >
+                    <option value="ghazal">غزل</option>
+                    <option value="nazm">نظم</option>
+                    <option value="rubai">رباعی</option>
+                    <option value="qasida">قصیدہ</option>
+                    <option value="marsiya">مرثیہ</option>
+                    <option value="hamd">حمد</option>
+                    <option value="naat">نعت</option>
+                    <option value="manqabat">منقبت</option>
+                    <option value="other">دیگر</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">مواد / Content</label>
+                  <textarea
+                    defaultValue={selectedPoem.content}
+                    rows={12}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 urdu-text-local font-urdu"
+                    id="editPoemContent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">حالت / Status</label>
+                  <select
+                    defaultValue={selectedPoem.status}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 urdu-text-local"
+                    id="editPoemStatus"
+                  >
+                    <option value="draft">ڈرافٹ / Draft</option>
+                    <option value="pending">منتظر منظوری / Pending</option>
+                    <option value="approved">منظور شدہ / Approved</option>
+                    <option value="published">شائع شدہ / Published</option>
+                    <option value="rejected">مسترد / Rejected</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 space-x-reverse mt-6">
+                <button
+                  onClick={() => {
+                    const updatedPoem = {
+                      title: document.getElementById('editPoemTitle').value,
+                      category: document.getElementById('editPoemCategory').value,
+                      content: document.getElementById('editPoemContent').value,
+                      status: document.getElementById('editPoemStatus').value,
+                    };
+                    handleUpdatePoem(selectedPoem._id, updatedPoem);
+                  }}
+                  disabled={refreshing}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  {refreshing ? 'محفوظ ہو رہا...' : 'محفوظ کریں / Save'}
+                </button>
+                <button
+                  onClick={() => setShowEditPoemModal(false)}
+                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  منسوخ / Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comprehensive Poet Details Edit Modal */}
+      {showPoetDetailsModal && selectedPoet && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white sticky top-0 z-10">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">شاعر کی مکمل تفصیلات / Complete Poet Details</h2>
+                <button onClick={() => setShowPoetDetailsModal(false)} className="text-white hover:text-gray-200">
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+            
+            <form className="p-6" onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target);
+              const poetData = {
+                name: formData.get('name'),
+                penName: formData.get('penName'),
+                fullName: formData.get('fullName'),
+                bio: formData.get('bio'),
+                shortBio: formData.get('shortBio'),
+                nationality: formData.get('nationality'),
+                era: formData.get('era'),
+                schoolOfThought: formData.get('schoolOfThought'),
+                birthPlace: {
+                  city: formData.get('birthCity'),
+                  region: formData.get('birthRegion'),
+                  country: formData.get('birthCountry')
+                },
+                period: {
+                  from: parseInt(formData.get('periodFrom')) || null,
+                  to: parseInt(formData.get('periodTo')) || null
+                },
+                dateOfBirth: formData.get('dateOfBirth') || null,
+                dateOfDeath: formData.get('dateOfDeath') || null,
+                isDeceased: formData.get('isDeceased') === 'on',
+                languages: formData.getAll('languages'),
+                poeticStyle: formData.getAll('poeticStyle'),
+                isVerified: formData.get('isVerified') === 'on',
+                featured: formData.get('featured') === 'on',
+              };
+              handleSavePoetDetails(poetData);
+            }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Basic Information */}
+                <div className="col-span-2">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2">بنیادی معلومات / Basic Information</h3>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">نام / Name *</label>
+                  <input
+                    type="text"
+                    name="name"
+                    defaultValue={selectedPoet.name}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 urdu-text-local"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">تخلص / Pen Name</label>
+                  <input
+                    type="text"
+                    name="penName"
+                    defaultValue={selectedPoet.penName}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 urdu-text-local"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">مکمل نام / Full Name</label>
+                  <input
+                    type="text"
+                    name="fullName"
+                    defaultValue={selectedPoet.fullName}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 urdu-text-local"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">قومیت / Nationality</label>
+                  <input
+                    type="text"
+                    name="nationality"
+                    defaultValue={selectedPoet.nationality}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 urdu-text-local"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">دور / Era *</label>
+                  <select
+                    name="era"
+                    defaultValue={selectedPoet.era}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 urdu-text-local"
+                  >
+                    <option value="classical">کلاسیکی / Classical</option>
+                    <option value="modern">جدید / Modern</option>
+                    <option value="contemporary">عصری / Contemporary</option>
+                    <option value="progressive">ترقی پسند / Progressive</option>
+                    <option value="traditional">روایتی / Traditional</option>
+                  </select>
+                </div>
+
+                {/* Biography */}
+                <div className="col-span-2">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2 mt-4">سوانح / Biography</h3>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">مختصر تعارف / Short Bio</label>
+                  <input
+                    type="text"
+                    name="shortBio"
+                    defaultValue={selectedPoet.shortBio}
+                    maxLength={500}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 urdu-text-local"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">تفصیلی سوانح / Detailed Biography</label>
+                  <textarea
+                    name="bio"
+                    defaultValue={selectedPoet.bio}
+                    rows={6}
+                    maxLength={5000}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 urdu-text-local"
+                  />
+                </div>
+
+                {/* Dates */}
+                <div className="col-span-2">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2 mt-4">تواریخ / Dates</h3>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">تاریخ پیدائش / Date of Birth</label>
+                  <input
+                    type="date"
+                    name="dateOfBirth"
+                    defaultValue={selectedPoet.dateOfBirth ? new Date(selectedPoet.dateOfBirth).toISOString().split('T')[0] : ''}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">تاریخ وفات / Date of Death</label>
+                  <input
+                    type="date"
+                    name="dateOfDeath"
+                    defaultValue={selectedPoet.dateOfDeath ? new Date(selectedPoet.dateOfDeath).toISOString().split('T')[0] : ''}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">زمانہ (شروع) / Period (From)</label>
+                  <input
+                    type="number"
+                    name="periodFrom"
+                    defaultValue={selectedPoet.period?.from}
+                    placeholder="مثلاً 1900"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">زمانہ (اختتام) / Period (To)</label>
+                  <input
+                    type="number"
+                    name="periodTo"
+                    defaultValue={selectedPoet.period?.to}
+                    placeholder="مثلاً 1980"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                {/* Birth Place */}
+                <div className="col-span-2">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2 mt-4">مقام پیدائش / Birth Place</h3>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">شہر / City</label>
+                  <input
+                    type="text"
+                    name="birthCity"
+                    defaultValue={selectedPoet.birthPlace?.city}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 urdu-text-local"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">علاقہ / Region</label>
+                  <input
+                    type="text"
+                    name="birthRegion"
+                    defaultValue={selectedPoet.birthPlace?.region}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 urdu-text-local"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">ملک / Country</label>
+                  <input
+                    type="text"
+                    name="birthCountry"
+                    defaultValue={selectedPoet.birthPlace?.country}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 urdu-text-local"
+                  />
+                </div>
+
+                {/* Literary Info */}
+                <div className="col-span-2">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2 mt-4">ادبی معلومات / Literary Information</h3>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">مکتب فکر / School of Thought</label>
+                  <select
+                    name="schoolOfThought"
+                    defaultValue={selectedPoet.schoolOfThought}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 urdu-text-local"
+                  >
+                    <option value="">منتخب کریں</option>
+                    <option value="romantic">رومانوی / Romantic</option>
+                    <option value="progressive">ترقی پسند / Progressive</option>
+                    <option value="traditional">روایتی / Traditional</option>
+                    <option value="modern">جدید / Modern</option>
+                    <option value="sufi">صوفیانہ / Sufi</option>
+                    <option value="political">سیاسی / Political</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">زبانیں / Languages</label>
+                  <select
+                    name="languages"
+                    multiple
+                    defaultValue={selectedPoet.languages || []}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 urdu-text-local"
+                  >
+                    <option value="urdu">اردو / Urdu</option>
+                    <option value="punjabi">پنجابی / Punjabi</option>
+                    <option value="other">دیگر / Other</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Ctrl/Cmd + کلک سے کئی منتخب کریں</p>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">شاعری کی اقسام / Poetic Styles</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['ghazal', 'nazm', 'rubai', 'qawwali', 'marsiya', 'salam', 'hamd', 'naat', 'free-verse'].map(style => (
+                      <label key={style} className="flex items-center space-x-2 space-x-reverse">
+                        <input
+                          type="checkbox"
+                          name="poeticStyle"
+                          value={style}
+                          defaultChecked={selectedPoet.poeticStyle?.includes(style)}
+                          className="rounded"
+                        />
+                        <span className="text-sm capitalize">{style}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div className="col-span-2">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2 mt-4">حالت / Status</h3>
+                </div>
+
+                <div className="flex items-center space-x-4 space-x-reverse">
+                  <label className="flex items-center space-x-2 space-x-reverse">
+                    <input
+                      type="checkbox"
+                      name="isDeceased"
+                      defaultChecked={selectedPoet.isDeceased}
+                      className="rounded"
+                    />
+                    <span>متوفی / Deceased</span>
+                  </label>
+
+                  <label className="flex items-center space-x-2 space-x-reverse">
+                    <input
+                      type="checkbox"
+                      name="isVerified"
+                      defaultChecked={selectedPoet.isVerified}
+                      className="rounded"
+                    />
+                    <span>تصدیق شدہ / Verified</span>
+                  </label>
+
+                  <label className="flex items-center space-x-2 space-x-reverse">
+                    <input
+                      type="checkbox"
+                      name="featured"
+                      defaultChecked={selectedPoet.featured}
+                      className="rounded"
+                    />
+                    <span>نمایاں / Featured</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 space-x-reverse mt-8 pt-6 border-t">
+                <button
+                  type="submit"
+                  disabled={refreshing}
+                  className="flex-1 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                >
+                  {refreshing ? 'محفوظ ہو رہا...' : 'تفصیلات محفوظ کریں / Save Details'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPoetDetailsModal(false)}
+                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  منسوخ / Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -932,7 +1834,6 @@ const OverviewTab = ({ dashboardData }) => {
           color="blue"
           trend="up"
           subtitle={`آج ${stats.todayRegistrations} نئے`}
-          percentage={95}
         />
         <DynamicStatCard
           title="شعراء"
@@ -942,7 +1843,6 @@ const OverviewTab = ({ dashboardData }) => {
           color="green"
           trend="up"
           subtitle={`${stats.pendingApprovals} منتظر منظوری`}
-          percentage={87}
         />
         <DynamicStatCard
           title="قاری"
@@ -952,7 +1852,6 @@ const OverviewTab = ({ dashboardData }) => {
           color="purple"
           trend="up"
           subtitle="فعال قارئین"
-          percentage={78}
         />
         <DynamicStatCard
           title="منتظمین"
@@ -962,7 +1861,6 @@ const OverviewTab = ({ dashboardData }) => {
           color="orange"
           trend="stable"
           subtitle="کل منتظمین"
-          percentage={100}
         />
       </div>
 
@@ -976,7 +1874,6 @@ const OverviewTab = ({ dashboardData }) => {
           color="yellow"
           trend="down"
           subtitle="کم ہو رہے ہیں"
-          percentage={65}
         />
         <DynamicStatCard
           title="کل مناظر"
@@ -986,7 +1883,6 @@ const OverviewTab = ({ dashboardData }) => {
           color="indigo"
           trend="up"
           subtitle="اس ماہ"
-          percentage={82}
         />
         <DynamicStatCard
           title="صارفین کی رضامندی"
@@ -996,7 +1892,6 @@ const OverviewTab = ({ dashboardData }) => {
           color="pink"
           trend="up"
           subtitle="بہترین ریٹنگ"
-          percentage={94}
         />
       </div>
 
@@ -1155,6 +2050,9 @@ const ProfileManagementTab = ({
   onUserApproval,
   onUserDelete,
   refreshing,
+  onViewDetails,
+  onEditUser,
+  getImageUrl,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRole, setSelectedRole] = useState("all");
@@ -1435,16 +2333,40 @@ const ProfileManagementTab = ({
                     </span>
                   </div>
 
-                  <div className="text-5xl mb-3 mt-4">
-                    {user.avatar || "👤"}
+                  {/* Profile Image */}
+                  <div className="flex justify-center mb-3 mt-4">
+                    {user.profileImage && (typeof user.profileImage === 'string' || user.profileImage.url || user.profileImage.secure_url) ? (
+                      <img
+                        src={getImageUrl(user.profileImage)}
+                        alt={user.name}
+                        className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                        onError={(e) => {
+                          console.error('Image load error for user:', user.name, 'Image:', user.profileImage);
+                          e.target.onerror = null;
+                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&size=200&bold=true&format=png`;
+                        }}
+                      />
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-lg">
+                        {user.name ? user.name.charAt(0).toUpperCase() : "👤"}
+                      </div>
+                    )}
                   </div>
                   <h3 className="font-bold text-lg text-gray-900 mb-1">
-                    {user.name}
+                    {user.penName ? `${user.name} (${user.penName})` : user.name}
                   </h3>
-                  <p className="text-gray-600 text-sm mb-2">{user.email}</p>
+                  <p className="text-gray-600 text-sm mb-2">
+                    {user.email === "N/A" ? (
+                      <span className="text-gray-400 italic">
+                        {user.isDeceased ? "کلاسیکی شاعر (متوفی)" : "صارف اکاؤنٹ نہیں"}
+                      </span>
+                    ) : (
+                      user.email
+                    )}
+                  </p>
                   <div className="flex items-center justify-center text-xs text-gray-500">
                     <Globe className="w-3 h-3 ml-1" />
-                    <span>{user.location || "نامعلوم"}</span>
+                    <span>{user.location || user.era || "نامعلوم"}</span>
                   </div>
                 </div>
 
@@ -1453,19 +2375,19 @@ const ProfileManagementTab = ({
                   <div className="grid grid-cols-3 gap-4 mb-4 text-center">
                     <div>
                       <div className="text-lg font-bold text-blue-600">
-                        {user.poems || 0}
+                        {user.stats?.totalPoems || user.poems || 0}
                       </div>
                       <div className="text-xs text-gray-500">نظمیں</div>
                     </div>
                     <div>
                       <div className="text-lg font-bold text-green-600">
-                        {user.followers || 0}
+                        {user.stats?.followers || user.followers || 0}
                       </div>
                       <div className="text-xs text-gray-500">پیروکار</div>
                     </div>
                     <div>
                       <div className="text-lg font-bold text-purple-600">
-                        {user.totalViews || 0}
+                        {user.stats?.totalViews || user.totalViews || 0}
                       </div>
                       <div className="text-xs text-gray-500">مناظر</div>
                     </div>
@@ -1542,11 +2464,17 @@ const ProfileManagementTab = ({
 
                   {user.status !== "pending" && (
                     <div className="flex space-x-2 space-x-reverse">
-                      <button className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center">
+                      <button 
+                        onClick={() => onViewDetails && onViewDetails(user)}
+                        className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+                      >
                         <Eye className="w-4 h-4 ml-1" />
                         تفصیلات
                       </button>
-                      <button className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center">
+                      <button 
+                        onClick={() => onEditUser && onEditUser(user)}
+                        className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center"
+                      >
                         <Edit className="w-4 h-4 ml-1" />
                         ترمیم
                       </button>
@@ -1596,15 +2524,34 @@ const ProfileManagementTab = ({
                     <tr key={user._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="text-2xl ml-4">
-                            {user.avatar || "👤"}
-                          </div>
+                          {/* Profile Image */}
+                          {user.profileImage ? (
+                            <img
+                              src={getImageUrl(user.profileImage)}
+                              alt={user.name}
+                              className="w-12 h-12 rounded-full object-cover ml-4 border-2 border-gray-200"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&size=100&bold=true&format=png`;
+                              }}
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold ml-4 border-2 border-gray-200">
+                              {user.name ? user.name.charAt(0).toUpperCase() : "?"}
+                            </div>
+                          )}
                           <div>
                             <div className="text-sm font-medium text-gray-900">
-                              {user.name}
+                              {user.penName ? `${user.name} (${user.penName})` : user.name}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {user.email}
+                              {user.email === "N/A" ? (
+                                <span className="text-gray-400 italic">
+                                  {user.isDeceased ? "کلاسیکی شاعر" : "صارف اکاؤنٹ نہیں"}
+                                </span>
+                              ) : (
+                                user.email
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1644,8 +2591,17 @@ const ProfileManagementTab = ({
                           </>
                         ) : (
                           <>
-                            <button className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
+                            <button 
+                              onClick={() => onViewDetails && onViewDetails(user)}
+                              className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                            >
                               تفصیلات
+                            </button>
+                            <button 
+                              onClick={() => onEditUser && onEditUser(user)}
+                              className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700"
+                            >
+                              ترمیم
                             </button>
                             <button
                               onClick={() => handleDelete(user._id)}
@@ -1681,137 +2637,289 @@ const ProfileManagementTab = ({
 };
 
 // Enhanced Content Moderation Tab Component
-const ContentModerationTab = ({ poems, onPoemModeration, refreshing }) => {
+const ContentModerationTab = ({ 
+  poems, 
+  onPoemModeration, 
+  refreshing,
+  onViewPoem,
+  onEditPoem,
+  onDeletePoem,
+  onFeaturePoem
+}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [sortBy, setSortBy] = useState("createdAt");
 
   const filteredPoems = poems.filter((poem) => {
     const authorName = typeof poem.author === 'object' ? (poem.author?.name || poem.author?.fullName || '') : (poem.author || '');
+    const poetName = typeof poem.poet === 'object' ? (poem.poet?.name || '') : (poem.poet || '');
     const matchesSearch =
-      poem.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      authorName.toLowerCase().includes(searchTerm.toLowerCase());
+      poem.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      authorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      poetName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      poem.content?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       filterStatus === "all" || poem.status === filterStatus;
-    return matchesSearch && matchesStatus;
+    const matchesCategory =
+      filterCategory === "all" || poem.category === filterCategory;
+    return matchesSearch && matchesStatus && matchesCategory;
+  });
+
+  // Sort poems
+  const sortedPoems = [...filteredPoems].sort((a, b) => {
+    switch (sortBy) {
+      case "createdAt":
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      case "views":
+        return (b.views || 0) - (a.views || 0);
+      case "likes":
+        return (b.likes?.length || 0) - (a.likes?.length || 0);
+      case "title":
+        return a.title?.localeCompare(b.title);
+      default:
+        return 0;
+    }
   });
 
   return (
     <div className="space-y-6 urdu-text-local">
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">مواد کی نگرانی</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">مواد کی نگرانی</h2>
+          <p className="text-gray-600 text-sm mt-1">کل نظمیں: {poems.length}</p>
+        </div>
         <div className="flex space-x-2 space-x-reverse">
-          <button className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
-            <Filter className="w-4 h-4 inline ml-1" />
-            فلٹر
+          <button className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center">
+            <Plus className="w-4 h-4 ml-2" />
+            نئی نظم شامل کریں
           </button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex space-x-4 space-x-reverse">
-        <div className="flex-1">
-          <input
-            type="text"
-            placeholder="نظم یا شاعر تلاش کریں..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 urdu-text-local"
-          />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-yellow-50 p-4 rounded-lg">
+          <div className="text-2xl font-bold text-yellow-600">
+            {poems.filter(p => p.status === 'pending').length}
+          </div>
+          <div className="text-sm text-gray-600">منتظر منظوری</div>
         </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg urdu-text-local"
-        >
-          <option value="all">تمام حالات</option>
-          <option value="pending">منتظر منظوری</option>
-          <option value="approved">منظور شدہ</option>
-          <option value="rejected">مسترد</option>
-          <option value="reviewing">زیر نظر</option>
-        </select>
+        <div className="bg-green-50 p-4 rounded-lg">
+          <div className="text-2xl font-bold text-green-600">
+            {poems.filter(p => p.status === 'approved' || p.status === 'published').length}
+          </div>
+          <div className="text-sm text-gray-600">منظور شدہ</div>
+        </div>
+        <div className="bg-red-50 p-4 rounded-lg">
+          <div className="text-2xl font-bold text-red-600">
+            {poems.filter(p => p.status === 'rejected').length}
+          </div>
+          <div className="text-sm text-gray-600">مسترد</div>
+        </div>
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <div className="text-2xl font-bold text-blue-600">
+            {poems.filter(p => p.status === 'draft').length}
+          </div>
+          <div className="text-sm text-gray-600">ڈرافٹ</div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white p-4 rounded-lg shadow">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="md:col-span-2">
+            <input
+              type="text"
+              placeholder="نظم، شاعر یا مواد تلاش کریں..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 urdu-text-local"
+            />
+          </div>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg urdu-text-local"
+          >
+            <option value="all">تمام حالات</option>
+            <option value="pending">منتظر منظوری</option>
+            <option value="approved">منظور شدہ</option>
+            <option value="published">شائع شدہ</option>
+            <option value="rejected">مسترد</option>
+            <option value="draft">ڈرافٹ</option>
+          </select>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg urdu-text-local"
+          >
+            <option value="createdAt">تاریخ کے مطابق</option>
+            <option value="views">مناظر کے مطابق</option>
+            <option value="likes">پسندیدگی کے مطابق</option>
+            <option value="title">عنوان کے مطابق</option>
+          </select>
+        </div>
       </div>
 
       {/* Poems Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredPoems.map((poem) => (
-          <div key={poem._id} className="bg-white p-6 rounded-xl shadow-lg">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="font-bold text-lg text-gray-900">
-                  {poem.title}
-                </h3>
-                <p className="text-gray-600">
-                  شاعر: {typeof poem.author === 'object' ? (poem.author?.fullName || poem.author?.name || 'نامعلوم') : (poem.author || 'نامعلوم')}
-                </p>
-                <p className="text-sm text-gray-500">صنف: {poem.category || poem.genre || 'نظم'}</p>
-              </div>
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-medium
-                ${
-                  poem.status === "pending"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : poem.status === "approved"
-                    ? "bg-green-100 text-green-800"
-                    : poem.status === "rejected"
-                    ? "bg-red-100 text-red-800"
-                    : "bg-blue-100 text-blue-800"
-                }`}
-              >
-                {poem.status === "pending"
-                  ? "منتظر"
-                  : poem.status === "approved"
-                  ? "منظور"
-                  : poem.status === "rejected"
-                  ? "مسترد"
-                  : "زیر نظر"}
-              </span>
-            </div>
+        {sortedPoems.length > 0 ? (
+          sortedPoems.map((poem) => {
+            const authorName = typeof poem.author === 'object' 
+              ? (poem.author?.name || poem.author?.fullName || 'نامعلوم') 
+              : (poem.author || 'نامعلوم');
+            const poetName = typeof poem.poet === 'object'
+              ? (poem.poet?.name || '')
+              : (poem.poet || '');
 
-            <div className="flex justify-between text-sm text-gray-600 mb-4">
-              <div className="flex items-center">
-                <Eye className="w-4 h-4 ml-1" />
-                <span>{poem.viewsCount || poem.views || 0} مناظر</span>
-              </div>
-              <div className="flex items-center">
-                <Heart className="w-4 h-4 ml-1" />
-                <span>{poem.likes?.length || poem.likesCount || 0} پسند</span>
-              </div>
-              <div className="flex items-center">
-                <Calendar className="w-4 h-4 ml-1" />
-                <span>
-                  {new Date(poem.createdAt).toLocaleDateString("ur-PK")}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex space-x-2 space-x-reverse">
-              <button className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200">
-                <Eye className="w-4 h-4 inline ml-1" />
-                دیکھیں
-              </button>
-              {poem.status === "pending" && (
-                <>
-                  <button
-                    onClick={() => onPoemModeration(poem._id, true)}
-                    disabled={refreshing}
-                    className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50"
+            return (
+              <div key={poem._id} className="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow">
+                {/* Header */}
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg text-gray-900 mb-1">
+                      {poem.title || 'بے نام نظم'}
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      مصنف: {authorName}
+                      {poetName && ` (${poetName})`}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      صنف: {poem.category || 'نظم'}
+                    </p>
+                  </div>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap
+                    ${
+                      poem.status === "pending"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : poem.status === "approved" || poem.status === "published"
+                        ? "bg-green-100 text-green-800"
+                        : poem.status === "rejected"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
                   >
-                    <CheckCircle className="w-4 h-4 inline ml-1" />
-                    منظور
+                    {poem.status === "pending"
+                      ? "منتظر"
+                      : poem.status === "approved"
+                      ? "منظور"
+                      : poem.status === "published"
+                      ? "شائع"
+                      : poem.status === "rejected"
+                      ? "مسترد"
+                      : "ڈرافٹ"}
+                  </span>
+                </div>
+
+                {/* Content Preview */}
+                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-700 line-clamp-3 urdu-text-local leading-relaxed">
+                    {poem.content || 'مواد دستیاب نہیں'}
+                  </p>
+                </div>
+
+                {/* Stats */}
+                <div className="flex justify-between text-sm text-gray-600 mb-4 pb-4 border-b">
+                  <div className="flex items-center">
+                    <Eye className="w-4 h-4 ml-1" />
+                    <span>{poem.views || 0}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Heart className="w-4 h-4 ml-1" />
+                    <span>{poem.likes?.length || 0}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Bookmark className="w-4 h-4 ml-1" />
+                    <span>{poem.bookmarks?.length || 0}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Calendar className="w-4 h-4 ml-1" />
+                    <span>
+                      {new Date(poem.createdAt).toLocaleDateString("ur-PK", {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => onViewPoem && onViewPoem(poem)}
+                    className="flex items-center justify-center bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Eye className="w-4 h-4 ml-1" />
+                    دیکھیں
                   </button>
                   <button
-                    onClick={() => onPoemModeration(poem._id, false)}
-                    disabled={refreshing}
-                    className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50"
+                    onClick={() => onEditPoem && onEditPoem(poem)}
+                    className="flex items-center justify-center bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors"
                   >
-                    <XCircle className="w-4 h-4 inline ml-1" />
-                    مسترد
+                    <Edit className="w-4 h-4 ml-1" />
+                    ترمیم
                   </button>
-                </>
-              )}
-            </div>
+                  
+                  {poem.status === "pending" && (
+                    <>
+                      <button
+                        onClick={() => onPoemModeration(poem._id, true)}
+                        disabled={refreshing}
+                        className="flex items-center justify-center bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                      >
+                        <CheckCircle className="w-4 h-4 ml-1" />
+                        منظور
+                      </button>
+                      <button
+                        onClick={() => onPoemModeration(poem._id, false)}
+                        disabled={refreshing}
+                        className="flex items-center justify-center bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                      >
+                        <XCircle className="w-4 h-4 ml-1" />
+                        مسترد
+                      </button>
+                    </>
+                  )}
+
+                  {(poem.status === "approved" || poem.status === "published") && (
+                    <button
+                      onClick={() => onFeaturePoem && onFeaturePoem(poem._id, !poem.featured)}
+                      className={`flex items-center justify-center py-2 px-4 rounded-lg transition-colors ${
+                        poem.featured
+                          ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                          : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                      }`}
+                    >
+                      <Star className={`w-4 h-4 ml-1 ${poem.featured ? 'fill-current' : ''}`} />
+                      {poem.featured ? 'نمایاں' : 'نمایاں کریں'}
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => onDeletePoem && onDeletePoem(poem._id)}
+                    disabled={refreshing}
+                    className="flex items-center justify-center bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4 ml-1" />
+                    حذف
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="col-span-2 text-center py-12">
+            <FileText className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-xl font-bold text-gray-600 mb-2">کوئی نظم نہیں ملی</h3>
+            <p className="text-gray-500">
+              تلاش کی شرائط تبدیل کر کے دوبارہ کوشش کریں
+            </p>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
@@ -2226,6 +3334,7 @@ const StatCard = ({
   color,
   trend,
   subtitle,
+  percentage,
 }) => {
   return (
     <DynamicStatCard
@@ -2236,7 +3345,7 @@ const StatCard = ({
       color={color}
       trend={trend}
       subtitle={subtitle}
-      percentage={Math.floor(Math.random() * 40 + 60)}
+      percentage={percentage || 0}
     />
   );
 };

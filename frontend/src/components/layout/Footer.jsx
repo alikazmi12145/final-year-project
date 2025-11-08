@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Heart,
@@ -9,14 +9,24 @@ import {
   Facebook,
   Instagram,
   Youtube,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
+import axios from "axios";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
+  const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState({
+    type: null,
+    message: "",
+  });
 
   const footerLinks = {
     explore: [
-      { name: "شاعری کا ذخیرہ", engName: "Poetry Collection", href: "/poetry" },
+      { name: "شاعری کا ذخیرہ", engName: "Poetry Collection", href: "/poetry-collection" },
       { name: "مشہور شعراء", engName: "Featured Poets", href: "/poets" },
       { name: "شعری مقابلے", engName: "Poetry Contests", href: "/contests" },
       { name: "تعلیمی مواد", engName: "Learning Resources", href: "/learning" },
@@ -52,11 +62,83 @@ const Footer = () => {
   };
 
   const socialLinks = [
-    { icon: Twitter, href: "#", label: "Twitter" },
-    { icon: Facebook, href: "#", label: "Facebook" },
-    { icon: Instagram, href: "#", label: "Instagram" },
-    { icon: Youtube, href: "#", label: "YouTube" },
+    {
+      icon: Twitter,
+      href: "https://twitter.com/bazmesukhan",
+      label: "Twitter",
+    },
+    {
+      icon: Facebook,
+      href: "https://facebook.com/bazmesukhan",
+      label: "Facebook",
+    },
+    {
+      icon: Instagram,
+      href: "https://instagram.com/bazmesukhan",
+      label: "Instagram",
+    },
+    {
+      icon: Youtube,
+      href: "https://youtube.com/@bazmesukhan",
+      label: "YouTube",
+    },
   ];
+
+  // Handle newsletter subscription
+  const handleNewsletterSubmit = async (e) => {
+    e.preventDefault();
+
+    // Validate email
+    if (!email || !email.includes("@")) {
+      setSubscriptionStatus({
+        type: "error",
+        message: "براہ کرم درست ایمیل درج کریں / Please enter a valid email",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubscriptionStatus({ type: null, message: "" });
+
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/newsletter/subscribe",
+        {
+          email,
+        }
+      );
+
+      setSubscriptionStatus({
+        type: "success",
+        message:
+          response.data.message ||
+          "شکریہ! آپ نے کامیابی سے سبسکرائب کر لیا / Thank you for subscribing!",
+      });
+      setEmail("");
+    } catch (error) {
+      setSubscriptionStatus({
+        type: "error",
+        message:
+          error.response?.data?.message ||
+          "کچھ غلط ہو گیا، دوبارہ کوشش کریں / Something went wrong, please try again",
+      });
+    } finally {
+      setIsSubmitting(false);
+      // Clear status after 5 seconds
+      setTimeout(() => {
+        setSubscriptionStatus({ type: null, message: "" });
+      }, 5000);
+    }
+  };
+
+  // Handle contact click
+  const handleContactClick = (type, value) => {
+    if (type === "email") {
+      window.location.href = `mailto:${value}`;
+    } else if (type === "phone") {
+      window.location.href = `tel:${value.replace(/\s+/g, "")}`;
+    }
+  };
 
   return (
     <footer className="bg-gradient-to-br from-urdu-brown via-urdu-maroon to-gray-900 text-white relative overflow-hidden">
@@ -112,6 +194,8 @@ const Footer = () => {
                   <a
                     key={social.label}
                     href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center hover:bg-white/20 transition-all duration-300 transform hover:scale-110 hover:shadow-lg"
                     aria-label={social.label}
                   >
@@ -191,7 +275,12 @@ const Footer = () => {
               </span>
             </h3>
             <div className="space-y-4">
-              <div className="flex items-center space-x-3 group">
+              <button
+                onClick={() =>
+                  handleContactClick("email", "support@bazmesukhan.com")
+                }
+                className="flex items-center space-x-3 group w-full text-left hover:bg-white/5 p-2 rounded-xl transition-all duration-300"
+              >
                 <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-all duration-300 shadow-lg">
                   <Mail className="w-5 h-5 text-urdu-gold" />
                 </div>
@@ -203,8 +292,11 @@ const Footer = () => {
                     مدد کے لیے ایمیل
                   </span>
                 </div>
-              </div>
-              <div className="flex items-center space-x-3 group">
+              </button>
+              <button
+                onClick={() => handleContactClick("phone", "+92 300 1234567")}
+                className="flex items-center space-x-3 group w-full text-left hover:bg-white/5 p-2 rounded-xl transition-all duration-300"
+              >
                 <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-all duration-300 shadow-lg">
                   <Phone className="w-5 h-5 text-urdu-gold" />
                 </div>
@@ -216,7 +308,7 @@ const Footer = () => {
                     رابطہ نمبر
                   </span>
                 </div>
-              </div>
+              </button>
               <div className="flex items-center space-x-3 group">
                 <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-all duration-300 shadow-lg">
                   <MapPin className="w-5 h-5 text-urdu-gold" />
@@ -240,17 +332,57 @@ const Footer = () => {
                   Stay Updated
                 </span>
               </h4>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <form
+                onSubmit={handleNewsletterSubmit}
+                className="flex flex-col gap-3"
+              >
                 <input
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="اپنا ایمیل درج کریں / Your email"
-                  className="flex-1 px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-sm border-2 border-urdu-gold/30 text-white placeholder-urdu-cream/70 focus:outline-none focus:border-urdu-gold focus:ring-2 focus:ring-urdu-gold/20 transition-all duration-300 nastaleeq-primary"
+                  className="w-full px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-sm border-2 border-urdu-gold/30 text-white placeholder-urdu-cream/70 focus:outline-none focus:border-urdu-gold focus:ring-2 focus:ring-urdu-gold/20 transition-all duration-300 nastaleeq-primary"
                   style={{ direction: "rtl" }}
+                  disabled={isSubmitting}
                 />
-                <button className="px-8 py-3 bg-gradient-to-r from-urdu-gold to-yellow-500 text-urdu-brown rounded-2xl font-bold hover:from-yellow-500 hover:to-urdu-gold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl nastaleeq-primary">
-                  شامل ہوں
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full px-8 py-3 bg-gradient-to-r from-urdu-gold to-yellow-500 text-urdu-brown rounded-2xl font-bold hover:from-yellow-500 hover:to-urdu-gold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl nastaleeq-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>جاری ہے...</span>
+                    </>
+                  ) : (
+                    <span>شامل ہوں</span>
+                  )}
                 </button>
-              </div>
+              </form>
+
+              {/* Status Messages */}
+              {subscriptionStatus.message && (
+                <div
+                  className={`mt-3 p-3 rounded-lg flex items-center gap-2 ${
+                    subscriptionStatus.type === "success"
+                      ? "bg-green-500/20 border border-green-500/50"
+                      : "bg-red-500/20 border border-red-500/50"
+                  }`}
+                >
+                  {subscriptionStatus.type === "success" ? (
+                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                  )}
+                  <span
+                    className="text-sm text-white nastaleeq-primary"
+                    style={{ direction: "rtl" }}
+                  >
+                    {subscriptionStatus.message}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
