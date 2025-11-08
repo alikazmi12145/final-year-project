@@ -25,8 +25,8 @@ const noEnvPlugin = () => ({
       <script type="module">
         // Override import.meta.env before any other modules load
         const env = {
-          VITE_API_BASE_URL: "http://localhost:5001/api",
-          VITE_API_URL: "http://localhost:5001/api", 
+          VITE_API_BASE_URL: "http://localhost:5000/api",
+          VITE_API_URL: "http://localhost:5000/api", 
           VITE_NODE_ENV: "development",
           VITE_APP_NAME: "Bazm-e-Sukhan",
           VITE_APP_VERSION: "1.0.0",
@@ -67,8 +67,8 @@ export default defineConfig({
   define: {
     // Define ALL environment variables directly to completely bypass Vite's env processing
     "import.meta.env": JSON.stringify({
-      VITE_API_BASE_URL: "http://localhost:5001/api",
-      VITE_API_URL: "http://localhost:5001/api",
+      VITE_API_BASE_URL: "http://localhost:5000/api",
+      VITE_API_URL: "http://localhost:5000/api",
       VITE_NODE_ENV: "development",
       VITE_APP_NAME: "Bazm-e-Sukhan",
       VITE_APP_VERSION: "1.0.0",
@@ -82,9 +82,9 @@ export default defineConfig({
       BASE_URL: "/",
     }),
     "import.meta.env.VITE_API_BASE_URL": JSON.stringify(
-      "http://localhost:5001/api"
+      "http://localhost:5000/api"
     ),
-    "import.meta.env.VITE_API_URL": JSON.stringify("http://localhost:5001/api"),
+    "import.meta.env.VITE_API_URL": JSON.stringify("http://localhost:5000/api"),
     "import.meta.env.VITE_NODE_ENV": JSON.stringify("development"),
     "import.meta.env.VITE_APP_NAME": JSON.stringify("Bazm-e-Sukhan"),
     "import.meta.env.VITE_APP_VERSION": JSON.stringify("1.0.0"),
@@ -107,7 +107,7 @@ export default defineConfig({
     force: true,
     proxy: {
       "/api": {
-        target: "http://localhost:5001",
+        target: "http://localhost:5000",
         changeOrigin: true,
       },
     },

@@ -68,7 +68,7 @@ const Layout = ({ children }) => {
         </div>
         <div className="relative z-10">{children}</div>
       </main>
-      {!user && !isAuthPage && shouldShowNavbar && <Footer />}
+      {shouldShowNavbar && <Footer />}
     </div>
   );
 };

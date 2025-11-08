@@ -58,7 +58,9 @@ export const adminDashboardAPI = {
 
   // User Management - All Users with Filtering
   getUsers: async (params = {}) => {
-    const response = await api.get("/admin/users", { params });
+    // Set default limit to 1000 to get all users
+    const queryParams = { limit: 1000, ...params };
+    const response = await api.get("/admin/users", { params: queryParams });
     return response.data;
   },
 

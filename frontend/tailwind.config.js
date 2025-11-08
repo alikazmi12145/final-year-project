@@ -45,14 +45,26 @@ export default {
         },
       },
       fontFamily: {
+        // Set Urdu fonts as default for the entire application
+        sans: [
+          "Noto Nastaliq Urdu",
+          "LocalNastaleeq",
+          "Jameel Noori Nastaleeq",
+          "Noto Sans Arabic",
+          "Tajawal",
+          "Inter",
+          "system-ui",
+          "sans-serif",
+        ],
         // Enhanced font families for Urdu and cultural content
         urdu: [
           "Noto Nastaliq Urdu",
+          "LocalNastaleeq",
           "Jameel Noori Nastaleeq",
           "Arabic Typesetting",
           "serif",
         ],
-        nastaliq: ["Jameel Noori Nastaleeq", "Noto Nastaliq Urdu", "serif"],
+        nastaliq: ["Jameel Noori Nastaleeq", "Noto Nastaliq Urdu", "LocalNastaleeq", "serif"],
         naskh: ["Amiri", "Scheherazade New", "serif"],
         cultural: ["Crimson Text", "Playfair Display", "serif"],
         elegant: ["Cormorant Garamond", "EB Garamond", "serif"],

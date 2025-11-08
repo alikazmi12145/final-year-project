@@ -379,7 +379,7 @@ const PoetDashboard = () => {
       setLoading(true);
 
       // Fetch dynamic data from poet dashboard API
-      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
       const token = localStorage.getItem("token");
 
       if (!token) {
@@ -575,7 +575,7 @@ const PoetDashboard = () => {
 
   const handleSavePoem = async (poemData, setApiErrors) => {
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
       const token = localStorage.getItem("token");
 
       if (selectedPoem) {
@@ -625,7 +625,7 @@ const PoetDashboard = () => {
     if (!confirmed) return;
 
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
       const token = localStorage.getItem("token");
 
       await axios.delete(
@@ -660,7 +660,7 @@ const PoetDashboard = () => {
     }
 
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
       const token = localStorage.getItem("token");
 
       if (!token) {
@@ -729,15 +729,31 @@ const PoetDashboard = () => {
     const profileData = {
       name: formData.get('name'),
       email: formData.get('email'),
-      profile: {
-        bio: formData.get('bio'),
+      penName: formData.get('penName'),
+      fullName: formData.get('fullName'),
+      bio: formData.get('bio'),
+      shortBio: formData.get('shortBio'),
+      nationality: formData.get('nationality'),
+      era: formData.get('era'),
+      schoolOfThought: formData.get('schoolOfThought'),
+      birthPlace: {
+        city: formData.get('birthCity'),
+        region: formData.get('birthRegion'),
+        country: formData.get('birthCountry')
+      },
+      period: {
+        from: parseInt(formData.get('periodFrom')) || null,
+        to: parseInt(formData.get('periodTo')) || null
       },
       dateOfBirth: formData.get('dateOfBirth') || null,
       dateOfDeath: formData.get('dateOfDeath') || null,
+      isDeceased: formData.get('isDeceased') === 'on',
+      languages: formData.getAll('languages'),
+      poeticStyle: formData.getAll('poeticStyle'),
     };
 
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
       const token = localStorage.getItem("token");
 
       if (!token) {
@@ -830,7 +846,7 @@ const PoetDashboard = () => {
                   src={profile?.profileImage?.url 
                     ? (profile.profileImage.url.startsWith('http') 
                         ? profile.profileImage.url 
-                        : `http://localhost:5001${profile.profileImage.url}`)
+                        : `http://localhost:5000${profile.profileImage.url}`)
                     : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Poet')}&background=random&size=128`
                   }
                   alt={user?.name || "شاعر"}
@@ -1282,7 +1298,7 @@ const PoetDashboard = () => {
                       <img
                         src={profile.profileImage.url.startsWith('http') 
                           ? profile.profileImage.url 
-                          : `http://localhost:5001${profile.profileImage.url}`}
+                          : `http://localhost:5000${profile.profileImage.url}`}
                         alt={profile.name}
                         className="w-32 h-32 rounded-full object-cover mx-auto mb-4 border-4 border-purple-200"
                         onError={(e) => {
@@ -1331,84 +1347,310 @@ const PoetDashboard = () => {
               {/* Profile Information */}
               <div className="lg:col-span-2 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-100">
                 <h3 className="text-xl font-bold text-gray-800 mb-6">
-                  ذاتی معلومات
+                  مکمل شاعر تفصیلات
                 </h3>
-                <form onSubmit={handleProfileUpdate}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 text-right mb-2">
-                        نام
-                      </label>
-                      <input
-                        type="text"
-                        name="name"
-                        defaultValue={profile.name || ""}
-                        className="w-full p-3 border border-gray-300 rounded-lg text-right"
-                        dir="rtl"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 text-right mb-2">
-                        ای میل
-                      </label>
-                      <input
-                        type="email"
-                        name="email"
-                        defaultValue={profile.email || ""}
-                        className="w-full p-3 border border-gray-300 rounded-lg text-right"
-                        dir="rtl"
-                        required
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 text-right mb-2">
-                        تعارف
-                      </label>
-                      <textarea
-                        name="bio"
-                        rows="4"
-                        defaultValue={profile.bio || ""}
-                        className="w-full p-3 border border-gray-300 rounded-lg text-right"
-                        placeholder="اپنے بارے میں کچھ بتائیں..."
-                        dir="rtl"
-                      />
-                    </div>
-                    
-                    {/* Birth and Death Dates */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 text-right mb-2">
-                        تاریخ پیدائش
-                      </label>
-                      <input
-                        type="date"
-                        name="dateOfBirth"
-                        defaultValue={profile.dateOfBirth ? new Date(profile.dateOfBirth).toISOString().split('T')[0] : ""}
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 text-right mb-2">
-                        تاریخ وفات
-                      </label>
-                      <input
-                        type="date"
-                        name="dateOfDeath"
-                        defaultValue={profile.dateOfDeath ? new Date(profile.dateOfDeath).toISOString().split('T')[0] : ""}
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                      />
-                      <p className="text-xs text-gray-500 text-right mt-1">
-                        (اگر شاعر فوت ہو چکے ہیں تو بھریں)
-                      </p>
+                <form onSubmit={handleProfileUpdate} className="space-y-6">
+                  
+                  {/* Basic Information */}
+                  <div className="border-b pb-4">
+                    <h4 className="text-lg font-semibold text-gray-700 mb-4">بنیادی معلومات</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          نام *
+                        </label>
+                        <input
+                          type="text"
+                          name="name"
+                          defaultValue={profile.name || ""}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-right urdu-text-local"
+                          dir="rtl"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          تخلص / Pen Name
+                        </label>
+                        <input
+                          type="text"
+                          name="penName"
+                          defaultValue={profile.penName || ""}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-right urdu-text-local"
+                          dir="rtl"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          مکمل نام / Full Name
+                        </label>
+                        <input
+                          type="text"
+                          name="fullName"
+                          defaultValue={profile.fullName || ""}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-right urdu-text-local"
+                          dir="rtl"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          ای میل
+                        </label>
+                        <input
+                          type="email"
+                          name="email"
+                          defaultValue={profile.email || ""}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-right"
+                          dir="rtl"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          قومیت / Nationality
+                        </label>
+                        <input
+                          type="text"
+                          name="nationality"
+                          defaultValue={profile.nationality || ""}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-right urdu-text-local"
+                          dir="rtl"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          دور / Era *
+                        </label>
+                        <select
+                          name="era"
+                          defaultValue={profile.era || "contemporary"}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-right urdu-text-local"
+                          dir="rtl"
+                          required
+                        >
+                          <option value="classical">کلاسیکی / Classical</option>
+                          <option value="modern">جدید / Modern</option>
+                          <option value="contemporary">عصری / Contemporary</option>
+                          <option value="progressive">ترقی پسند / Progressive</option>
+                          <option value="traditional">روایتی / Traditional</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-6">
+
+                  {/* Biography */}
+                  <div className="border-b pb-4">
+                    <h4 className="text-lg font-semibold text-gray-700 mb-4">سوانح / Biography</h4>
+                    <div className="grid grid-cols-1 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          مختصر تعارف / Short Bio (500 حروف)
+                        </label>
+                        <input
+                          type="text"
+                          name="shortBio"
+                          maxLength={500}
+                          defaultValue={profile.shortBio || ""}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-right urdu-text-local"
+                          placeholder="ایک مختصر تعارف..."
+                          dir="rtl"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          تفصیلی تعارف / Detailed Biography (5000 حروف)
+                        </label>
+                        <textarea
+                          name="bio"
+                          rows="6"
+                          maxLength={5000}
+                          defaultValue={profile.bio || ""}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-right urdu-text-local"
+                          placeholder="اپنے بارے میں تفصیل سے بتائیں..."
+                          dir="rtl"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dates */}
+                  <div className="border-b pb-4">
+                    <h4 className="text-lg font-semibold text-gray-700 mb-4">تواریخ / Dates</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          تاریخ پیدائش / Date of Birth
+                        </label>
+                        <input
+                          type="date"
+                          name="dateOfBirth"
+                          defaultValue={profile.dateOfBirth ? new Date(profile.dateOfBirth).toISOString().split('T')[0] : ""}
+                          className="w-full p-3 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          تاریخ وفات / Date of Death
+                        </label>
+                        <input
+                          type="date"
+                          name="dateOfDeath"
+                          defaultValue={profile.dateOfDeath ? new Date(profile.dateOfDeath).toISOString().split('T')[0] : ""}
+                          className="w-full p-3 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          زمانہ (شروع) / Period From
+                        </label>
+                        <input
+                          type="number"
+                          name="periodFrom"
+                          defaultValue={profile.period?.from || ""}
+                          placeholder="مثلاً 1900"
+                          className="w-full p-3 border border-gray-300 rounded-lg text-right"
+                          dir="rtl"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          زمانہ (اختتام) / Period To
+                        </label>
+                        <input
+                          type="number"
+                          name="periodTo"
+                          defaultValue={profile.period?.to || ""}
+                          placeholder="مثلاً 1980"
+                          className="w-full p-3 border border-gray-300 rounded-lg text-right"
+                          dir="rtl"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="flex items-center space-x-2 space-x-reverse justify-end">
+                          <span className="text-sm font-medium text-gray-700">متوفی / Deceased</span>
+                          <input
+                            type="checkbox"
+                            name="isDeceased"
+                            defaultChecked={profile.isDeceased || false}
+                            className="rounded"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Birth Place */}
+                  <div className="border-b pb-4">
+                    <h4 className="text-lg font-semibold text-gray-700 mb-4">مقام پیدائش / Birth Place</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          شہر / City
+                        </label>
+                        <input
+                          type="text"
+                          name="birthCity"
+                          defaultValue={profile.birthPlace?.city || ""}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-right urdu-text-local"
+                          dir="rtl"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          علاقہ / Region
+                        </label>
+                        <input
+                          type="text"
+                          name="birthRegion"
+                          defaultValue={profile.birthPlace?.region || ""}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-right urdu-text-local"
+                          dir="rtl"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          ملک / Country
+                        </label>
+                        <input
+                          type="text"
+                          name="birthCountry"
+                          defaultValue={profile.birthPlace?.country || ""}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-right urdu-text-local"
+                          dir="rtl"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Literary Information */}
+                  <div className="border-b pb-4">
+                    <h4 className="text-lg font-semibold text-gray-700 mb-4">ادبی معلومات / Literary Info</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          مکتب فکر / School of Thought
+                        </label>
+                        <select
+                          name="schoolOfThought"
+                          defaultValue={profile.schoolOfThought || ""}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-right urdu-text-local"
+                          dir="rtl"
+                        >
+                          <option value="">منتخب کریں</option>
+                          <option value="romantic">رومانوی / Romantic</option>
+                          <option value="progressive">ترقی پسند / Progressive</option>
+                          <option value="traditional">روایتی / Traditional</option>
+                          <option value="modern">جدید / Modern</option>
+                          <option value="sufi">صوفیانہ / Sufi</option>
+                          <option value="political">سیاسی / Political</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          زبانیں / Languages (Ctrl+Click)
+                        </label>
+                        <select
+                          name="languages"
+                          multiple
+                          defaultValue={profile.languages || []}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-right urdu-text-local"
+                          dir="rtl"
+                          style={{ height: '80px' }}
+                        >
+                          <option value="urdu">اردو / Urdu</option>
+                          <option value="punjabi">پنجابی / Punjabi</option>
+                          <option value="english">انگریزی / English</option>
+                          <option value="other">دیگر / Other</option>
+                        </select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 text-right mb-2">
+                          شاعری کی اقسام / Poetic Styles
+                        </label>
+                        <div className="grid grid-cols-3 gap-3">
+                          {['ghazal', 'nazm', 'rubai', 'qawwali', 'marsiya', 'salam', 'hamd', 'naat', 'free-verse'].map(style => (
+                            <label key={style} className="flex items-center space-x-2 space-x-reverse justify-end">
+                              <span className="text-sm capitalize">{style}</span>
+                              <input
+                                type="checkbox"
+                                name="poeticStyle"
+                                value={style}
+                                defaultChecked={profile.poeticStyle?.includes(style)}
+                                className="rounded"
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-4">
                     <button 
                       type="submit"
-                      className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all"
+                      className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-3 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all flex items-center space-x-2"
                     >
-                      تبدیلیاں محفوظ کریں
+                      <span>تبدیلیاں محفوظ کریں</span>
                     </button>
                   </div>
                 </form>

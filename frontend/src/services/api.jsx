@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Ensure we have the correct base URL without double /api
-const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
+const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 const API_BASE_URL = baseUrl.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
 
 const axiosInstance = axios.create({

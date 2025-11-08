@@ -3,7 +3,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
-import api from '../services/api';
+import axios from 'axios';
 import {
   BookOpen,
   Search,
@@ -16,6 +16,8 @@ import {
   Headphones,
   Star
 } from "lucide-react";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 const Learning = () => {
   const [activeTab, setActiveTab] = useState('tutorials');
@@ -64,10 +66,12 @@ const Learning = () => {
   const fetchLearningResources = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/learning/resources');
+      const response = await axios.get(`${API_BASE_URL}/learning/resources`);
       setResources(response.data.resources || []);
     } catch (error) {
       console.error('Error fetching learning resources:', error);
+      // Set empty array on error to avoid breaking the UI
+      setResources([]);
     } finally {
       setLoading(false);
     }
@@ -78,10 +82,11 @@ const Learning = () => {
     
     try {
       setLoading(true);
-      const response = await api.get(`/learning/qaafia/${searchWord}?advanced=true`);
+      const response = await axios.get(`${API_BASE_URL}/learning/qaafia/${searchWord}?advanced=true`);
       setQaafiResults(response.data);
     } catch (error) {
       console.error('Error searching qaafia:', error);
+      setQaafiResults(null);
     } finally {
       setLoading(false);
     }
@@ -89,19 +94,21 @@ const Learning = () => {
 
   const fetchHarfRavi = async (letter = '') => {
     try {
-      const response = await api.get(`/learning/harf-ravi/${letter}`);
+      const response = await axios.get(`${API_BASE_URL}/learning/harf-ravi/${letter}`);
       setHarfResults(letter ? response.data.info : response.data.letters);
     } catch (error) {
       console.error('Error fetching harf-ravi:', error);
+      setHarfResults([]);
     }
   };
 
   const fetchMeters = async () => {
     try {
-      const response = await api.get('/learning/meters');
+      const response = await axios.get(`${API_BASE_URL}/learning/meters`);
       setMeterResults(response.data.meters || []);
     } catch (error) {
       console.error('Error fetching meters:', error);
+      setMeterResults([]);
     }
   };
 
@@ -110,12 +117,13 @@ const Learning = () => {
 
     try {
       setLoading(true);
-      const response = await api.post('/learning/analyze-word', {
+      const response = await axios.post(`${API_BASE_URL}/learning/analyze-word`, {
         word: searchWord
       });
       setWordAnalysis(response.data.analysis);
     } catch (error) {
       console.error('Error analyzing word:', error);
+      setWordAnalysis(null);
     } finally {
       setLoading(false);
     }

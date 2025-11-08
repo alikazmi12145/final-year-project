@@ -265,7 +265,7 @@ router.get("/profile", poetAuth, async (req, res) => {
 
 /**
  * @route   PUT /poet-dashboard/profile
- * @desc    Update poet profile
+ * @desc    Update poet profile with comprehensive biographical information
  * @access  Poet only
  */
 router.put(
@@ -276,16 +276,16 @@ router.put(
       .trim()
       .isLength({ min: 2 })
       .withMessage("Name must be at least 2 characters"),
-    body("profile.bio")
+    body("bio")
+      .optional()
+      .trim()
+      .isLength({ max: 5000 })
+      .withMessage("Bio must be less than 5000 characters"),
+    body("shortBio")
       .optional()
       .trim()
       .isLength({ max: 500 })
-      .withMessage("Bio must be less than 500 characters"),
-    body("profile.location").optional().trim(),
-    body("profile.website")
-      .optional()
-      .isURL()
-      .withMessage("Must be a valid URL"),
+      .withMessage("Short bio must be less than 500 characters"),
   ],
   poetAuth,
   async (req, res) => {
@@ -299,58 +299,69 @@ router.put(
         });
       }
 
-      const updateData = {};
-      const { name, profile } = req.body;
+      const {
+        name,
+        email,
+        penName,
+        fullName,
+        bio,
+        shortBio,
+        nationality,
+        era,
+        schoolOfThought,
+        birthPlace,
+        period,
+        dateOfBirth,
+        dateOfDeath,
+        isDeceased,
+        languages,
+        poeticStyle,
+      } = req.body;
 
-      if (name) updateData.name = name;
-      if (profile) {
-        // Save bio directly on User model
-        if (profile.bio !== undefined) {
-          updateData.bio = profile.bio;
-        }
-        // Keep other profile fields nested
-        updateData.profile = {
-          ...req.user.profile,
-          ...profile,
-        };
-      }
+      // Update User model
+      const userUpdateData = {};
+      if (name) userUpdateData.name = name;
+      if (email) userUpdateData.email = email;
+      if (bio) userUpdateData.bio = bio;
 
-      console.log("Updating poet profile with:", updateData);
-
-      const updatedPoet = await User.findByIdAndUpdate(
+      const updatedUser = await User.findByIdAndUpdate(
         req.user._id,
-        updateData,
+        userUpdateData,
         { new: true, runValidators: true }
       ).select("-password");
 
-      console.log("Updated poet bio:", updatedPoet.bio);
+      // Update Poet collection with comprehensive data
+      const poetUpdateData = {
+        name,
+        penName,
+        fullName,
+        bio,
+        shortBio,
+        nationality,
+        era,
+        schoolOfThought,
+        birthPlace,
+        period,
+        dateOfBirth: dateOfBirth || null,
+        dateOfDeath: dateOfDeath || null,
+        isDeceased: isDeceased === true,
+        languages: languages || [],
+        poeticStyle: poeticStyle || [],
+      };
 
-      // Also update the Poet collection if this user has a Poet profile
-      const poetUpdateData = {};
-      if (profile?.bio) {
-        poetUpdateData.bio = profile.bio;
-      }
-      if (req.body.dateOfBirth) {
-        poetUpdateData.dateOfBirth = req.body.dateOfBirth;
-      }
-      if (req.body.dateOfDeath) {
-        poetUpdateData.dateOfDeath = req.body.dateOfDeath;
-        poetUpdateData.isDeceased = true;
-      }
-      
-      if (Object.keys(poetUpdateData).length > 0) {
-        await Poet.findOneAndUpdate(
-          { user: req.user._id },
-          { $set: poetUpdateData },
-          { new: true }
-        );
-        console.log("Updated Poet collection for user:", req.user._id, poetUpdateData);
-      }
+      const updatedPoet = await Poet.findOneAndUpdate(
+        { user: req.user._id },
+        { $set: poetUpdateData },
+        { new: true, upsert: true }
+      );
+
+      console.log("Updated Poet profile:", updatedPoet._id);
 
       res.json({
         success: true,
         message: "Profile updated successfully",
-        data: updatedPoet,
+        data: updatedUser,
+        poet: updatedPoet,
       });
     } catch (error) {
       console.error("Update profile error:", error);
@@ -471,6 +482,22 @@ router.post(
       ).select("-password");
 
       console.log("Updated poet profile image:", updatedPoet.profileImage);
+
+      // IMPORTANT: Also update the Poet collection so image shows in admin dashboard
+      await Poet.findOneAndUpdate(
+        { user: req.user._id },
+        {
+          $set: {
+            profileImage: {
+              url: avatarUrl,
+              publicId: publicId,
+            }
+          }
+        },
+        { new: true, upsert: true }
+      );
+
+      console.log("Updated Poet collection with profile image");
 
       res.json({
         success: true,

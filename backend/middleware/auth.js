@@ -505,3 +505,4 @@ export const adminDashboardAuth = [adminAuth]; // Admins use existing adminAuth
 
 // Legacy exports for backward compatibility
 export const authenticate = auth;
+export const protect = auth; // Alias for protect middleware
