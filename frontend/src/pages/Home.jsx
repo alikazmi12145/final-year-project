@@ -22,7 +22,7 @@ const Home = () => {
       description: "اردو شاعری کا بے تاج بادشاہ",
       quote: "ہزاروں خواہشیں ایسی کہ ہر خواہش پہ دم نکلے",
       image:
-        "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=200&h=200&fit=crop&crop=face",
+        "/images/images.jpg",
     },
     {
       name: "علامہ اقبال",
@@ -30,7 +30,7 @@ const Home = () => {
       description: "شاعر مشرق",
       quote: "خودی کو کر بلند اتنا کہ ہر تقدیر سے پہلے",
       image:
-        "https://images.unsplash.com/photo-1552058544-f2b08422138a?w=200&h=200&fit=crop&crop=face",
+        "/images/images (1).jpg",
     },
     {
       name: "فیض احمد فیض",
@@ -38,7 +38,7 @@ const Home = () => {
       description: "انقلابی شاعر",
       quote: "محبت کرنے والے کم نہ ہوں گے",
       image:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face",
+        "/images/5-61.jpg",
     },
     {
       name: "میر تقی میر",
@@ -46,7 +46,7 @@ const Home = () => {
       description: "خدائے سخن",
       quote: "کیا مجھ کو یہ عشق ہوا ہے کہ بس",
       image:
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=face",
+        "/images/images (3).jpg",
     },
     {
       name: "احمد فراز",
@@ -54,7 +54,7 @@ const Home = () => {
       description: "جدید غزل کا استاد",
       quote: "رنج کی شب میں سحر کا انتظار کون کرے",
       image:
-        "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=200&h=200&fit=crop&crop=face",
+        "/images/images (2).jpg",
     },
     {
       name: "پروین شاکر",
@@ -62,7 +62,7 @@ const Home = () => {
       description: "جدید اردو شاعرہ",
       quote: "پتا نہیں کیوں زندگی کی راہوں میں",
       image:
-        "https://images.unsplash.com/photo-1494790108755-2616c3e79c09?w=200&h=200&fit=crop&crop=face",
+        "/images/images (4).jpg",
     },
   ];
 
