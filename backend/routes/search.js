@@ -17,6 +17,7 @@ import {
   advancedSearch,
   getSmartSuggestions,
   unifiedSearch,
+  initializeSemanticIndex,
 } from "../controllers/searchController.js";
 
 const router = express.Router();
@@ -24,8 +25,9 @@ const router = express.Router();
 // Rate limiting - moved to top to be available for all routes
 const searchLimit = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 500, // Increased limit for development (was 100)
   message: "Too many search requests from this IP, please try again later.",
+  skip: (req) => process.env.NODE_ENV === 'development', // Skip rate limiting in development
 });
 
 // Multer configuration for image uploads
@@ -197,6 +199,9 @@ router.post(
   [body("partialQuery").isLength({ min: 2, max: 100 }).trim()],
   getSmartSuggestions
 );
+
+// Initialize Semantic Index (ML Model)
+router.post("/ml/initialize", auth, initializeSemanticIndex);
 
 // 🚀 UNIFIED SEARCH - Combines Database and Rekhta API (OpenAI removed)
 router.post(

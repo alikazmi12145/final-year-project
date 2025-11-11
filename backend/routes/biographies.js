@@ -8,6 +8,7 @@ import { auth, poetAuth, adminAuth } from "../middleware/auth.js";
 import RekhtaService from "../services/rekhtaService.js";
 
 const router = express.Router();
+const rekhtaService = new RekhtaService();
 
 /**
  * Biography Management Routes
@@ -352,7 +353,7 @@ router.get("/classical/:poet", async (req, res) => {
 
     // If not found locally, fetch from Rekhta
     try {
-      const rekhtaData = await RekhtaService.getPoetBiography(poet);
+      const rekhtaData = await rekhtaService.getPoetBiography(poet);
 
       if (rekhtaData.success) {
         res.json({
@@ -365,7 +366,7 @@ router.get("/classical/:poet", async (req, res) => {
         res.status(404).json({
           success: false,
           message: "Classical poet not found in Rekhta database",
-          availablePoets: RekhtaService.getSupportedPoets(),
+          availablePoets: rekhtaService.getSupportedPoets(),
         });
       }
     } catch (rekhtaError) {

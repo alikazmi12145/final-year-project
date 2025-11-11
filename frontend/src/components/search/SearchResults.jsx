@@ -205,15 +205,21 @@ const SearchResults = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onAuthorClick(poem.author || poem.poet?.name);
+                      onAuthorClick(
+                        poem.author?.name || 
+                        poem.poet?.name || 
+                        poem.author?.username ||
+                        poem.author
+                      );
                     }}
                     className="text-amber-600 hover:text-amber-700 font-medium flex items-center gap-2"
                   >
                     <User className="w-4 h-4" />
-                    {poem.author ||
+                    {poem.author?.name ||
                       poem.poet?.name ||
                       poem.author?.username ||
                       poem.author?.profile?.fullName ||
+                      (typeof poem.author === 'string' ? poem.author : null) ||
                       "نامعلوم شاعر"}
                   </button>
                 </div>
@@ -420,8 +426,18 @@ const SearchResults = ({
                   <span className="text-sm">{poem.commentsCount || 0}</span>
                 </Button>
 
-                <Button className="ml-auto bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl px-6 py-2 text-sm font-medium">
+                {/* Always show as clickable button, navigation handled by onPoemClick */}
+                <Button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPoemClick(poem);
+                  }}
+                  className="ml-auto bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl px-6 py-2 text-sm font-medium"
+                >
                   مکمل پڑھیں
+                  {(poem.source === "rekhta" || poem.source === "rekhta_fallback") && (
+                    <span className="text-xs opacity-80 mr-1">(Rekhta)</span>
+                  )}
                 </Button>
               </div>
             </div>

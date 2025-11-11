@@ -7,6 +7,8 @@ import AIPoetryService from "../services/aiPoetryService.js";
 import RekhtaService from "../services/rekhtaService.js";
 import mongoose from "mongoose";
 
+const rekhtaService = new RekhtaService();
+
 /**
  * Complete Poetry Collection Controller
  * Handles CRUD operations, ratings, AI recommendations, Rekhta integration, and favorites
@@ -1620,7 +1622,7 @@ class PoetryCollectionController {
         });
       }
 
-      const poetData = await RekhtaService.getPoemsByPoet(
+      const poetData = await rekhtaService.getPoemsByPoet(
         poet,
         parseInt(page),
         parseInt(limit)
@@ -1667,7 +1669,7 @@ class PoetryCollectionController {
         });
       }
 
-      const searchResults = await RekhtaService.searchPoems(query, type);
+      const searchResults = await rekhtaService.searchPoems(query, type);
 
       if (searchResults.success) {
         res.json({
@@ -1701,7 +1703,7 @@ class PoetryCollectionController {
    */
   static async getFeaturedRekhtaPoems(req, res) {
     try {
-      const featuredPoems = await RekhtaService.getFeaturedPoems();
+      const featuredPoems = await rekhtaService.getFeaturedPoems();
 
       if (featuredPoems.success) {
         res.json({
@@ -1731,7 +1733,7 @@ class PoetryCollectionController {
    */
   static async getSupportedPoets(req, res) {
     try {
-      const poets = RekhtaService.getSupportedPoets();
+      const poets = rekhtaService.getSupportedPoets();
 
       res.json({
         success: true,

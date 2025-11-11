@@ -46,21 +46,44 @@ export const generateSmartSuggestions = async (partialQuery) => {
  * @returns {object} - Improved transcription
  */
 export const improveVoiceTranscription = async (transcription, confidence) => {
+  // Clean up common OCR/transcription errors
+  let cleanedText = transcription
+    .replace(/\s+/g, ' ') // Multiple spaces to single space
+    .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width characters
+    .trim();
+
+  // Detect poet from text
+  const poetPatterns = {
+    "ghalib": /غالب|ghalib|mirza|میرزا/i,
+    "iqbal": /اقبال|iqbal|allama|علامہ/i,
+    "faiz": /فیض|faiz|ahmad|احمد/i,
+  };
+
+  let detectedPoet = null;
+  for (const [poet, pattern] of Object.entries(poetPatterns)) {
+    if (pattern.test(cleanedText)) {
+      detectedPoet = poet;
+      break;
+    }
+  }
+
   if (confidence > 0.8) {
     return {
       success: true,
-      improvedText: transcription,
+      improvedText: cleanedText,
       originalText: transcription,
       confidence: confidence,
+      detectedPoet: detectedPoet,
     };
   }
 
   // OpenAI API removed. All AI features are disabled. Use fallback logic only.
   return {
     success: true,
-    improvedText: transcription,
+    improvedText: cleanedText,
     originalText: transcription,
     confidence: confidence,
+    detectedPoet: detectedPoet,
     corrections: [],
     fallback: true,
   };
