@@ -21,6 +21,7 @@ import PoemsPage from "./pages/PoemsPage";
 import CreatePoemPage from "./pages/CreatePoemPage";
 import PoemDetailPage from "./pages/PoemDetailPage";
 import EditPoemPage from "./pages/EditPoemPage";
+import ExternalPoemPage from "./pages/ExternalPoemPage";
 
 // Poetry Collection Pages
 import PoetryCollectionPage from "./pages/PoetryCollectionPage";
@@ -55,6 +56,7 @@ function App() {
         {/* Poetry CRUD Routes */}
         <Route path="/poems" element={<PoemsPage />} />
         <Route path="/poems/create" element={<CreatePoemPage />} />
+        <Route path="/poems/external/:title" element={<ExternalPoemPage />} />
         <Route path="/poems/:id" element={<PoemDetailPage />} />
         <Route
           path="/poems/:id/edit"

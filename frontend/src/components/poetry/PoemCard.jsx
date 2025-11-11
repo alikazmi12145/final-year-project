@@ -419,13 +419,26 @@ const PoemCard = ({
             </button>
           )}
 
-          <Link
-            to={`/poems/${poem._id}`}
-            onClick={handleViewIncrement}
-            className="text-urdu-gold hover:text-urdu-brown transition-all duration-200 font-medium hover:scale-105 inline-block px-3 py-1 bg-urdu-gold/10 hover:bg-urdu-gold/20 rounded-md"
-          >
-            مکمل پڑھیں
-          </Link>
+          {/* Check if it's an external poem - navigate to external poem page */}
+          {poem.source === "rekhta" || poem.source === "rekhta_fallback" ? (
+            <button
+              onClick={() => {
+                sessionStorage.setItem('externalPoem', JSON.stringify(poem));
+                navigate(`/poems/external/${encodeURIComponent(poem.title || poem._id)}`);
+              }}
+              className="text-urdu-gold hover:text-urdu-brown transition-all duration-200 font-medium hover:scale-105 inline-block px-3 py-1 bg-urdu-gold/10 hover:bg-urdu-gold/20 rounded-md"
+            >
+              مکمل پڑھیں
+            </button>
+          ) : (
+            <Link
+              to={`/poems/${poem._id}`}
+              onClick={handleViewIncrement}
+              className="text-urdu-gold hover:text-urdu-brown transition-all duration-200 font-medium hover:scale-105 inline-block px-3 py-1 bg-urdu-gold/10 hover:bg-urdu-gold/20 rounded-md"
+            >
+              مکمل پڑھیں
+            </Link>
+          )}
         </div>
       </div>
     </div>

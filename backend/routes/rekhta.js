@@ -4,6 +4,7 @@ import { optionalAuth } from "../middleware/auth.js";
 import rateLimit from "express-rate-limit";
 
 const router = express.Router();
+const rekhtaService = new RekhtaService();
 
 // Rate limiting for Rekhta API calls
 const rekhtaRateLimit = rateLimit({
@@ -22,7 +23,7 @@ const rekhtaRateLimit = rateLimit({
  */
 router.get("/poets", rekhtaRateLimit, (req, res) => {
   try {
-    const poets = RekhtaService.getSupportedPoets();
+    const poets = rekhtaService.getSupportedPoets();
 
     res.json({
       success: true,
@@ -64,7 +65,7 @@ router.get("/:poet", rekhtaRateLimit, optionalAuth, async (req, res) => {
 
     console.log(`🔍 Fetching poems for poet: ${poet}`);
 
-    const result = await RekhtaService.getPoemsByPoet(poet, pageNum, limitNum);
+    const result = await rekhtaService.getPoemsByPoet(poet, pageNum, limitNum);
 
     if (result.success) {
       res.json({
@@ -81,7 +82,7 @@ router.get("/:poet", rekhtaRateLimit, optionalAuth, async (req, res) => {
         success: false,
         message: result.error || `${poet} کی شاعری دستیاب نہیں`, // Poetry not available
         availablePoets:
-          result.availablePoets || RekhtaService.getSupportedPoets(),
+          result.availablePoets || rekhtaService.getSupportedPoets(),
       });
     }
   } catch (error) {
@@ -129,7 +130,7 @@ router.get(
 
       console.log(`🔍 Searching Rekhta for: "${query}" (type: ${type})`);
 
-      const result = await RekhtaService.searchPoems(
+      const result = await rekhtaService.searchPoems(
         decodeURIComponent(query),
         type
       );
@@ -190,7 +191,7 @@ router.get("/featured", rekhtaRateLimit, optionalAuth, async (req, res) => {
   try {
     console.log("🔍 Fetching featured poems from Rekhta");
 
-    const result = await RekhtaService.getFeaturedPoems();
+    const result = await rekhtaService.getFeaturedPoems();
 
     if (result.success) {
       res.json({
@@ -228,7 +229,7 @@ router.get("/random", rekhtaRateLimit, optionalAuth, async (req, res) => {
     console.log(`🎲 Fetching ${numPoems} random classical poems`);
 
     // Get random poets and fetch one poem from each
-    const supportedPoets = RekhtaService.getSupportedPoets();
+    const supportedPoets = rekhtaService.getSupportedPoets();
     const randomPoets = supportedPoets
       .sort(() => 0.5 - Math.random())
       .slice(0, numPoems);
@@ -237,7 +238,7 @@ router.get("/random", rekhtaRateLimit, optionalAuth, async (req, res) => {
 
     for (const poetInfo of randomPoets) {
       try {
-        const result = await RekhtaService.getPoemsByPoet(poetInfo.slug, 1, 1);
+        const result = await rekhtaService.getPoemsByPoet(poetInfo.slug, 1, 1);
         if (result.success && result.poems.length > 0) {
           randomPoems.push({
             ...result.poems[0],
@@ -286,7 +287,7 @@ router.get(
 
       console.log(`📖 Fetching detailed info for poet: ${poet}`);
 
-      const result = await RekhtaService.getPoemsByPoet(poet, 1, 1);
+      const result = await rekhtaService.getPoemsByPoet(poet, 1, 1);
 
       if (result.success) {
         res.json({
@@ -302,7 +303,7 @@ router.get(
           success: false,
           message: result.error || `${poet} کی تفصیلات دستیاب نہیں`, // Poet details not available
           availablePoets:
-            result.availablePoets || RekhtaService.getSupportedPoets(),
+            result.availablePoets || rekhtaService.getSupportedPoets(),
         });
       }
     } catch (error) {

@@ -17,10 +17,12 @@ const ImageSearch = ({ onSearch, loading = false }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [ocrConfidence, setOcrConfidence] = useState(0);
+  const [rekhtaMatches, setRekhtaMatches] = useState([]);
+  const [bestRekhtaMatch, setBestRekhtaMatch] = useState(null);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
-  // Enhanced OCR processing with progress tracking
+  // Enhanced OCR processing with Python backend (much better for Urdu!)
   const processImageWithOCR = useCallback(async (imageFile) => {
     setIsProcessing(true);
     setOcrProgress(0);
@@ -28,48 +30,124 @@ const ImageSearch = ({ onSearch, loading = false }) => {
     setOcrConfidence(0);
 
     try {
-      console.log("📸 Starting OCR processing for image search");
+      // Always try Python service first (best for Urdu OCR)
+      console.log("📸 Sending image to Python AI service for OCR...");
+      setOcrProgress(10);
 
-      const {
-        data: { text, confidence },
-      } = await Tesseract.recognize(
-        imageFile,
-        "urd+eng+ara", // Urdu, English, Arabic
-        {
-          logger: (progress) => {
-            console.log("OCR Progress:", progress);
-            if (progress.status === "recognizing text") {
-              setOcrProgress(Math.round(progress.progress * 100));
+      try {
+        const formData = new FormData();
+        formData.append('file', imageFile);
+
+        const pythonResponse = await fetch('http://localhost:5001/analyze/image', {
+          method: 'POST',
+          body: formData,
+          timeout: 30000, // 30 second timeout
+        });
+
+        setOcrProgress(50);
+
+        if (pythonResponse.ok) {
+          const ocrResult = await pythonResponse.json();
+          setOcrProgress(80);
+
+          if (ocrResult.success && ocrResult.text) {
+            console.log("✅ Python OCR completed successfully!");
+            console.log("📊 OCR Stats:");
+            console.log("   - Text length:", ocrResult.text.length);
+            console.log("   - Confidence:", (ocrResult.confidence * 100).toFixed(2) + "%");
+            console.log("   - Language:", ocrResult.language);
+            console.log("   - Quality:", ocrResult.quality);
+            console.log("   - Is garbled:", ocrResult.is_garbled);
+            console.log("   - Extracted text:", ocrResult.text);
+            
+            // Check if text is flagged as garbled
+            if (ocrResult.is_garbled || ocrResult.quality === 'poor') {
+              console.warn("⚠️ OCR flagged text as garbled or poor quality");
+              showError(
+                ocrResult.warning || 
+                "تصویر کا معیار خراب ہے۔ براہ کرم صاف اور واضح تصویر استعمال کریں۔"
+              );
+              
+              // Still show the extracted text so user can see what went wrong
+              setExtractedText(ocrResult.text);
+              setOcrConfidence(ocrResult.confidence * 100);
+              setOcrProgress(100);
+              return;
             }
-          },
+            
+            setExtractedText(ocrResult.text);
+            setOcrConfidence(ocrResult.confidence * 100);
+            setOcrProgress(100);
+
+            // Perform search if text is meaningful
+            if (ocrResult.text.trim().length > 2) {
+              await performImageSearch(ocrResult.text, ocrResult.confidence * 100);
+            } else {
+              showError("تصویر سے کافی متن نہیں نکل سکا۔ واضح تصویر استعمال کریں۔");
+            }
+            return; // Success, exit early
+          } else {
+            console.warn("⚠️ Python service returned no text");
+            showError("تصویر سے متن نہیں نکل سکا۔ براہ کرم واضح تصویر استعمال کریں۔");
+          }
+        } else {
+          const errorText = await pythonResponse.text();
+          console.error("⚠️ Python service returned error:", pythonResponse.status, errorText);
+          throw new Error(`HTTP ${pythonResponse.status}: ${errorText}`);
         }
-      );
+      } catch (pythonError) {
+        console.warn("⚠️ Python service unavailable:", pythonError.message);
+        console.log("🔄 Falling back to browser OCR (Tesseract.js)...");
+        
+        // Fallback to browser OCR
+        setOcrProgress(10);
+        console.log("📸 Using browser OCR (Tesseract.js)...");
+          
+        const {
+          data: { text, confidence },
+        } = await Tesseract.recognize(
+          imageFile,
+          "urd+eng+ara", // Urdu, English, Arabic
+          {
+            logger: (progress) => {
+              if (progress.status === "recognizing text") {
+                setOcrProgress(Math.round(10 + progress.progress * 90));
+              }
+            },
+          }
+        );
 
-      console.log("📸 OCR completed:", { text, confidence });
+        console.log("✅ Browser OCR completed:", { textLength: text.length, confidence });
+        console.log("📝 Extracted text:", text);
+        
+        setExtractedText(text);
+        setOcrConfidence(confidence);
+        setOcrProgress(100);
 
-      setExtractedText(text);
-      setOcrConfidence(confidence);
-      setOcrProgress(100);
-
-      // Automatically search if text is extracted with good confidence
-      if (text && text.trim().length > 2) {
-        await performImageSearch(text, confidence);
+        if (text && text.trim().length > 2) {
+          await performImageSearch(text, confidence);
+        } else {
+          showError("تصویر سے کافی متن نہیں نکل سکا۔ واضح تصویر استعمال کریں۔");
+        }
       }
     } catch (error) {
-      console.error("❌ OCR processing error:", error);
+      console.error("❌ OCR processing failed completely:", error);
       showError(
-        "OCR processing failed. Please try with a clearer image. / OCR پروسیسنگ ناکام ہوگئی۔ واضح تصویر کے ساتھ کوشش کریں۔"
+        "متن نکالنے میں خرابی۔ براہ کرم صاف اور واضح تصویر استعمال کریں۔"
       );
+      setOcrProgress(0);
     } finally {
       setIsProcessing(false);
     }
-  }, []);
+  }, [showError]);
 
   // Dynamic image search with MongoDB integration
   const performImageSearch = useCallback(
     async (text, confidence) => {
       if (!text || text.trim().length === 0) {
         setSearchResults([]);
+        setRekhtaMatches([]);
+        setBestRekhtaMatch(null);
         return;
       }
 
@@ -81,10 +159,22 @@ const ImageSearch = ({ onSearch, loading = false }) => {
           language: "all",
           useAI: true,
           sortBy: "relevance",
+          useRekhta: true, // Enable Rekhta integration
         });
 
         if (response.data.success) {
           setSearchResults(response.data.results || []);
+          
+          // Store Rekhta matches if available
+          if (response.data.rekhtaMatches) {
+            console.log("✅ Received Rekhta matches:", response.data.rekhtaMatches.length);
+            setRekhtaMatches(response.data.rekhtaMatches);
+          }
+          
+          if (response.data.bestRekhtaMatch) {
+            console.log("🏆 Best Rekhta match:", response.data.bestRekhtaMatch.title);
+            setBestRekhtaMatch(response.data.bestRekhtaMatch);
+          }
 
           // Call parent onSearch callback
           if (onSearch) {
@@ -94,12 +184,16 @@ const ImageSearch = ({ onSearch, loading = false }) => {
               ocrConfidence: confidence,
               searchType: "image",
               results: response.data.results || [],
+              rekhtaMatches: response.data.rekhtaMatches,
+              bestRekhtaMatch: response.data.bestRekhtaMatch,
             });
           }
         }
       } catch (error) {
         console.error("❌ Image search error:", error);
         setSearchResults([]);
+        setRekhtaMatches([]);
+        setBestRekhtaMatch(null);
       } finally {
         setSearchLoading(false);
       }
@@ -407,6 +501,102 @@ const ImageSearch = ({ onSearch, loading = false }) => {
             ) : (
               <p className="text-gray-500 italic">کوئی متن نہیں نکالا گیا...</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Rekhta Matches Section */}
+      {bestRekhtaMatch && (
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg border-2 border-purple-300 shadow-md">
+          <div className="flex items-center gap-2 mb-4">
+            <svg className="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+              <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"></path>
+            </svg>
+            <h3 className="text-xl font-bold text-purple-800">
+              🏆 ریختہ سے بہترین میچ
+            </h3>
+            {bestRekhtaMatch.match_score && (
+              <span className="ml-auto px-3 py-1 bg-purple-600 text-white rounded-full text-sm font-semibold">
+                {Math.round(bestRekhtaMatch.match_score)}% مماثلت
+              </span>
+            )}
+          </div>
+
+          <div className="bg-white p-4 rounded-lg border border-purple-200 mb-3">
+            <h4 className="text-lg font-bold text-gray-800 mb-2" dir="rtl">
+              {bestRekhtaMatch.title}
+            </h4>
+            <p className="text-purple-700 font-medium mb-2" dir="rtl">
+              شاعر: {bestRekhtaMatch.poet}
+            </p>
+            <span className="inline-block px-2 py-1 bg-purple-100 text-purple-700 rounded text-sm">
+              {bestRekhtaMatch.category}
+            </span>
+          </div>
+
+          {bestRekhtaMatch.verses && (
+            <div className="bg-white p-4 rounded-lg border border-purple-200 mb-3">
+              <h5 className="font-semibold text-gray-700 mb-2">اشعار:</h5>
+              <div className="text-gray-800 leading-relaxed whitespace-pre-line" dir="rtl">
+                {bestRekhtaMatch.verses}
+              </div>
+            </div>
+          )}
+
+          {bestRekhtaMatch.url && (
+            <a
+              href={bestRekhtaMatch.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              ریختہ پر مکمل نظم دیکھیں
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* More Rekhta Matches */}
+      {rekhtaMatches && rekhtaMatches.length > 1 && (
+        <div className="bg-purple-50 p-5 rounded-lg border border-purple-200">
+          <h4 className="font-bold text-purple-800 mb-3 text-lg">
+            مزید ریختہ نتائج ({rekhtaMatches.length - 1})
+          </h4>
+          <div className="space-y-3">
+            {rekhtaMatches.slice(1, 4).map((match, index) => (
+              <div key={index} className="bg-white p-3 rounded-lg border border-purple-100 hover:border-purple-300 transition-colors">
+                <div className="flex justify-between items-start mb-2">
+                  <h5 className="font-semibold text-gray-800" dir="rtl">{match.title}</h5>
+                  {match.match_score && (
+                    <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                      {Math.round(match.match_score)}%
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-purple-600 mb-2" dir="rtl">
+                  شاعر: {match.poet}
+                </p>
+                {match.verses && (
+                  <p className="text-sm text-gray-600 line-clamp-2" dir="rtl">
+                    {match.verses}
+                  </p>
+                )}
+                {match.url && (
+                  <a
+                    href={match.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-purple-600 hover:text-purple-800 underline mt-2 inline-block"
+                  >
+                    مزید پڑھیں →
+                  </a>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}

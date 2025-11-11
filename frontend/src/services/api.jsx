@@ -236,6 +236,53 @@ const api = {
         resolution,
       }),
   },
+
+  // Enhanced search operations
+  search: {
+    // Unified search endpoint
+    unified: (searchData) => axiosInstance.post("/search", searchData),
+
+    // Text search with filters
+    text: (query, filters = {}) =>
+      axiosInstance.post("/search", {
+        mode: "text",
+        query,
+        ...filters,
+      }),
+
+    // Voice search
+    voice: (transcript, confidence, filters = {}) =>
+      axiosInstance.post("/search", {
+        mode: "voice",
+        transcribedText: transcript,
+        confidence,
+        ...filters,
+      }),
+
+    // Image search with OCR
+    image: (extractedText, ocrConfidence, filters = {}) =>
+      axiosInstance.post("/search", {
+        mode: "image",
+        extractedText,
+        ocrConfidence,
+        ...filters,
+      }),
+
+    // Fuzzy search for typos
+    fuzzy: (query, threshold = 0.4, filters = {}) =>
+      axiosInstance.post("/search", {
+        mode: "fuzzy",
+        query,
+        threshold,
+        ...filters,
+      }),
+
+    // Get search suggestions
+    suggestions: (query) =>
+      axiosInstance.get("/search/suggestions", {
+        params: { query },
+      }),
+  },
 };
 
 //
@@ -294,53 +341,6 @@ export const poetryAPI = {
     axiosInstance.get("/poems", {
       params: { search: query, ...filters },
     }),
-
-  // Enhanced search operations
-  search: {
-    // Unified search endpoint
-    unified: (searchData) => axiosInstance.post("/search", searchData),
-
-    // Text search with filters
-    text: (query, filters = {}) =>
-      axiosInstance.post("/search", {
-        mode: "text",
-        query,
-        ...filters,
-      }),
-
-    // Voice search
-    voice: (transcript, confidence, filters = {}) =>
-      axiosInstance.post("/search", {
-        mode: "voice",
-        transcript,
-        confidence,
-        ...filters,
-      }),
-
-    // Image search with OCR
-    image: (extractedText, ocrConfidence, filters = {}) =>
-      axiosInstance.post("/search", {
-        mode: "image",
-        extractedText,
-        ocrConfidence,
-        ...filters,
-      }),
-
-    // Fuzzy search for typos
-    fuzzy: (query, threshold = 0.4, filters = {}) =>
-      axiosInstance.post("/search", {
-        mode: "fuzzy",
-        query,
-        threshold,
-        ...filters,
-      }),
-
-    // Get search suggestions
-    suggestions: (query) =>
-      axiosInstance.get("/search/suggestions", {
-        params: { query },
-      }),
-  },
 
   // Poet operations
   getAllPoets: () => axiosInstance.get("/poets"),
@@ -698,4 +698,8 @@ export const checkAPIStatus = async () => {
 //
 // 🔹 Default export (main API object)
 //
+console.log("🔍 API Module Loaded");
+console.log("🔍 API has search?", "search" in api);
+console.log("🔍 API search methods:", api.search ? Object.keys(api.search) : "N/A");
+
 export default api;

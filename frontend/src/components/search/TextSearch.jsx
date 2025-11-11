@@ -92,13 +92,22 @@ const TextSearch = ({
           searchFilters
         );
 
+        // Check if api.search exists
+        if (!api || !api.search || !api.search.text) {
+          console.error("❌ API search not available:", api);
+          throw new Error("Search API not configured");
+        }
+
         const response = await api.search.text(searchQuery, {
           ...searchFilters,
           page: 1,
           limit: 20,
         });
 
-        if (response.data.success) {
+        console.log("✅ Search response:", response);
+        console.log("✅ Search response.data:", response.data);
+
+        if (response && response.data && (response.data.success || response.data.results)) {
           setSearchResults(response.data.results || []);
 
           // Also call parent onSearch callback
@@ -110,9 +119,19 @@ const TextSearch = ({
               results: response.data.results || [],
             });
           }
+        } else {
+          console.warn("⚠️ No results found or invalid response structure");
+          setSearchResults([]);
         }
       } catch (error) {
         console.error("❌ Dynamic search error:", error);
+        console.error("❌ Error details:", {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          fullResponse: error.response
+        });
+        console.error("❌ Full error object:", JSON.stringify(error.response?.data, null, 2));
         setSearchResults([]);
       } finally {
         setSearchLoading(false);
@@ -161,7 +180,8 @@ const TextSearch = ({
     if (query.trim().length >= 2) {
       performDynamicSearch(query.trim(), filters);
     }
-  }, [filters, performDynamicSearch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]); // Only depend on filters, not performDynamicSearch to avoid infinite loops
 
   // Cleanup debounce timer on unmount
   useEffect(() => {

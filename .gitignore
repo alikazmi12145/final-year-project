@@ -2,6 +2,19 @@
 node_modules/
 package-lock.json
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
 # Environment variables
 .env
 .env.local

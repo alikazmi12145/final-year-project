@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search as SearchIcon,
   Mic,
@@ -16,6 +17,7 @@ import SearchResults from "../components/search/SearchResults.jsx";
 import api from "../services/api";
 
 const Search = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("text");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -72,12 +74,34 @@ const Search = () => {
     }
 
     try {
+      // Check if api.search exists
+      if (!api || !api.search || !api.search.suggestions) {
+        console.warn("⚠️ Suggestions API not available");
+        setSmartSuggestions([
+          `${partialQuery} کی شاعری`,
+          `${partialQuery} کے اشعار`,
+          `${partialQuery} کی غزلیں`,
+        ]);
+        setShowSuggestions(true);
+        return;
+      }
+
       const response = await api.search.suggestions(partialQuery.trim());
 
-      if (response.data.success) {
+      console.log("✅ Suggestions response:", response);
+
+      if (response && response.data && response.data.success) {
         setSmartSuggestions([
           ...(response.data.aiSuggestions || []),
           ...(response.data.popularSuggestions || []),
+        ]);
+        setShowSuggestions(true);
+      } else {
+        // Fallback suggestions
+        setSmartSuggestions([
+          `${partialQuery} کی شاعری`,
+          `${partialQuery} کے اشعار`,
+          `${partialQuery} کی غزلیں`,
         ]);
         setShowSuggestions(true);
       }
@@ -171,7 +195,9 @@ const Search = () => {
           });
       }
 
-      if (response.data.success) {
+      console.log("✅ Search response:", response.data);
+
+      if (response.data && (response.data.success || response.data.results)) {
         setSearchResults(response.data.results || []);
         setSearchMeta({
           totalResults: response.data.results?.length || 0,
@@ -214,8 +240,17 @@ const Search = () => {
   // Handle poem click to navigate to detail
   const handlePoemClick = (poem) => {
     console.log("Poem clicked:", poem);
-    // Navigate to poem detail page
-    // You can implement navigation here
+    
+    // Check if it's an external poem (from Rekhta)
+    if (poem.source === "rekhta" || poem.source === "rekhta_fallback" || poem.externalUrl) {
+      // For external poems, navigate to a special route that displays the poem
+      // Store the poem data in sessionStorage so we can retrieve it
+      sessionStorage.setItem('externalPoem', JSON.stringify(poem));
+      navigate(`/poems/external/${encodeURIComponent(poem.title || poem._id)}`);
+    } else {
+      // For local poems, navigate to the regular poem detail page
+      navigate(`/poems/${poem._id}`);
+    }
   };
 
   // Handle author click to navigate to poet profile

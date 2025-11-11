@@ -1,103 +1,241 @@
 # 🎭 Bazm-E-Sukhan - Urdu Poetry Platform
 
+A comprehensive Urdu poetry platform with AI-powered multimodal search capabilities.
+
 ## 🚀 Quick Start
 
-### Backend Setup
+### First Time Setup
 
-```bash
-cd backend
-npm install
-npm run seed    # Create sample data
-npm run dev     # Start backend server
+1. **Install Backend Dependencies**
+   ```bash
+   cd backend
+   npm install
+   cd ..
+   ```
+
+2. **Setup Python AI Service**
+   ```powershell
+   .\setup-python-service.ps1
+   ```
+
+3. **Install Frontend Dependencies**
+   ```bash
+   cd frontend
+   npm install
+   cd ..
+   ```
+
+### Running the Application
+
+**Option 1: Three Separate Terminals (Recommended)**
+
+Terminal 1 - Python AI Service:
+```powershell
+.\start-python-service.ps1
 ```
 
-### Frontend Setup
+Terminal 2 - Express Backend:
+```powershell
+.\start-backend.ps1
+```
 
+Terminal 3 - React Frontend:
 ```bash
 cd frontend
-npm install
-npm run dev     # Start frontend server
+npm run dev
 ```
 
-### Usage
+**Option 2: Manual Start**
 
-1. Open `http://localhost:3000` in your browser
-2. Navigate to Poetry Collection (`/poetry-collection`)
-3. Test all features:
-   - Search poems by typing in "تلاش کریں"
-   - Filter by category (قسم) and mood (مزاج)
-   - Sort results using "ترتیب" options
-   - Interact with poem cards (like, bookmark, favorite)
+See [START_INSTRUCTIONS.md](START_INSTRUCTIONS.md) for detailed instructions.
+
+### Access the Application
+
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:5000
+- **Python AI Service**: http://localhost:5001/health
 
 ## ✨ Features
 
-- **Dynamic Search & Filters**: Real-time filtering with Urdu text support
-- **Cultural Design**: Authentic Islamic patterns and Nastaleeq fonts
-- **Interactive Cards**: Like, bookmark, and favorite poems
-- **Responsive Layout**: Works on all devices
-- **Sample Data**: Includes fallback data for testing without backend
+### 🔍 AI Multimodal Search
+
+- **Text Search (متن)**: Search by poet name, poem title, or poetry lines
+- **Voice Search (آواز)**: Upload audio files for Urdu/English/Hindi transcription
+- **Image Search (تصویر)**: OCR extraction from images containing Urdu text
+- **Fuzzy Search (ذہین)**: Typo-tolerant search with phonetic matching
+
+### 🎨 Cultural Design
+
+- Authentic Islamic patterns and Nastaleeq fonts
+- Responsive layout for all devices
+- Interactive poem cards (like, bookmark, favorite)
+
+### 🤖 AI Integration
+
+- Voice-to-text transcription using Google Speech Recognition
+- Multi-language support (Urdu, English, Hindi, Arabic)
+- External poetry source integration (Rekhta.org)
+
+## 🏗️ Architecture
+
+```
+┌─────────────────┐      ┌──────────────────┐      ┌─────────────────────┐
+│  React Frontend │ ───> │  Express Backend │ ───> │ Python AI Service   │
+│  (Port 5173)    │      │  (Port 5000)     │      │ (Port 5001)         │
+└─────────────────┘      └──────────────────┘      └─────────────────────┘
+                                │
+                                │
+                         ┌──────▼──────┐
+                         │   MongoDB   │
+                         └─────────────┘
+```
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React, Tailwind CSS, Vite
-- **Backend**: Node.js, Express, MongoDB
-- **Features**: Real-time search, cultural UI, authentication
+### Frontend
+- React + Vite
+- Tailwind CSS
+- Axios for API calls
 
-## 🔧 Troubleshooting
+### Backend
+- Node.js + Express
+- MongoDB + Mongoose
+- Tesseract.js (OCR)
+- Fuse.js (Fuzzy search)
+- JWT Authentication
 
-### API Connection Issues
+### Python AI Service
+- Flask + Flask-CORS
+- SpeechRecognition
+- pydub (Audio processing)
+- Google Speech API
 
-If you see `404 (Not Found)` errors:
+## 📚 Documentation
 
-1. **Check Backend Server**:
+- [Integration Guide](INTEGRATION_GUIDE.md) - Complete architecture and API documentation
+- [Start Instructions](START_INSTRUCTIONS.md) - Detailed startup guide
+- [Python Service README](python-ai-service/README.md) - Python service documentation
 
-   ```bash
-   cd backend
-   npm run dev
-   ```
+## 🔧 Configuration
 
-   Server should start on `http://localhost:5000`
+### Backend Environment Variables
 
-2. **Test API Connection**:
-
-   ```bash
-   node test-api-connection.js
-   ```
-
-3. **Common Issues**:
-
-   - ❌ Backend not running → Start with `npm run dev`
-   - ❌ Wrong port → Backend should be on port 5000
-   - ❌ Database connection → Check MongoDB connection in `.env`
-   - ❌ CORS issues → Verify CORS settings allow localhost:5173
-
-4. **Check Endpoints**:
-   - Health: `http://localhost:5000/api/health`
-   - Poetry: `http://localhost:5000/api/poetry`
-
-### Frontend Issues
-
-1. **Vite Proxy**: Frontend uses proxy configuration in `vite.config.js`
-2. **Sample Data**: Poetry collection works with fallback data if backend is unavailable
-3. **Error Messages**: Check browser console for detailed error information
-
-### Environment Setup
-
-Create `.env` files:
-
-**Backend `.env`**:
-
-```
-MONGODB_URI=mongodb://localhost:27017/bazm-e-sukhan
-JWT_SECRET=your-secret-key
-PORT=5000
+Create `backend/.env`:
+```env
+MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret_key
+CLOUDINARY_CLOUD_NAME=your_cloudinary_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_email_app_password
+PYTHON_AI_SERVICE_URL=http://localhost:5001
 ```
 
-**Frontend `.env`**:
+### Python Service Environment
+
+Already configured in `python-ai-service/.env`:
+```env
+PORT=5001
+DEFAULT_LANGUAGE=ur-PK
+SUPPORTED_LANGUAGES=ur-PK,en-US,hi-IN
+```
+
+## 🧪 Testing
+
+### Test Python Service
+```bash
+curl http://localhost:5001/health
+```
+
+### Test Voice Search
+1. Navigate to http://localhost:5173/search
+2. Click آواز (Voice) tab
+3. Upload an audio file with Urdu speech
+4. Verify transcription and search results
+
+### Test Text Search
+1. Go to http://localhost:5173/search
+2. Click متن (Text) tab
+3. Type "allama iqbal"
+4. Verify results appear from database and Rekhta
+
+## 🐛 Troubleshooting
+
+### Python Service Not Responding
+
+**Error:** `ECONNREFUSED 127.0.0.1:5001`
+
+**Solution:**
+```powershell
+cd python-ai-service
+.\venv\Scripts\Activate.ps1
+python app.py
+```
+
+### Backend Missing Dependencies
+
+**Error:** `Cannot find module 'form-data'`
+
+**Solution:**
+```bash
+cd backend
+npm install
+```
+
+### Voice Transcription Fails
+
+**Solutions:**
+1. Check audio quality (clear speech, low noise)
+2. Verify Python service is running
+3. Try alternative language: `en-US` or `hi-IN`
+4. Install FFmpeg for audio format conversion
+
+### Port Already in Use
+
+**Solution:**
+```powershell
+netstat -ano | findstr :5000
+taskkill /PID <process_id> /F
+```
+
+## 📦 Project Structure
 
 ```
-VITE_API_BASE_URL=http://localhost:5000/api
+bazm-e-sukhan/
+├── backend/              # Express API server
+│   ├── controllers/      # Business logic
+│   ├── models/          # MongoDB schemas
+│   ├── routes/          # API endpoints
+│   └── services/        # External services (Rekhta, OpenAI)
+├── frontend/            # React application
+│   ├── src/
+│   │   ├── components/  # UI components
+│   │   ├── pages/       # Route pages
+│   │   └── services/    # API client
+├── python-ai-service/   # Flask microservice
+│   ├── app.py          # Main Flask app
+│   ├── requirements.txt # Python dependencies
+│   └── venv/           # Virtual environment
+└── start scripts/       # Helper scripts
 ```
+
+## 🚀 Deployment
+
+### Production Checklist
+
+- [ ] Set `FLASK_ENV=production` in Python service
+- [ ] Set `NODE_ENV=production` for Express
+- [ ] Use Gunicorn for Python: `gunicorn -w 4 app:app`
+- [ ] Use PM2 for Express: `pm2 start server.js`
+- [ ] Configure reverse proxy (Nginx)
+- [ ] Enable HTTPS with SSL certificates
+- [ ] Set up MongoDB Atlas with IP whitelist
+- [ ] Configure production environment variables
+
+## 📄 License
+
+Part of Bazm-E-Sukhan FYP Project
 
 ---
 
