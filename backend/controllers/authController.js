@@ -136,18 +136,6 @@ class AuthController {
         // Don't fail registration if email fails
       }
 
-      // Generate JWT token
-      const token = jwt.sign(
-        {
-          userId: newUser._id,
-          name: newUser.name,
-          email: newUser.email,
-          role: newUser.role,
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: "7d" }
-      );
-
       // Remove password from response
       const userResponse = newUser.toObject();
       delete userResponse.password;
@@ -162,11 +150,27 @@ class AuthController {
             : "موڈریٹر اکاؤنٹ بن گیا! ایڈمن کی منظوری کا انتظار کریں۔ منظوری کے بعد ڈیش بورڈ تک رسائی ملے گی";
       }
 
+      // Generate JWT token only for users who don't need approval
+      // For poets and moderators, token will be generated only after admin approval during login
+      let token = null;
+      if (!needsApproval) {
+        token = jwt.sign(
+          {
+            userId: newUser._id,
+            name: newUser.name,
+            email: newUser.email,
+            role: newUser.role,
+          },
+          process.env.JWT_SECRET,
+          { expiresIn: "7d" }
+        );
+      }
+
       res.status(201).json({
         success: true,
         message: message,
         user: userResponse,
-        token,
+        token, // Will be null for poets/moderators awaiting approval
         requiresApproval: needsApproval,
       });
     } catch (error) {
@@ -206,6 +210,30 @@ class AuthController {
           success: false,
           message: "غلط ای میل یا پاس ورڈ",
         });
+      }
+
+      // LOG USER STATUS FOR DEBUGGING
+      console.log("🔍 Login attempt:", {
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        isApproved: user.isApproved,
+      });
+
+      // CRITICAL: Check approval status FIRST for poets and moderators
+      if (user.role === "poet" || user.role === "moderator") {
+        if (!user.isApproved || user.status !== "active") {
+          console.log("❌ Login blocked: Poet/Moderator not approved");
+          return res.status(403).json({
+            success: false,
+            message:
+              user.role === "poet"
+                ? "آپ کا شاعر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں"
+                : "آپ کا موڈریٹر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+            code: "PENDING_APPROVAL",
+            role: user.role,
+          });
+        }
       }
 
       // Check if account is active

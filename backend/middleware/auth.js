@@ -41,10 +41,27 @@ export const auth = async (req, res, next) => {
       });
     }
 
-    if (user.status === "pending" && user.role === "poet") {
+    // Check if poet or moderator account is pending approval
+    if (user.status === "pending" && (user.role === "poet" || user.role === "moderator")) {
       return res.status(403).json({
         success: false,
-        message: "Account pending approval",
+        message: user.role === "poet" 
+          ? "شاعر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں"
+          : "موڈریٹر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+        code: "PENDING_APPROVAL",
+        role: user.role,
+      });
+    }
+
+    // Additional check: Verify poet/moderator is approved even if status is active
+    if ((user.role === "poet" || user.role === "moderator") && !user.isApproved) {
+      return res.status(403).json({
+        success: false,
+        message: user.role === "poet"
+          ? "شاعر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں"
+          : "موڈریٹر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+        code: "PENDING_APPROVAL",
+        role: user.role,
       });
     }
 
