@@ -155,13 +155,6 @@ const Footer = () => {
           {/* Enhanced Brand Section */}
           <div className="lg:col-span-1">
             <Link to="/" className="flex items-center space-x-3 mb-6 group">
-              <div className="w-16 h-16 bg-gradient-to-br from-white via-urdu-cream to-urdu-gold rounded-3xl flex items-center justify-center shadow-2xl group-hover:shadow-3xl transition-all duration-500 transform group-hover:scale-105 border-2 border-urdu-gold/30 group-hover:border-urdu-gold/60">
-                <div className="w-12 h-12 bg-gradient-to-br from-urdu-maroon to-urdu-brown rounded-2xl flex items-center justify-center">
-                  <span className="text-white font-bold text-2xl nastaleeq-heading">
-                    ب
-                  </span>
-                </div>
-              </div>
               <div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-white via-urdu-cream to-urdu-gold bg-clip-text text-transparent nastaleeq-heading">
                   بزمِ سخن

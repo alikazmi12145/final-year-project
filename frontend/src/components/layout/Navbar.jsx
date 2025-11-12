@@ -77,13 +77,6 @@ const Navbar = () => {
         <div className="flex justify-between h-16">
           <div className="flex items-center relative z-10">
             <Link to="/" className="flex items-center space-x-3 group">
-              <div className="w-12 h-12 bg-gradient-to-br from-urdu-maroon via-urdu-brown to-urdu-gold rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 transform group-hover:scale-105 border border-urdu-gold/20">
-                <div className="w-8 h-8 bg-gradient-to-br from-white to-urdu-cream rounded-xl flex items-center justify-center">
-                  <span className="text-urdu-maroon font-bold text-lg nastaleeq-heading">
-                    ب
-                  </span>
-                </div>
-              </div>
               <div className="hidden sm:block">
                 <span className="nastaleeq-heading text-2xl font-bold bg-gradient-to-r from-urdu-maroon via-urdu-brown to-urdu-gold bg-clip-text text-transparent group-hover:from-urdu-gold group-hover:to-urdu-maroon transition-all duration-300">
                   بزمِ سخن

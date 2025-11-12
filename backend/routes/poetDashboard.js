@@ -67,6 +67,25 @@ router.post(
         });
       }
 
+      // LOG POET STATUS FOR DEBUGGING
+      console.log("🔍 Poet dashboard login attempt:", {
+        email: poet.email,
+        role: poet.role,
+        status: poet.status,
+        isApproved: poet.isApproved,
+      });
+
+      // CRITICAL: Check if poet account is approved BEFORE password check
+      if (poet.status !== "active" || !poet.isApproved) {
+        console.log("❌ Poet dashboard login blocked: Not approved");
+        return res.status(403).json({
+          success: false,
+          message: "آپ کا شاعر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+          code: "PENDING_APPROVAL",
+          role: poet.role,
+        });
+      }
+
       // Check password
       const bcrypt = await import("bcryptjs");
       const isPasswordValid = await bcrypt.compare(password, poet.password);
@@ -74,14 +93,6 @@ router.post(
         return res.status(401).json({
           success: false,
           message: "Invalid credentials",
-        });
-      }
-
-      // Check if poet account is approved
-      if (poet.status !== "active" || !poet.isApproved) {
-        return res.status(403).json({
-          success: false,
-          message: "Poet account is not approved yet",
         });
       }
 
@@ -318,6 +329,13 @@ router.put(
         poeticStyle,
       } = req.body;
 
+      console.log("📝 Profile update request:", {
+        name,
+        email,
+        era,
+        birthPlace: typeof birthPlace,
+      });
+
       // Update User model
       const userUpdateData = {};
       if (name) userUpdateData.name = name;
@@ -330,32 +348,65 @@ router.put(
         { new: true, runValidators: true }
       ).select("-password");
 
-      // Update Poet collection with comprehensive data
-      const poetUpdateData = {
-        name,
-        penName,
-        fullName,
-        bio,
-        shortBio,
-        nationality,
-        era,
-        schoolOfThought,
-        birthPlace,
-        period,
-        dateOfBirth: dateOfBirth || null,
-        dateOfDeath: dateOfDeath || null,
-        isDeceased: isDeceased === true,
-        languages: languages || [],
-        poeticStyle: poeticStyle || [],
-      };
+      // Prepare Poet update data with proper field handling
+      const poetUpdateData = {};
+      
+      // Only add fields that are provided
+      if (name) poetUpdateData.name = name;
+      if (penName) poetUpdateData.penName = penName;
+      if (fullName) poetUpdateData.fullName = fullName;
+      if (bio) poetUpdateData.bio = bio;
+      if (shortBio) poetUpdateData.shortBio = shortBio;
+      if (nationality) poetUpdateData.nationality = nationality;
+      if (era) poetUpdateData.era = era;
+      if (schoolOfThought) poetUpdateData.schoolOfThought = schoolOfThought;
+      
+      // Handle birthPlace - can be string or object
+      if (birthPlace) {
+        if (typeof birthPlace === 'string') {
+          poetUpdateData.birthPlace = {
+            city: birthPlace,
+            region: null,
+            country: null
+          };
+        } else if (typeof birthPlace === 'object') {
+          poetUpdateData.birthPlace = birthPlace;
+        }
+      }
+      
+      // Handle period object
+      if (period) {
+        poetUpdateData.period = period;
+      }
+      
+      // Handle dates
+      if (dateOfBirth !== undefined) {
+        poetUpdateData.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : null;
+      }
+      if (dateOfDeath !== undefined) {
+        poetUpdateData.dateOfDeath = dateOfDeath ? new Date(dateOfDeath) : null;
+      }
+      if (isDeceased !== undefined) {
+        poetUpdateData.isDeceased = isDeceased === true || isDeceased === 'true';
+      }
+      
+      // Handle arrays
+      if (languages) {
+        poetUpdateData.languages = Array.isArray(languages) ? languages : [languages];
+      }
+      if (poeticStyle) {
+        poetUpdateData.poeticStyle = Array.isArray(poeticStyle) ? poeticStyle : [poeticStyle];
+      }
+
+      console.log("📊 Poet update data:", poetUpdateData);
 
       const updatedPoet = await Poet.findOneAndUpdate(
         { user: req.user._id },
         { $set: poetUpdateData },
-        { new: true, upsert: true }
+        { new: true, upsert: true, runValidators: true }
       );
 
-      console.log("Updated Poet profile:", updatedPoet._id);
+      console.log("✅ Updated Poet profile:", updatedPoet._id);
 
       res.json({
         success: true,
@@ -364,10 +415,22 @@ router.put(
         poet: updatedPoet,
       });
     } catch (error) {
-      console.error("Update profile error:", error);
+      console.error("❌ Update profile error:", error);
+      console.error("Error details:", {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      });
+      
+      // Send more helpful error message
       res.status(500).json({
         success: false,
         message: "Error updating profile",
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? {
+          name: error.name,
+          validationErrors: error.errors
+        } : undefined
       });
     }
   }
