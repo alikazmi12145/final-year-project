@@ -1,8 +1,11 @@
 @import url("https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700&family=Noto+Serif:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Amiri:wght@400;700&family=Scheherazade+New:wght@400;500;600;700&family=Aref+Ruqaa:wght@400;700&family=Reem+Kufi:wght@400;500;600;700&family=Tajawal:wght@300;400;500;600;700&display=swap");
 
 /* Tailwind CSS directives */
+/* postcss-ignore-next-line */
 @tailwind base;
+/* postcss-ignore-next-line */
 @tailwind components;
+/* postcss-ignore-next-line */
 @tailwind utilities;
 
 :root {
@@ -20,6 +23,78 @@
   --cultural-orange: #ea580c;
   --cultural-slate: #475569;
   --cultural-warm: #fef3c7;
+}
+
+/* ==================== DARK MODE VARIABLES ==================== */
+.dark-mode {
+  --primary: #f59e0b;
+  --secondary: #fb923c;
+  --accent: #fbbf24;
+  --text-dark: #f1f5f9;
+  --text-light: #cbd5e1;
+  --background: #1e293b;
+  --card: #334155;
+  --border: #475569;
+  --cultural-gold: #fbbf24;
+  --cultural-amber: #fb923c;
+  --cultural-orange: #f97316;
+  --cultural-slate: #94a3b8;
+  --cultural-warm: #422006;
+}
+
+.dark-mode body {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #1e293b 100%);
+  color: var(--text-dark);
+}
+
+.dark-mode .cultural-card {
+  background: linear-gradient(
+    135deg,
+    rgba(51, 65, 85, 0.95) 0%,
+    rgba(30, 41, 59, 0.9) 50%,
+    rgba(51, 65, 85, 0.95) 100%
+  );
+  border: 2px solid rgba(251, 146, 60, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+    0 4px 16px rgba(251, 146, 60, 0.2);
+}
+
+.dark-mode .cultural-card:hover {
+  border-color: rgba(251, 146, 60, 0.5);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4),
+    0 6px 24px rgba(251, 146, 60, 0.3);
+}
+
+.dark-mode .professional-card {
+  background: rgba(51, 65, 85, 0.9);
+  border: 1px solid rgba(71, 85, 105, 0.8);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 20px 25px rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .professional-card:hover {
+  border-color: rgba(251, 146, 60, 0.5);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3), 0 25px 30px rgba(0, 0, 0, 0.25);
+}
+
+.dark-mode .cultural-title {
+  color: var(--cultural-gold);
+  text-shadow: 0 2px 8px rgba(251, 146, 60, 0.3);
+}
+
+.dark-mode .poetry-verse {
+  border-right-color: #fb923c;
+  background: linear-gradient(
+    90deg,
+    rgba(251, 146, 60, 0.1) 0%,
+    rgba(67, 20, 7, 0.2) 25%,
+    transparent 100%
+  );
+}
+
+.dark-mode .poetry-verse::before {
+  color: #fb923c;
+  background: #334155;
+  border-color: #fb923c;
 }
 
 * {

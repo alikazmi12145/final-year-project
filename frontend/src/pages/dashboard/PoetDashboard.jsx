@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ChatPage from "../ChatPage";
 import {
   Users,
   FileText,
@@ -29,6 +30,7 @@ import {
   Target,
   PieChart,
   Activity,
+  MessagesSquare,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useMessage } from "../../context/MessageContext";
@@ -369,6 +371,7 @@ const PoetDashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [analytics, setAnalytics] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -860,13 +863,22 @@ const PoetDashboard = () => {
               </div>
             </div>
 
-            <button
-              onClick={handleLogout}
-              className="flex items-center space-x-2 px-4 py-2 bg-white text-red-600 rounded-xl hover:bg-red-50 shadow-md hover:shadow-lg transition-all duration-300 border border-red-200"
-            >
-              <span className="font-medium urdu-text">لاگ آؤٹ</span>
-              <LogOut className="w-5 h-5" />
-            </button>
+            <div className="flex items-center space-x-6">
+              <button
+                onClick={() => setShowChat(!showChat)}
+                className="flex items-center space-x-2 px-4 py-2 bg-white text-green-600 rounded-xl hover:bg-green-50 shadow-md hover:shadow-lg transition-all duration-300 border border-green-200"
+              >
+                <span className="font-medium urdu-text">گفتگو</span>
+                <MessagesSquare className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 px-4 py-2 bg-white text-red-600 rounded-xl hover:bg-red-50 shadow-md hover:shadow-lg transition-all duration-300 border border-red-200"
+              >
+                <span className="font-medium urdu-text">لاگ آؤٹ</span>
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1961,6 +1973,23 @@ const PoetDashboard = () => {
         poem={selectedPoem}
         onSave={handleSavePoem}
       />
+
+      {/* Chat Overlay */}
+      {showChat && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#111b21] rounded-2xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col relative overflow-hidden">
+            <button
+              onClick={() => setShowChat(false)}
+              className="absolute top-4 right-4 z-50 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <ChatPage embedded={true} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

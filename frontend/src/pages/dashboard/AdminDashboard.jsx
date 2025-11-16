@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import ChatPage from "../ChatPage";
 import {
   Users,
   FileText,
@@ -42,6 +43,7 @@ import {
   Grid,
   List,
   Bookmark,
+  MessagesSquare,
 } from "lucide-react";
 import {
   adminDashboardAPI,
@@ -79,6 +81,7 @@ const AdminDashboard = () => {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   // Poet details edit states
   const [showPoetDetailsModal, setShowPoetDetailsModal] = useState(false);
@@ -891,46 +894,57 @@ const AdminDashboard = () => {
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-4 space-x-reverse">
-              <div className="flex items-center space-x-2 space-x-reverse bg-white/70 backdrop-blur rounded-xl px-4 py-2">
-                <div
-                  className={`w-3 h-3 rounded-full ${
-                    isOnline ? "bg-green-500" : "bg-red-500"
-                  } animate-pulse`}
-                ></div>
-                <span className="text-sm text-gray-700 urdu-text-local">
-                  {isOnline ? "آن لائن" : "آف لائن"}
-                </span>
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center space-x-6 space-x-reverse">
+                <button
+                  onClick={() => setShowChat(!showChat)}
+                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                >
+                  <MessagesSquare className="w-5 h-5 ml-2" />
+                  گفتگو
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                >
+                  <LogOut className="w-5 h-5 ml-2" />
+                  لاگ آؤٹ
+                </button>
               </div>
-              <button
-                onClick={() => window.location.reload()}
-                disabled={refreshing}
-                className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-300"
-              >
-                <RefreshCw
-                  className={`w-4 h-4 ml-2 ${refreshing ? "animate-spin" : ""}`}
-                />
-                {refreshing ? "تازہ ہو رہا..." : "تازہ کریں"}
-              </button>
-              <button
-                onClick={generateAIReport}
-                disabled={refreshing}
-                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-50"
-              >
-                <Brain className="w-5 h-5 ml-2" />
-                {refreshing ? "تیار ہو رہی..." : "AI رپورٹ"}
-              </button>
-              <button className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-xl hover:from-amber-700 hover:to-amber-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
-                <Download className="w-5 h-5 ml-2" />
-                ڈیٹا ایکسپورٹ
-              </button>
-              <button
-                onClick={handleLogout}
-                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-              >
-                <LogOut className="w-5 h-5 ml-2" />
-                لاگ آؤٹ
-              </button>
+              <div className="flex items-center space-x-4 space-x-reverse">
+                <div className="flex items-center space-x-2 space-x-reverse bg-white/70 backdrop-blur rounded-xl px-4 py-2">
+                  <div
+                    className={`w-3 h-3 rounded-full ${
+                      isOnline ? "bg-green-500" : "bg-red-500"
+                    } animate-pulse`}
+                  ></div>
+                  <span className="text-sm text-gray-700 urdu-text-local">
+                    {isOnline ? "آن لائن" : "آف لائن"}
+                  </span>
+                </div>
+                <button
+                  onClick={() => window.location.reload()}
+                  disabled={refreshing}
+                  className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-300"
+                >
+                  <RefreshCw
+                    className={`w-4 h-4 ml-2 ${refreshing ? "animate-spin" : ""}`}
+                  />
+                  {refreshing ? "تازہ ہو رہا..." : "تازہ کریں"}
+                </button>
+                <button
+                  onClick={generateAIReport}
+                  disabled={refreshing}
+                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-50"
+                >
+                  <Brain className="w-5 h-5 ml-2" />
+                  {refreshing ? "تیار ہو رہی..." : "AI رپورٹ"}
+                </button>
+                <button className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-xl hover:from-amber-700 hover:to-amber-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                  <Download className="w-5 h-5 ml-2" />
+                  ڈیٹا ایکسپورٹ
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1799,6 +1813,23 @@ const AdminDashboard = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Chat Overlay */}
+      {showChat && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col relative overflow-hidden">
+            <button
+              onClick={() => setShowChat(false)}
+              className="absolute top-4 left-4 z-10 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <ChatPage embedded={true} />
           </div>
         </div>
       )}

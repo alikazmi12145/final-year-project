@@ -53,14 +53,18 @@ const supportTicketSchema = new mongoose.Schema(
     category: {
       type: String,
       enum: [
+        "general", // عام سوالات
         "technical", // تکنیکی مسائل
         "account", // اکاؤنٹ کے مسائل
         "poetry", // شاعری سے متعلق
+        "contest", // مقابلے کا مسئلہ
+        "feature", // نئے فیچر کی درخواست
+        "bug", // بگ رپورٹ
+        "other", // دیگر
         "payment", // ادائیگی کے مسائل
         "content", // مواد کے مسائل
         "suggestion", // تجاویز
         "complaint", // شکایات
-        "general", // عام سوالات
       ],
       required: true,
       default: "general",

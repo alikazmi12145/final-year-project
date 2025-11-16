@@ -148,7 +148,7 @@ const api = {
       ),
     sendMessageWithFile: (conversationId, formData) =>
       axiosInstance.post(
-        `/chat/conversations/${conversationId}/messages/file`,
+        `/chat/conversations/${conversationId}/messages`,
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -191,17 +191,21 @@ const api = {
       axiosInstance.post("/chat/chatbot", { message }),
     getChatbotHistory: () => axiosInstance.get("/chat/chatbot/history"),
 
-    // Search
-    searchConversations: (query) =>
-      axiosInstance.get("/chat/search/conversations", { params: { query } }),
-    searchMessages: (query, conversationId = null) =>
-      axiosInstance.get("/chat/search/messages", {
-        params: { query, conversationId },
-      }),
-
     // User Search for new chats
     searchUsers: (query) =>
       axiosInstance.get("/chat/users/search", { params: { query } }),
+  },
+
+  // Chatbot endpoints
+  chatbot: {
+    sendMessage: (data) => axiosInstance.post("/chat/bot/chat", data),
+    getCategories: () => axiosInstance.get("/chat/bot/categories"),
+    getFAQsByCategory: (category, language = "urdu") =>
+      axiosInstance.get(`/chat/bot/faqs/${category}`, {
+        params: { language },
+      }),
+    sendFeedback: (faqId, isHelpful) =>
+      axiosInstance.post(`/chat/bot/faqs/${faqId}/feedback`, { isHelpful }),
   },
 
   // Support Ticket endpoints
