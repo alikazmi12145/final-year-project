@@ -7,6 +7,8 @@ import { Toaster } from "react-hot-toast";
 import App from "./App.jsx";
 import { AuthProvider } from "./context/AuthContext";
 import { MessageProvider } from "./context/MessageContext";
+import { ChatNotificationProvider } from "./context/ChatNotificationContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import "./index.css";
 
 const queryClient = new QueryClient({
@@ -23,21 +25,26 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <MessageProvider>
-            <App />
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: "#8B4513",
-                  color: "#fff",
-                },
-              }}
-            />
-          </MessageProvider>
+          <ThemeProvider>
+            <ChatNotificationProvider>
+              <MessageProvider>
+                <App />
+                <Toaster
+                  position="top-right"
+                  toastOptions={{
+                    duration: 4000,
+                    style: {
+                      background: "#8B4513",
+                      color: "#fff",
+                    },
+                  }}
+                />
+              </MessageProvider>
+            </ChatNotificationProvider>
+          </ThemeProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </React.StrictMode>
 );
+

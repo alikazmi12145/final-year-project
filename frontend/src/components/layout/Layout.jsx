@@ -15,8 +15,7 @@ const Layout = ({ children }) => {
     "/admin",
     "/poet",
     "/moderator",
-    "/dashboard",
-    "/profile",
+    "/dashboard"
   ];
 
   const shouldHideNavbar = hideNavbarRoutes.some((route) =>

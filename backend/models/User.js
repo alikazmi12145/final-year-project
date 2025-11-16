@@ -12,7 +12,6 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
     },
@@ -242,7 +241,8 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for performance (removed duplicates to fix warnings)
+// Indexes for performance
+userSchema.index({ email: 1 }, { unique: true }); // Explicit unique index for email
 userSchema.index({ role: 1, status: 1 });
 userSchema.index({ "verificationRequest.status": 1 });
 userSchema.index({ lastActive: -1 });

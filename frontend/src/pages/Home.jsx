@@ -10,6 +10,10 @@ import {
   Sparkles,
   Star,
 } from "lucide-react";
+import PoetOfTheDay from "../components/homepage/PoetOfTheDay";
+import PersonalizedRecommendations from "../components/homepage/PersonalizedRecommendations";
+import LiveCommunityFeed from "../components/homepage/LiveCommunityFeed";
+import DarkModeToggle from "../components/homepage/DarkModeToggle";
 
 const Home = () => {
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
@@ -86,6 +90,9 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-amber-50 to-orange-50">
+      {/* Dark Mode Toggle */}
+      <DarkModeToggle />
+
       {/* Subtle Islamic pattern overlay */}
       <div className="absolute inset-0 opacity-5">
         <div
@@ -229,6 +236,12 @@ const Home = () => {
         </div>
       </div>
 
+      {/* Poet of the Day & Verse of the Day */}
+      <PoetOfTheDay />
+
+      {/* Personalized Recommendations (only for logged-in users) */}
+      <PersonalizedRecommendations />
+
       {/* Featured Poets - Clean Grid */}
       <div className="relative z-10 py-16 px-4">
         <div className="max-w-6xl mx-auto">
@@ -368,6 +381,9 @@ const Home = () => {
           </div>
         </div>
       </div>
+
+      {/* Live Community Feed */}
+      <LiveCommunityFeed />
 
       {/* Stats Section - Clean and Simple */}
       <div className="relative z-10 py-16 px-4">

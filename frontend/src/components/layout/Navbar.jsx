@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useChatNotifications } from "../../context/ChatNotificationContext";
 import { canAccessDashboard } from "../auth/RoleBasedRedirect";
 import {
   Menu,
@@ -21,6 +22,7 @@ import {
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user, logout, isAuthenticated, hasRole } = useAuth();
+  const { unreadCount } = useChatNotifications();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -151,6 +153,12 @@ const Navbar = () => {
                     <span className="text-sm nastaleeq-primary font-semibold relative z-10">
                       {item.urduLabel}
                     </span>
+                    {/* Show notification badge for chat */}
+                    {item.path === "/chat" && unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold animate-pulse z-20">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
                     {/* Cultural decorative dot */}
                     <div
                       className={`w-1 h-1 rounded-full transition-all duration-300 ${
@@ -217,10 +225,15 @@ const Navbar = () => {
 
                     <Link
                       to="/chat"
-                      className="flex items-center space-x-2 px-4 py-3 text-sm text-urdu-brown hover:bg-urdu-cream/30 hover:text-urdu-maroon transition-all nastaleeq-primary"
+                      className="flex items-center space-x-2 px-4 py-3 text-sm text-urdu-brown hover:bg-urdu-cream/30 hover:text-urdu-maroon transition-all nastaleeq-primary relative"
                     >
                       <MessageCircle size={14} />
                       <span>گفتگو</span>
+                      {unreadCount > 0 && (
+                        <span className="absolute top-2 right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold animate-pulse">
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
+                      )}
                     </Link>
 
                     {/* Dashboard Link */}
@@ -398,11 +411,16 @@ const Navbar = () => {
 
                     <Link
                       to="/chat"
-                      className="flex items-center space-x-3 px-4 py-3 rounded-xl text-urdu-brown hover:bg-urdu-cream/40 hover:text-urdu-maroon transition-all nastaleeq-primary"
+                      className="flex items-center space-x-3 px-4 py-3 rounded-xl text-urdu-brown hover:bg-urdu-cream/40 hover:text-urdu-maroon transition-all nastaleeq-primary relative"
                       onClick={() => setIsOpen(false)}
                     >
                       <MessageCircle size={18} />
                       <span className="font-medium">گفتگو</span>
+                      {unreadCount > 0 && (
+                        <span className="absolute top-2 left-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold animate-pulse">
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
+                      )}
                     </Link>
 
                     {canAccessDashboard(user?.role) && (

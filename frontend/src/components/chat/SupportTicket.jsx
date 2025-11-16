@@ -92,18 +92,50 @@ const SupportTicket = ({ currentUser }) => {
   const handleCreateTicket = async (e) => {
     e.preventDefault();
 
-    if (!formData.subject.trim() || !formData.description.trim()) {
+    // Client-side validation
+    const validationErrors = {};
+    
+    if (!formData.subject.trim()) {
+      validationErrors.subject = "موضوع ضروری ہے";
+    } else if (formData.subject.trim().length < 5) {
+      validationErrors.subject = "موضوع کم از کم 5 حروف کا ہونا چاہیے";
+    } else if (formData.subject.trim().length > 200) {
+      validationErrors.subject = "موضوع زیادہ سے زیادہ 200 حروف کا ہو سکتا ہے";
+    }
+    
+    if (!formData.description.trim()) {
+      validationErrors.description = "تفصیل ضروری ہے";
+    } else if (formData.description.trim().length < 10) {
+      validationErrors.description = "تفصیل کم از کم 10 حروف کی ہونی چاہیے";
+    } else if (formData.description.trim().length > 5000) {
+      validationErrors.description = "تفصیل زیادہ سے زیادہ 5000 حروف کی ہو سکتی ہے";
+    }
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    // Validate user info
+    if (!currentUser?.email || !currentUser?.name) {
+      setErrors({ general: "صارف کی معلومات نامکمل ہیں۔ براہ کرم دوبارہ لاگ ان کریں۔" });
       return;
     }
 
     try {
       setSubmitting(true);
+      setErrors({});
 
       const ticketData = {
-        ...formData,
-        email: currentUser?.email || "",
-        name: currentUser?.name || "",
+        subject: formData.subject.trim(),
+        description: formData.description.trim(),
+        priority: formData.priority,
+        category: formData.category,
+        email: currentUser.email,
+        name: currentUser.name,
       };
+
+      console.log("Creating ticket with data:", ticketData);
 
       const response = await api.support.createTicket(ticketData);
 
@@ -120,16 +152,21 @@ const SupportTicket = ({ currentUser }) => {
       }
     } catch (error) {
       console.error("Failed to create ticket:", error);
+      console.error("Error response:", error.response?.data);
 
       // Handle validation errors
       if (error.response?.data?.errors) {
         const validationErrors = {};
         error.response.data.errors.forEach((err) => {
-          validationErrors[err.path] = err.msg;
+          console.error("Validation error:", err);
+          const fieldName = err.path || err.param || 'general';
+          validationErrors[fieldName] = err.msg || err.message;
         });
+        console.error("All validation errors:", validationErrors);
         setErrors(validationErrors);
       } else {
-        setErrors({ general: "ٹکٹ بنانے میں خرابی ہوئی۔ دوبارہ کوشش کریں۔" });
+        const errorMsg = error.response?.data?.message || "ٹکٹ بنانے میں خرابی ہوئی۔ دوبارہ کوشش کریں۔";
+        setErrors({ general: errorMsg });
       }
     } finally {
       setSubmitting(false);
@@ -186,24 +223,29 @@ const SupportTicket = ({ currentUser }) => {
   };
 
   const renderTicketList = () => (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-bold text-urdu-brown nastaleeq-primary">
-          سپورٹ ٹکٹس
-        </h3>
-        <Button
-          onClick={() => setShowCreateForm(true)}
-          className="bg-urdu-maroon hover:bg-urdu-brown text-white"
-        >
-          <MessageSquare className="w-4 h-4 ml-2" />
-          نیا ٹکٹ
-        </Button>
+    <div className="h-full flex flex-col">
+      {/* Header - Fixed */}
+      <div className="flex-shrink-0 p-4 bg-white border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold text-urdu-brown nastaleeq-primary">
+            سپورٹ ٹکٹس
+          </h3>
+          <Button
+            onClick={() => setShowCreateForm(true)}
+            className="bg-urdu-maroon hover:bg-urdu-brown text-white"
+          >
+            <MessageSquare className="w-4 h-4 ml-2" />
+            نیا ٹکٹ
+          </Button>
+        </div>
       </div>
+
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
 
       {/* Create Ticket Form */}
       {showCreateForm && (
-        <Card className="p-6 border-l-4 border-urdu-gold">
+        <Card className="p-6 border-l-4 border-urdu-gold max-h-[calc(100vh-300px)] overflow-y-auto">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-lg font-semibold text-urdu-brown nastaleeq-primary">
               نیا سپورٹ ٹکٹ بنائیں
@@ -219,9 +261,14 @@ const SupportTicket = ({ currentUser }) => {
 
           <form onSubmit={handleCreateTicket} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-urdu-brown mb-2 nastaleeq-primary">
-                موضوع *
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-urdu-brown nastaleeq-primary">
+                  موضوع *
+                </label>
+                <span className={`text-xs ${formData.subject.length < 5 ? 'text-red-500' : 'text-gray-500'}`}>
+                  {formData.subject.length}/200 (کم از کم 5)
+                </span>
+              </div>
               <input
                 type="text"
                 value={formData.subject}
@@ -230,12 +277,13 @@ const SupportTicket = ({ currentUser }) => {
                   if (errors.subject)
                     setErrors((prev) => ({ ...prev, subject: null }));
                 }}
-                placeholder="مسئلے کا مختصر عنوان لکھیں..."
+                placeholder="مسئلے کا مختصر عنوان لکھیں... (کم از کم 5 حروف)"
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-urdu-gold focus:border-transparent nastaleeq-primary ${
                   errors.subject ? "border-red-500" : "border-gray-300"
                 }`}
                 dir="rtl"
                 required
+                maxLength={200}
               />
               {errors.subject && (
                 <p
@@ -296,9 +344,14 @@ const SupportTicket = ({ currentUser }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-urdu-brown mb-2 nastaleeq-primary">
-                تفصیل *
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-urdu-brown nastaleeq-primary">
+                  تفصیل *
+                </label>
+                <span className={`text-xs ${formData.description.length < 10 ? 'text-red-500' : 'text-gray-500'}`}>
+                  {formData.description.length}/5000 (کم از کم 10)
+                </span>
+              </div>
               <textarea
                 value={formData.description}
                 onChange={(e) => {
@@ -316,6 +369,7 @@ const SupportTicket = ({ currentUser }) => {
                 }`}
                 dir="rtl"
                 required
+                maxLength={5000}
               />
               {errors.description && (
                 <p
@@ -433,6 +487,7 @@ const SupportTicket = ({ currentUser }) => {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 
