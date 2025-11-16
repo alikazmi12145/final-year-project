@@ -2,6 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { Activity, User, MessageCircle, Heart, FileText, Sparkles } from "lucide-react";
 import axios from "axios";
 
+// Create a dedicated axios instance with explicit empty baseURL to override any global defaults
+const homepageAxios = axios.create({
+  baseURL: '', // Explicitly empty to prevent inheritance of global defaults
+});
+
 const LiveCommunityFeed = () => {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,9 +21,8 @@ const LiveCommunityFeed = () => {
 
   const fetchRecentActivities = async () => {
     try {
-      const baseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-      const response = await axios.get(`${baseUrl}/api/homepage/live-feed`);
+      // Use absolute URL to bypass any axios defaults
+      const response = await homepageAxios.get('http://localhost:5000/api/homepage/live-feed');
 
       if (response.data.success) {
         setActivities(response.data.data);
@@ -60,8 +64,24 @@ const LiveCommunityFeed = () => {
     }
   };
 
+  // Show placeholder if no activities yet
   if (loading || !activities || activities.length === 0) {
-    return null;
+    return (
+      <div className="relative z-10 py-12 px-4 bg-gradient-to-r from-amber-900 via-orange-900 to-amber-900 overflow-hidden">
+        <div className="max-w-7xl mx-auto relative z-10 text-center">
+          <div className="flex items-center justify-center mb-6">
+            <Sparkles className="w-6 h-6 text-amber-300 animate-pulse mr-3" />
+            <h3 className="nastaleeq-heading text-2xl font-bold text-white" dir="rtl">
+              حالیہ سرگرمیاں
+            </h3>
+            <Sparkles className="w-6 h-6 text-amber-300 animate-pulse ml-3" />
+          </div>
+          <p className="nastaleeq-primary text-amber-200 text-lg" dir="rtl">
+            {loading ? "لوڈ ہو رہا ہے..." : "ابھی کوئی نئی سرگرمی نہیں ہے"}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

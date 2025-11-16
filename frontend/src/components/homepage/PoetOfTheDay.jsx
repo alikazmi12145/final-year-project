@@ -2,6 +2,11 @@ import React, { useState, useEffect } from "react";
 import { Sparkles, User } from "lucide-react";
 import axios from "axios";
 
+// Create a dedicated axios instance with explicit empty baseURL to override any global defaults
+const homepageAxios = axios.create({
+  baseURL: '', // Explicitly empty to prevent inheritance of global defaults
+});
+
 const PoetOfTheDay = () => {
   const [dailyContent, setDailyContent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -13,9 +18,8 @@ const PoetOfTheDay = () => {
 
   const fetchDailyContent = async () => {
     try {
-      const baseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-      const response = await axios.get(`${baseUrl}/api/homepage/daily-content`);
+      // Use absolute URL to bypass any axios defaults
+      const response = await homepageAxios.get('http://localhost:5000/api/homepage/daily-content');
 
       if (response.data.success) {
         setDailyContent(response.data.data);
@@ -100,7 +104,9 @@ const PoetOfTheDay = () => {
                 <div className="w-48 h-48 mx-auto rounded-full overflow-hidden border-8 border-amber-200 shadow-2xl group-hover:border-amber-400 transition-all duration-300 group-hover:scale-105">
                   {dailyContent.poet.profileImage?.url ? (
                     <img
-                      src={dailyContent.poet.profileImage.url}
+                      src={dailyContent.poet.profileImage.url.startsWith('http') 
+                        ? dailyContent.poet.profileImage.url 
+                        : `http://localhost:5000${dailyContent.poet.profileImage.url}`}
                       alt={dailyContent.poet.name}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       onError={(e) => {
