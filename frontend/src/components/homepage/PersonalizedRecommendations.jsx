@@ -4,6 +4,11 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import axios from "axios";
 
+// Create a dedicated axios instance with explicit empty baseURL to override any global defaults
+const homepageAxios = axios.create({
+  baseURL: '', // Explicitly empty to prevent inheritance of global defaults
+});
+
 const PersonalizedRecommendations = () => {
   const { user, isAuthenticated } = useAuth();
   const [recommendations, setRecommendations] = useState([]);
@@ -20,11 +25,10 @@ const PersonalizedRecommendations = () => {
 
   const fetchRecommendations = async () => {
     try {
-      const baseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+      // Use absolute URL to bypass any axios defaults
       const token = localStorage.getItem("token");
-      const response = await axios.get(
-        `${baseUrl}/api/homepage/recommendations`,
+      const response = await homepageAxios.get(
+        'http://localhost:5000/api/homepage/recommendations',
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -41,9 +45,42 @@ const PersonalizedRecommendations = () => {
     }
   };
 
-  // Don't render if user is not authenticated
+  // Show login prompt if user is not authenticated
   if (!isAuthenticated) {
-    return null;
+    return (
+      <div className="relative z-10 py-16 px-4 bg-gradient-to-br from-slate-50 via-amber-50/30 to-slate-50">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="flex justify-center items-center mb-4">
+              <TrendingUp className="w-8 h-8 text-amber-500" />
+            </div>
+            <h2 className="nastaleeq-heading text-3xl md:text-4xl font-bold text-amber-900 mb-3" dir="rtl">
+              ذاتی تجاویز
+            </h2>
+            <p className="nastaleeq-primary text-amber-700 text-lg" dir="rtl">
+              آپ کی پسند کے مطابق شاعری
+            </p>
+          </div>
+          
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-12 shadow-xl border-4 border-amber-200 text-center">
+            <BookOpen className="w-16 h-16 text-amber-500 mx-auto mb-6" />
+            <h3 className="nastaleeq-heading text-2xl font-bold text-amber-900 mb-4" dir="rtl">
+              ذاتی تجاویز دیکھنے کے لیے لاگ ان کریں
+            </h3>
+            <p className="nastaleeq-primary text-slate-600 mb-8 max-w-md mx-auto" dir="rtl">
+              اپنی پڑھنے کی تاریخ اور پسند کی بنیاد پر خصوصی شاعری کی تجاویز حاصل کریں
+            </p>
+            <Link
+              to="/auth"
+              className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold rounded-full hover:from-amber-700 hover:to-orange-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <span className="nastaleeq-primary text-lg">لاگ ان کریں</span>
+              <ChevronRight className="mr-2 w-5 h-5" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (loading) {
@@ -63,8 +100,42 @@ const PersonalizedRecommendations = () => {
     );
   }
 
+  // Show placeholder if no recommendations
   if (error || !recommendations || recommendations.length === 0) {
-    return null;
+    return (
+      <div className="relative z-10 py-16 px-4 bg-gradient-to-br from-slate-50 via-amber-50/30 to-slate-50">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="flex justify-center items-center mb-4">
+              <TrendingUp className="w-8 h-8 text-amber-500" />
+            </div>
+            <h2 className="nastaleeq-heading text-3xl md:text-4xl font-bold text-amber-900 mb-3" dir="rtl">
+              ذاتی تجاویز
+            </h2>
+            <p className="nastaleeq-primary text-amber-700 text-lg" dir="rtl">
+              آپ کی پسند کے مطابق شاعری
+            </p>
+          </div>
+          
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-12 shadow-xl border-4 border-amber-200 text-center">
+            <Heart className="w-16 h-16 text-amber-500 mx-auto mb-6" />
+            <h3 className="nastaleeq-heading text-2xl font-bold text-amber-900 mb-4" dir="rtl">
+              تجاویز بنانے کے لیے مزید شاعری پڑھیں
+            </h3>
+            <p className="nastaleeq-primary text-slate-600 mb-8 max-w-md mx-auto" dir="rtl">
+              جب آپ شاعری پڑھتے اور پسند کرتے ہیں، تو ہم آپ کی پسند کے مطابق تجاویز فراہم کریں گے
+            </p>
+            <Link
+              to="/poetry"
+              className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold rounded-full hover:from-amber-700 hover:to-orange-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <span className="nastaleeq-primary text-lg">شاعری دریافت کریں</span>
+              <ChevronRight className="mr-2 w-5 h-5" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

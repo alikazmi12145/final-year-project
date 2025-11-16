@@ -14,6 +14,7 @@ import PoetOfTheDay from "../components/homepage/PoetOfTheDay";
 import PersonalizedRecommendations from "../components/homepage/PersonalizedRecommendations";
 import LiveCommunityFeed from "../components/homepage/LiveCommunityFeed";
 import DarkModeToggle from "../components/homepage/DarkModeToggle";
+import PoetHistorySlider from "../components/homepage/PoetHistorySlider";
 
 const Home = () => {
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
@@ -106,9 +107,9 @@ const Home = () => {
 
       {/* Hero Section - Simplified and Professional */}
       <div className="relative z-10 flex items-center justify-center min-h-screen px-4">
-        <div className="text-center max-w-5xl mx-auto">
+        <div className="text-center max-w-5xl mx-auto w-full">
           {/* Main Title with Cultural Elegance */}
-          <div className="mb-12">
+          <div className="mb-8">
             <div className="relative inline-block mb-8">
               {/* Decorative elements */}
               <div className="absolute -top-4 -left-4 w-8 h-8 border-t-2 border-l-2 border-amber-600 opacity-60"></div>
@@ -151,7 +152,7 @@ const Home = () => {
             </div>
 
             <p
-              className="nastaleeq-primary text-slate-600 max-w-2xl mx-auto leading-relaxed text-xl"
+              className="nastaleeq-primary text-slate-600 max-w-2xl mx-auto leading-relaxed text-xl mb-8"
               dir="rtl"
             >
               نہیں کھیل اے داغؔ یاروں سے کہہ دو
@@ -160,8 +161,13 @@ const Home = () => {
             </p>
           </div>
 
+          {/* Poet History Slider - Positioned below subtitle */}
+          <div className="mb-12">
+            <PoetHistorySlider />
+          </div>
+
           {/* Action Buttons - Clean and Simple */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link
               to="/search"
               className="group flex items-center px-8 py-4 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
