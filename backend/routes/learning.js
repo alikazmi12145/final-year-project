@@ -7,8 +7,31 @@ import { auth, adminAuth } from "../middleware/auth.js";
 import rateLimit from "express-rate-limit";
 import fs from "fs/promises";
 import path from "path";
+import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
+import axios from "axios";
 
 const router = express.Router();
+
+// Configure multer for audio file uploads
+const storage = multer.memoryStorage();
+const audioUpload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimeTypes = ['audio/mpeg', 'audio/wav', 'audio/mp3', 'audio/x-wav', 'audio/ogg', 'audio/webm'];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid audio file type. Only MP3, WAV, OGG, and WEBM are allowed.'));
+    }
+  }
+});
+
+// Python AI service URL
+const PYTHON_AI_URL = process.env.PYTHON_AI_URL || 'http://localhost:5001';
 
 // Rate limiting
 const learningLimit = rateLimit({
@@ -53,38 +76,46 @@ const qaafiaDictionary = {
   "برکت": ["حرکت", "شرکت", "قدرت"]
 };
 
-// Harf-e-Ravi (Urdu letters and examples)
+// Harf-e-Ravi (Complete Urdu alphabet with examples)
 const harfRaviDictionary = {
-  "ا": {
-    name: "الف",
-    examples: ["الف", "آم", "اردو", "انسان", "آسمان"],
-    words: ["امید", "احترام", "آزادی", "ایمان", "اسلام"],
-    poetry: ["آہ کو چاہیے اک عمر اسر ہونے تک", "اس شہر میں ہر شخص پریشان لگتا ہے"]
-  },
-  "ب": {
-    name: "بے",
-    examples: ["باب", "بال", "بچہ", "بہار", "برف"],
-    words: ["بہت", "بادل", "بندہ", "بزرگ", "بھائی"],
-    poetry: ["بہت اچھا ہے دل کا لگا رہنا", "بیاں کرتا ہوں عاشق کا تجربہ"]
-  },
-  "پ": {
-    name: "پے",
-    examples: ["پانی", "پھول", "پرندہ", "پیار", "پل"],
-    words: ["پکار", "پیدا", "پرانا", "پیغام", "پڑھنا"],
-    poetry: ["پیار میں ہر غم کو خوشی سمجھ لیا", "پھولوں کی طرح مسکرانا سیکھ"]
-  },
-  "ت": {
-    name: "تے",
-    examples: ["تیر", "توت", "تجربہ", "تمنا", "تسلیم"],
-    words: ["تعلیم", "تربیت", "تکلیف", "تاریخ", "تقدیر"],
-    poetry: ["تیرے بغیر زندگی کا کوئی مطلب نہیں", "تو ہی سب کچھ ہے میرے لیے"]
-  },
-  "ٹ": {
-    name: "ٹے",
-    examples: ["ٹوٹنا", "ٹھنڈا", "ٹکرانا", "ٹھیک", "ٹینکا"],
-    words: ["ٹھہرنا", "ٹوپی", "ٹانگ", "ٹیلی فون", "ٹرین"],
-    poetry: ["ٹوٹے خوابوں کا سلسلہ", "ٹھہرو ذرا یہ کیا کہہ رہے ہو"]
-  }
+  "ا": { name: "الف", examples: ["آم", "اردو", "انسان", "آسمان", "امید"], words: ["احترام", "آزادی", "ایمان", "اسلام"], poetry: ["آہ کو چاہیے اک عمر اسر ہونے تک", "اس شہر میں ہر شخص پریشان لگتا ہے"] },
+  "ب": { name: "بے", examples: ["باب", "بال", "بچہ", "بہار", "برف"], words: ["بہت", "بادل", "بندہ", "بزرگ"], poetry: ["بہت اچھا ہے دل کا لگا رہنا", "بیاں کرتا ہوں عاشق کا تجربہ"] },
+  "پ": { name: "پے", examples: ["پانی", "پھول", "پرندہ", "پیار", "پل"], words: ["پکار", "پیدا", "پرانا", "پیغام"], poetry: ["پیار میں ہر غم کو خوشی سمجھ لیا", "پھولوں کی طرح مسکرانا سیکھ"] },
+  "ت": { name: "تے", examples: ["تیر", "توت", "تجربہ", "تمنا", "تسلیم"], words: ["تعلیم", "تربیت", "تکلیف", "تاریخ"], poetry: ["تیرے بغیر زندگی کا کوئی مطلب نہیں", "تو ہی سب کچھ ہے میرے لیے"] },
+  "ٹ": { name: "ٹے", examples: ["ٹوٹنا", "ٹھنڈا", "ٹکرانا", "ٹھیک"], words: ["ٹھہرنا", "ٹوپی", "ٹانگ", "ٹرین"], poetry: ["ٹوٹے خوابوں کا سلسلہ", "ٹھہرو ذرا یہ کیا کہہ رہے ہو"] },
+  "ث": { name: "ثے", examples: ["ثابت", "ثواب", "ثمر", "ثریا"], words: ["ثقافت", "ثبوت", "ثانی"], poetry: ["ثبات ایک تغیر کو ہے زمانے میں"] },
+  "ج": { name: "جیم", examples: ["جان", "جہان", "جگر", "جمال"], words: ["جنگ", "جوش", "جذبہ", "جوہر"], poetry: ["جب یاد میں تیری تجھے پایا نہیں", "جو ہو میری قسمت میں اسے مانوں گا"] },
+  "چ": { name: "چے", examples: ["چاند", "چمن", "چہرہ", "چشم"], words: ["چاہت", "چپ", "چراغ", "چین"], poetry: ["چپ کیسے رہوں خاموش کیسے ہوں", "چاند کی طرح روشن ہو"] },
+  "ح": { name: "حے", examples: ["حال", "حسن", "حیات", "حرف"], words: ["حقیقت", "حکمت", "حمد", "حضور"], poetry: ["حسن والوں کو نہ دل کی خبر ہوتی ہے", "حیرت سے دیکھتا ہوں دنیا کو"] },
+  "خ": { name: "خے", examples: ["خواب", "خوشی", "خیال", "خدا"], words: ["خبر", "خلوت", "خاموش", "خوف"], poetry: ["خواب میں تو آیا کر وہ شخص", "خوشی سے محروم نہ رکھ"] },
+  "د": { name: "دال", examples: ["دل", "دن", "دنیا", "درد"], words: ["دوست", "دعا", "دیدار", "دیوار"], poetry: ["دل ہی تو ہے نہ سنگ و خشت", "دن رات یاد آتی ہے"] },
+  "ڈ": { name: "ڈال", examples: ["ڈر", "ڈاکٹر", "ڈرامہ"], words: ["ڈوب", "ڈھونڈ"], poetry: ["ڈر لگتا ہے کہیں یہ خواب نہ ٹوٹے"] },
+  "ذ": { name: "ذال", examples: ["ذات", "ذہن", "ذکر", "ذوق"], words: ["ذلت", "ذخیرہ"], poetry: ["ذکر اس کا اور پھر بیاں اپنا", "ذرا سی خوشی مل جائے تو کیا"] },
+  "ر": { name: "رے", examples: ["رات", "راہ", "روح", "رنگ"], words: ["رحمت", "روشنی", "رشتہ"], poetry: ["رات دن گردش میں ہیں سات آسمان", "رہتا ہے خیال اسی کا"] },
+  "ڑ": { name: "ڑے", examples: ["پڑھنا", "لڑکا", "بڑا"], words: ["کڑوا", "جھگڑا"], poetry: ["ڑکوں سے گزر کر آیا ہوں"] },
+  "ز": { name: "زے", examples: ["زمین", "زندگی", "زبان", "زمانہ"], words: ["زہر", "زیارت", "زینت"], poetry: ["زندگی کیا ہے عناصر میں ظہور ترتیب", "زمانے نے کیا کیا نہیں"] },
+  "ژ": { name: "ژے", examples: ["ژالہ", "ژرف"], words: ["پرژہ"], poetry: ["ژالوں کی بارش میں"] },
+  "س": { name: "سین", examples: ["سکون", "سفر", "سحر", "سبز"], words: ["سلام", "سدا", "سماں"], poetry: ["سکوت میں بھی کہانی ہے", "سفر میں دھوپ تو ہوگی"] },
+  "ش": { name: "شین", examples: ["شام", "شہر", "شعر", "شمع"], words: ["شوق", "شکر", "شراب"], poetry: ["شام سے آنکھ میں نمی سی ہے", "شعر کہنا میرا مقصود نہیں"] },
+  "ص": { name: "صواد", examples: ["صبح", "صحرا", "صدا", "صورت"], words: ["صفا", "صبر", "صلح"], poetry: ["صبح ہونے کو ہے شاید", "صدا دیتا ہوں گلی میں"] },
+  "ض": { name: "ضواد", examples: ["ضرورت", "ضمیر"], words: ["ضعیف", "ضابطہ"], poetry: ["ضرورت کیا ہے اظہار کی"] },
+  "ط": { name: "طوئے", examples: ["طوفان", "طاقت", "طرح"], words: ["طبیعت", "طالب"], poetry: ["طوفان میں کشتی کو چلانا سیکھ"] },
+  "ظ": { name: "ظوئے", examples: ["ظلم", "ظہور", "ظرف"], words: ["ظاہر", "ظریف"], poetry: ["ظلم سہتے سہتے تھک گئے"] },
+  "ع": { name: "عین", examples: ["عشق", "عالم", "عمر", "عبادت"], words: ["عزت", "علم", "عجیب"], poetry: ["عشق میں غیرت و شرم و لحاظ کیا", "عالم تمام حلقہ دام خیال ہے"] },
+  "غ": { name: "غین", examples: ["غم", "غزل", "غرور", "غصہ"], words: ["غبار", "غنیمت", "غذا"], poetry: ["غم دیکھ کر تیرا رونا آیا", "غزل کے اشعار بہت ہیں"] },
+  "ف": { name: "فے", examples: ["فن", "فردوس", "فضل", "فریاد"], words: ["فقیر", "فرشتہ", "فکر"], poetry: ["فریاد کی بھی حاجت نہیں رہی", "فن کو سکھانے والا استاد"] },
+  "ق": { name: "قاف", examples: ["قلم", "قدم", "قسم", "قبر"], words: ["قافلہ", "قاتل", "قیامت"], poetry: ["قلم اٹھا تو لکھوں کیا", "قدم قدم پہ ہے منزل"] },
+  "ک": { name: "کاف", examples: ["کام", "کتاب", "کلام", "کون"], words: ["کرم", "کاغذ", "کبھی"], poetry: ["کبھی ہم خوبصورت تھے یار", "کون ہے جو مجھے یاد کرتا ہے"] },
+  "گ": { name: "گاف", examples: ["گل", "گلی", "گناہ", "گھر"], words: ["گفتگو", "گرم", "گیت"], poetry: ["گل کو چمن میں رہنے دو", "گھر میں دل لگتا نہیں"] },
+  "ل": { name: "لام", examples: ["لفظ", "لب", "لمحہ", "لکھنا"], words: ["لہو", "لطیف", "لذت"], poetry: ["لفظوں میں بیان نہیں ہو سکتا", "لب پہ آتی ہے دعا"] },
+  "م": { name: "میم", examples: ["محبت", "موت", "مٹی", "منزل"], words: ["مسجد", "مضمون", "مہمان"], poetry: ["محبت کرنے والے کم نہ ہوں گے", "موت سے پہلے آدمی غم سے نجات پائے"] },
+  "ن": { name: "نون", examples: ["نام", "نظر", "نور", "نگاہ"], words: ["نیک", "نشان", "نیا"], poetry: ["نام لیوا ہوں تیرا نام لے کر", "نظر آتا نہیں دل میں کوئی"] },
+  "ں": { name: "نون غنہ", examples: ["ہیں", "میں", "مجھے"], words: ["نہیں", "یہیں"], poetry: ["ہیں اور بھی دنیا میں سخنور بہت اچھے", "میں اکیلا ہی چلا تھا"] },
+  "و": { name: "واؤ", examples: ["وطن", "وہ", "وقت", "وعدہ"], words: ["وفا", "ولایت", "وجود"], poetry: ["وہ جو ہم میں تم میں قرار تھا", "وقت بدلتا ہے ساتھ بدلتا ہے"] },
+  "ہ": { name: "ہے", examples: ["ہاتھ", "ہوا", "ہر", "ہجر"], words: ["ہزار", "ہمت", "ہمیشہ"], poetry: ["ہاتھ میں جام و دل میں غم", "ہر ایک بات پہ کہتے ہو تم کہ تو کیا ہے"] },
+  "ء": { name: "ہمزہ", examples: ["آسماں", "جزء", "شیء"], words: ["ابتداء", "انتہاء"], poetry: ["شیء سے شیء کا فاصلہ دیکھ"] },
+  "ی": { name: "یے", examples: ["یار", "یاد", "یہ", "یقین"], words: ["یتیم", "یورپ", "یگانہ"], poetry: ["یاد میں تیری خود کو بھلا بیٹھے", "یہ دنیا اگر مل بھی جائے"] },
+  "ے": { name: "بڑی یے", examples: ["ہے", "تھے", "کیسے", "جیسے"], words: ["کے", "سے"], poetry: ["ہے کہاں تمنا کا دوسرا قدم یا رب", "تھے کبھی بہت اچھے دن"] }
 };
 
 // Poetry meters (Bahr) information
@@ -513,5 +544,266 @@ function calculateWordDifficulty(word) {
   if (length <= 6) return 'medium';
   return 'hard';
 }
+
+// ============= AUDIO RECITATIONS =============
+
+/**
+ * Upload audio recitation
+ * POST /api/learning/audio/upload
+ */
+router.post("/audio/upload", adminAuth, audioUpload.single('audio'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No audio file provided'
+      });
+    }
+
+    const { title, narrator, description, transcript, category = 'recitation' } = req.body;
+
+    if (!title) {
+      return res.status(400).json({
+        success: false,
+        message: 'Title is required'
+      });
+    }
+
+    // Upload to Cloudinary
+    const uploadResult = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          resource_type: 'video', // Cloudinary uses 'video' for audio files
+          folder: 'bazm-e-sukhan/audio-recitations',
+          format: 'mp3',
+          transformation: [
+            { audio_codec: 'mp3' }
+          ]
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+
+      uploadStream.end(req.file.buffer);
+    });
+
+    // Get audio duration from Cloudinary response
+    const duration = uploadResult.duration || 0;
+
+    // Create learning resource with audio
+    const audioResource = new LearningResource({
+      title: title.trim(),
+      description: description || 'Audio recitation',
+      category: 'audio',
+      type: 'audio',
+      level: 'all',
+      author: req.user.userId,
+      media: {
+        audio: {
+          url: uploadResult.secure_url,
+          publicId: uploadResult.public_id,
+          duration: Math.round(duration),
+          transcript: transcript || ''
+        }
+      },
+      tags: [category, 'audio', 'recitation', narrator].filter(Boolean)
+    });
+
+    await audioResource.save();
+    await audioResource.populate('author', 'name');
+
+    res.status(201).json({
+      success: true,
+      message: 'Audio uploaded successfully',
+      audio: audioResource
+    });
+  } catch (error) {
+    console.error('Audio upload error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload audio',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Get all audio recitations
+ * GET /api/learning/audio
+ */
+router.get("/audio", learningLimit, async (req, res) => {
+  try {
+    const { category, page = 1, limit = 20 } = req.query;
+    const skip = (page - 1) * limit;
+
+    const query = { 
+      category: 'audio',
+      'media.audio.url': { $exists: true, $ne: null }
+    };
+
+    if (category && category !== 'all') {
+      query.tags = category;
+    }
+
+    const audioResources = await LearningResource.find(query)
+      .populate('author', 'name')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    const total = await LearningResource.countDocuments(query);
+
+    res.json({
+      success: true,
+      audios: audioResources,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get audio recitations error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch audio recitations'
+    });
+  }
+});
+
+/**
+ * Delete audio recitation
+ * DELETE /api/learning/audio/:id
+ */
+router.delete("/audio/:id", adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const audioResource = await LearningResource.findById(id);
+
+    if (!audioResource) {
+      return res.status(404).json({
+        success: false,
+        message: 'Audio not found'
+      });
+    }
+
+    // Delete from Cloudinary
+    if (audioResource.media?.audio?.publicId) {
+      try {
+        await cloudinary.uploader.destroy(audioResource.media.audio.publicId, {
+          resource_type: 'video'
+        });
+      } catch (cloudError) {
+        console.error('Cloudinary deletion error:', cloudError);
+      }
+    }
+
+    // Delete from database
+    await LearningResource.findByIdAndDelete(id);
+
+    res.json({
+      success: true,
+      message: 'Audio deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete audio error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete audio'
+    });
+  }
+});
+
+// ============= AI-POWERED FEATURES (PROXY TO PYTHON SERVICE) =============
+
+/**
+ * AI Qaafia Search (Proxy to Python AI service)
+ * POST /api/learning/ai/qaafia
+ */
+router.post("/ai/qaafia", learningLimit, async (req, res) => {
+  try {
+    const { word, limit = 20, min_similarity = 0.5 } = req.body;
+
+    if (!word) {
+      return res.status(400).json({
+        success: false,
+        message: 'Word is required'
+      });
+    }
+
+    // Call Python AI service
+    const response = await axios.post(`${PYTHON_AI_URL}/ai/qaafia-search`, {
+      word,
+      limit,
+      min_similarity
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    console.error('AI Qaafia search error:', error);
+    
+    // Fallback to basic search if Python service is down
+    if (error.code === 'ECONNREFUSED') {
+      return res.status(503).json({
+        success: false,
+        message: 'AI service unavailable. Please try again later.',
+        fallback: true
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'AI Qaafia search failed',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * AI Harf-e-Ravi Extract (Proxy to Python AI service)
+ * POST /api/learning/ai/harf-ravi
+ */
+router.post("/ai/harf-ravi", learningLimit, async (req, res) => {
+  try {
+    const { text, extract_all = true } = req.body;
+
+    if (!text) {
+      return res.status(400).json({
+        success: false,
+        message: 'Text is required'
+      });
+    }
+
+    // Call Python AI service
+    const response = await axios.post(`${PYTHON_AI_URL}/ai/harf-ravi-extract`, {
+      text,
+      extract_all
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    console.error('AI Harf-e-Ravi extraction error:', error);
+    
+    // Fallback if Python service is down
+    if (error.code === 'ECONNREFUSED') {
+      return res.status(503).json({
+        success: false,
+        message: 'AI service unavailable. Please try again later.',
+        fallback: true
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'AI Harf-e-Ravi extraction failed',
+      error: error.message
+    });
+  }
+});
 
 export default router;
