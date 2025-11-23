@@ -39,6 +39,8 @@ const Learning = () => {
   const [currentAudio, setCurrentAudio] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioElement, setAudioElement] = useState(null);
+  const [selectedTutorial, setSelectedTutorial] = useState(null);
+  const [showTutorialModal, setShowTutorialModal] = useState(false);
 
   // Urdu letters for Harf-e-Ravi
   const urduLetters = [
@@ -211,8 +213,22 @@ const Learning = () => {
     }
   };
 
+  const handleTutorialClick = (tutorial) => {
+    setSelectedTutorial(tutorial);
+    setShowTutorialModal(true);
+  };
+
   const renderTutorials = () => {
     const tutorials = resources.filter(r => r.category === 'tutorial');
+    
+    if (tutorials.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <BookOpen className="w-16 h-16 mx-auto mb-4 text-urdu-gold opacity-50" />
+          <p className="text-urdu-maroon">ابھی کوئی ٹیوٹوریل دستیاب نہیں ہے</p>
+        </div>
+      );
+    }
     
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -247,11 +263,82 @@ const Learning = () => {
               </span>
             </div>
             
-            <button className="btn-primary w-full">
+            <button 
+              onClick={() => handleTutorialClick(tutorial)}
+              className="btn-primary w-full hover:bg-urdu-brown transition-colors"
+            >
               شروع کریں
             </button>
           </div>
         ))}
+      </div>
+    );
+  };
+
+  const renderTutorialModal = () => {
+    if (!showTutorialModal || !selectedTutorial) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowTutorialModal(false)}>
+        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="sticky top-0 bg-gradient-to-r from-urdu-gold to-urdu-brown text-white p-6 flex justify-between items-center">
+            <button 
+              onClick={() => setShowTutorialModal(false)}
+              className="text-white hover:text-gray-200 text-2xl font-bold"
+            >
+              ×
+            </button>
+            <h2 className="text-2xl font-bold text-right">{selectedTutorial.title}</h2>
+          </div>
+          
+          <div className="p-6 text-right" dir="rtl">
+            <div className="mb-6">
+              <div className="flex items-center justify-end gap-4 mb-4">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  selectedTutorial.level === 'beginner' ? 'bg-green-100 text-green-800' :
+                  selectedTutorial.level === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {selectedTutorial.level === 'beginner' ? 'ابتدائی' :
+                   selectedTutorial.level === 'intermediate' ? 'درمیانی' : 'اعلیٰ'}
+                </span>
+                <span className="text-sm text-gray-500">{selectedTutorial.duration || '30 منٹ'}</span>
+              </div>
+              
+              <p className="text-lg text-urdu-maroon leading-relaxed mb-6">
+                {selectedTutorial.description}
+              </p>
+            </div>
+
+            <div className="prose prose-lg max-w-none text-right" dir="rtl">
+              <div className="bg-urdu-cream/30 p-6 rounded-lg mb-6">
+                <h3 className="text-xl font-bold text-urdu-brown mb-4">تفصیل:</h3>
+                <div className="text-urdu-maroon leading-relaxed whitespace-pre-line">
+                  {selectedTutorial.content || 'یہ ٹیوٹوریل آپ کو اردو شاعری کے بنیادی اصولوں سے آشنا کرائے گا۔ اس میں قافیہ، ردیف، بحر اور دیگر اہم عناصر کی تفصیل شامل ہے۔'}
+                </div>
+              </div>
+
+              {selectedTutorial.tags && selectedTutorial.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 justify-end mt-6">
+                  {selectedTutorial.tags.map((tag, idx) => (
+                    <span key={idx} className="bg-urdu-gold text-white px-3 py-1 rounded-full text-sm">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-8 text-center">
+              <button
+                onClick={() => setShowTutorialModal(false)}
+                className="btn-primary px-8"
+              >
+                بند کریں
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
@@ -600,10 +687,41 @@ const Learning = () => {
           </p>
         </div>
 
-        {audioRecitations.length === 0 ? (
+        {!audioRecitations || audioRecitations.length === 0 ? (
           <div className="text-center py-12">
-            <Headphones className="w-16 h-16 mx-auto mb-4 text-urdu-gold opacity-50" />
-            <p className="text-urdu-maroon">ابھی کوئی صوتی تلاوت دستیاب نہیں ہے</p>
+            <div className="max-w-2xl mx-auto">
+              <Headphones className="w-20 h-20 mx-auto mb-6 text-urdu-gold opacity-50" />
+              <h3 className="text-2xl font-bold text-urdu-brown mb-4">صوتی تلاوتیں جلد آ رہی ہیں</h3>
+              <p className="text-urdu-maroon text-lg mb-6 leading-relaxed">
+                ہم مشہور شعراء کی اعلیٰ معیار کی صوتی تلاوتیں شامل کرنے پر کام کر رہے ہیں
+              </p>
+              <div className="bg-urdu-cream/50 p-6 rounded-lg text-right" dir="rtl">
+                <h4 className="font-bold text-urdu-brown mb-3">آنے والی تلاوتیں:</h4>
+                <ul className="space-y-2 text-urdu-maroon">
+                  <li className="flex items-center justify-end gap-2">
+                    <span>میر تقی میر کی منتخب غزلیں</span>
+                    <span className="text-urdu-gold">✦</span>
+                  </li>
+                  <li className="flex items-center justify-end gap-2">
+                    <span>مرزا غالب کا کلام</span>
+                    <span className="text-urdu-gold">✦</span>
+                  </li>
+                  <li className="flex items-center justify-end gap-2">
+                    <span>علامہ اقبال کی نظمیں</span>
+                    <span className="text-urdu-gold">✦</span>
+                  </li>
+                  <li className="flex items-center justify-end gap-2">
+                    <span>فیض احمد فیض کا شاعری</span>
+                    <span className="text-urdu-gold">✦</span>
+                  </li>
+                </ul>
+              </div>
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm text-gray-700">
+                  💡 <strong>نوٹ:</strong> اگر آپ کے پاس اردو شاعری کی صوتی تلاوتیں ہیں تو براہ کرم انہیں اپ لوڈ کریں
+                </p>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -752,6 +870,9 @@ const Learning = () => {
             </>
           )}
         </div>
+
+        {/* Tutorial Modal */}
+        {renderTutorialModal()}
 
         {/* Learning Stats */}
         <div className="grid md:grid-cols-4 gap-6 mt-12">
