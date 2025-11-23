@@ -44,7 +44,9 @@ import {
   List,
   Bookmark,
   MessagesSquare,
+  Upload,
 } from "lucide-react";
+import LearningResourcesUpload from "../../components/admin/LearningResourcesUpload";
 import {
   adminDashboardAPI,
   formatTimeAgo,
@@ -806,6 +808,12 @@ const AdminDashboard = () => {
       color: "text-indigo-600",
     },
     {
+      id: "learning-resources",
+      label: "تعلیمی وسائل",
+      icon: Upload,
+      color: "text-teal-600",
+    },
+    {
       id: "analytics",
       label: "تجزیات",
       icon: TrendingUp,
@@ -1031,6 +1039,7 @@ const AdminDashboard = () => {
             {activeTab === "contest-management" && (
               <ContestManagementTab contests={contests} />
             )}
+            {activeTab === "learning-resources" && <LearningResourcesUpload />}
             {activeTab === "analytics" && (
               <AnalyticsTab dashboardData={dashboardData} />
             )}
