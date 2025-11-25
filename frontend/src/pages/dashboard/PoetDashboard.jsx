@@ -31,6 +31,7 @@ import {
   PieChart,
   Activity,
   MessagesSquare,
+  Feather,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useMessage } from "../../context/MessageContext";
@@ -376,6 +377,20 @@ const PoetDashboard = () => {
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  // Set dynamic page title based on user role
+  useEffect(() => {
+    if (user) {
+      document.title = `شاعر ڈیش بورڈ - ${user.name} | بزم سخن`;
+    } else {
+      document.title = "شاعر ڈیش بورڈ | بزم سخن";
+    }
+    
+    // Cleanup: reset title when component unmounts
+    return () => {
+      document.title = "بزم سخن - Urdu Poetry Platform";
+    };
+  }, [user]);
 
   const loadDashboardData = async () => {
     try {
@@ -843,7 +858,7 @@ const PoetDashboard = () => {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-8">
             {/* Poet Profile Image and Name */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-6">
               <div className="relative">
                 <img
                   src={profile?.profileImage?.url 
@@ -858,8 +873,14 @@ const PoetDashboard = () => {
                 <div className="absolute bottom-0 right-0 w-6 h-6 bg-green-500 rounded-full border-2 border-white"></div>
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-800 urdu-text">{user?.name || "شاعر"}</h1>
-                <p className="text-gray-600 urdu-text">{user?.email}</p>
+                <h1 className="text-4xl font-bold text-amber-900 mb-2 nastaleeq-heading">
+                  <Feather className="inline w-8 h-8 ml-3 text-amber-600" />
+                  شاعر ڈیش بورڈ
+                </h1>
+                <p className="text-xl text-amber-700 font-medium nastaleeq-primary">
+                  خوش آمدید، {user?.name || "شاعر"}
+                </p>
+                <p className="text-gray-600 text-sm mt-1">{user?.email}</p>
               </div>
             </div>
 
