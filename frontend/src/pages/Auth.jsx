@@ -325,70 +325,9 @@ const Auth = () => {
         </div>
       </div>
 
-      <div className="max-w-6xl w-full h-full flex gap-8 items-center overflow-y-auto py-4">
-        {/* Reader Auto-Registration Info Card */}
-        <div className="hidden lg:block w-1/3 flex-shrink-0">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-urdu-gold/20">
-            <div className="text-center mb-4">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full mb-4">
-                <User className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-bold text-urdu-brown mb-2 nastaleeq-heading">
-                آسان رجسٹریشن
-              </h3>
-              <h4 className="text-lg font-semibold text-urdu-maroon mb-2">
-                Easy Registration
-              </h4>
-            </div>
-
-            <div className="space-y-3 text-sm">
-              <div className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                <div>
-                  <p className="text-urdu-brown font-medium nastaleeq-primary">
-                    قارئین کے لیے: صرف لاگ ان کریں
-                  </p>
-                  <p className="text-gray-600">
-                    For Readers: Just login with email & password
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                <div>
-                  <p className="text-urdu-brown font-medium nastaleeq-primary">
-                    خودکار اکاؤنٹ بنایا جائے گا
-                  </p>
-                  <p className="text-gray-600">Account created automatically</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-urdu-gold rounded-full mt-2 flex-shrink-0"></div>
-                <div>
-                  <p className="text-urdu-brown font-medium nastaleeq-primary">
-                    فوری رسائی
-                  </p>
-                  <p className="text-gray-600">Immediate access to poetry</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-              <p className="text-xs text-green-700 text-center">
-                No registration needed for readers!
-                <br />
-                <span className="font-urdu nastaleeq-primary">
-                  قارئین کو رجسٹریشن کی ضرورت نہیں!
-                </span>
-              </p>
-            </div>
-          </div>
-        </div>
-
+      <div className="max-w-6xl w-full flex gap-8 items-center py-4">
         {/* Auth Form */}
-        <div className="w-full lg:w-2/3 max-w-md mx-auto flex-shrink-0">
+        <div className="w-full max-w-md mx-auto flex-shrink-0">
           <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-6 border border-urdu-gold/20 max-h-[90vh] overflow-y-auto">
             {/* Dynamic Alert Message */}
             {alertMessage && (

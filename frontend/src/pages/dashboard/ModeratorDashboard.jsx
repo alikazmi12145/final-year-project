@@ -21,6 +21,15 @@ const ModeratorDashboard = () => {
     activeUsers: 0,
   });
 
+  // Set dynamic page title
+  useEffect(() => {
+    document.title = "ماڈریٹر ڈیش بورڈ | بزم سخن";
+    
+    return () => {
+      document.title = "بزم سخن - Urdu Poetry Platform";
+    };
+  }, []);
+
   useEffect(() => {
     const fetchModerationData = async () => {
       try {

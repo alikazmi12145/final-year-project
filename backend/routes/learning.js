@@ -8,7 +8,7 @@ import rateLimit from "express-rate-limit";
 import fs from "fs/promises";
 import path from "path";
 import multer from "multer";
-import { v2 as cloudinary } from "cloudinary";
+import cloudinary from "../config/cloudinary.js";
 import axios from "axios";
 
 const router = express.Router();
@@ -551,38 +551,112 @@ function calculateWordDifficulty(word) {
  * Upload audio recitation
  * POST /api/learning/audio/upload
  */
-router.post("/audio/upload", adminAuth, audioUpload.single('audio'), async (req, res) => {
-  try {
-    if (!req.file) {
+/**
+ * Upload audio recitation
+ * POST /api/learning/audio/upload
+ */
+router.post("/audio/upload", adminAuth, (req, res, next) => {
+  audioUpload.single('audio')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      console.error('❌ Multer error:', err);
       return res.status(400).json({
         success: false,
-        message: 'No audio file provided'
+        message: err.message,
+        error: 'File upload error'
+      });
+    } else if (err) {
+      console.error('❌ Upload middleware error:', err);
+      return res.status(400).json({
+        success: false,
+        message: err.message || 'Invalid file type'
+      });
+    }
+    next();
+  });
+}, async (req, res) => {
+  try {
+    console.log('📤 Audio upload request received');
+    // adminAuth sets req.user to full user object with _id
+    // auth middleware sets req.user to minimal object with userId
+    const userId = req.user?._id || req.user?.userId;
+    console.log('User:', req.user ? `${userId} (${req.user.role})` : 'NOT AUTHENTICATED');
+    console.log('File:', req.file ? `${req.file.originalname} (${req.file.size} bytes)` : 'No file');
+    console.log('Body:', req.body);
+
+    if (!req.user || !userId) {
+      console.error('❌ User not authenticated');
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required / صارف کی تصدیق درکار ہے'
+      });
+    }
+
+    if (!req.file) {
+      console.error('❌ No audio file provided');
+      return res.status(400).json({
+        success: false,
+        message: 'براہ کرم آڈیو فائل منتخب کریں / Please select an audio file'
       });
     }
 
     const { title, narrator, description, transcript, category = 'recitation' } = req.body;
 
-    if (!title) {
+    if (!title || !title.trim()) {
+      console.error('❌ Title is required');
       return res.status(400).json({
         success: false,
-        message: 'Title is required'
+        message: 'براہ کرم عنوان درج کریں / Please enter a title'
       });
     }
 
-    // Upload to Cloudinary
+    // Check Cloudinary configuration
+    const cloudConfig = cloudinary.config();
+    console.log('☁️ Cloudinary config check:', {
+      cloud_name: cloudConfig.cloud_name ? '✓' : '✗',
+      api_key: cloudConfig.api_key ? '✓' : '✗',
+      api_secret: cloudConfig.api_secret ? '✓' : '✗'
+    });
+
+    if (!cloudConfig.cloud_name || !cloudConfig.api_key || !cloudConfig.api_secret) {
+      console.error('❌ Cloudinary not configured properly');
+      return res.status(500).json({
+        success: false,
+        message: 'کلاؤڈ سٹوریج کنفیگر نہیں ہے / Cloud storage not configured. Please contact administrator.'
+      });
+    }
+
+    console.log('☁️ Uploading to Cloudinary...');
+    console.log('File info:', {
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      originalname: req.file.originalname
+    });
+    
+    // Upload to Cloudinary - simplified for audio files
     const uploadResult = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          resource_type: 'video', // Cloudinary uses 'video' for audio files
+          resource_type: 'auto', // Let Cloudinary auto-detect
           folder: 'bazm-e-sukhan/audio-recitations',
-          format: 'mp3',
-          transformation: [
-            { audio_codec: 'mp3' }
-          ]
+          public_id: `audio_${Date.now()}`,
+          overwrite: true,
+          invalidate: true
         },
         (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
+          if (error) {
+            console.error('❌ Cloudinary upload error:', error);
+            console.error('Error details:', JSON.stringify(error, null, 2));
+            reject(error);
+          } else {
+            console.log('✅ Cloudinary upload successful');
+            console.log('Upload result:', {
+              url: result.secure_url,
+              format: result.format,
+              resource_type: result.resource_type,
+              duration: result.duration
+            });
+            resolve(result);
+          }
         }
       );
 
@@ -592,14 +666,22 @@ router.post("/audio/upload", adminAuth, audioUpload.single('audio'), async (req,
     // Get audio duration from Cloudinary response
     const duration = uploadResult.duration || 0;
 
+    console.log('💾 Saving to database...');
+    
+    // Get author ID - adminAuth sets req.user as full user object
+    const authorId = req.user._id || req.user.userId;
+    console.log('Author ID:', authorId);
+    
     // Create learning resource with audio
     const audioResource = new LearningResource({
       title: title.trim(),
       description: description || 'Audio recitation',
-      category: 'audio',
+      category: 'poetry_writing', // Using valid category from enum
       type: 'audio',
-      level: 'all',
-      author: req.user.userId,
+      difficulty: 'beginner', // Required field
+      author: authorId,
+      status: 'published', // Make it published by default
+      isPublic: true,
       media: {
         audio: {
           url: uploadResult.secure_url,
@@ -614,17 +696,20 @@ router.post("/audio/upload", adminAuth, audioUpload.single('audio'), async (req,
     await audioResource.save();
     await audioResource.populate('author', 'name');
 
+    console.log('✅ Audio uploaded successfully');
     res.status(201).json({
       success: true,
-      message: 'Audio uploaded successfully',
+      message: 'آڈیو کامیابی سے اپ لوڈ ہو گئی / Audio uploaded successfully',
       audio: audioResource
     });
   } catch (error) {
-    console.error('Audio upload error:', error);
+    console.error('❌ Audio upload error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Failed to upload audio',
-      error: error.message
+      message: 'آڈیو اپ لوڈ میں خرابی / Failed to upload audio',
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
@@ -639,7 +724,7 @@ router.get("/audio", learningLimit, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const query = { 
-      category: 'audio',
+      type: 'audio',
       'media.audio.url': { $exists: true, $ne: null }
     };
 

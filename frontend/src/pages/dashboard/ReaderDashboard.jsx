@@ -102,6 +102,19 @@ const ReaderDashboard = () => {
     fetchReaderData();
   }, []);
 
+  // Set dynamic page title
+  useEffect(() => {
+    if (user) {
+      document.title = `قاری ڈیش بورڈ - ${user.name} | بزم سخن`;
+    } else {
+      document.title = "قاری ڈیش بورڈ | بزم سخن";
+    }
+    
+    return () => {
+      document.title = "بزم سخن - Urdu Poetry Platform";
+    };
+  }, [user]);
+
   const showMessage = (type, text) => {
     setMessage({ type, text });
     setTimeout(() => setMessage({ type: "", text: "" }), 5000);

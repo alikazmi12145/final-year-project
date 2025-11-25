@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Upload, X, Music, Video, FileText, Loader, CheckCircle, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Upload, X, Music, Video, FileText, Loader, CheckCircle, AlertCircle, Trash2, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -17,6 +17,146 @@ const LearningResourcesUpload = () => {
     transcript: ''
   });
   const [selectedFile, setSelectedFile] = useState(null);
+  const [audioList, setAudioList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [playingId, setPlayingId] = useState(null);
+  const [currentTime, setCurrentTime] = useState({});
+  const [duration, setDuration] = useState({});
+  const [volume, setVolume] = useState({});
+  const [isMuted, setIsMuted] = useState({});
+  const audioRefs = useRef({});
+
+  // Fetch audio list on component mount
+  useEffect(() => {
+    fetchAudioList();
+  }, []);
+
+  const fetchAudioList = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_BASE_URL}/learning/audio`);
+      console.log('Fetched audio list:', response.data);
+      if (response.data.success) {
+        const audios = response.data.audios || [];
+        setAudioList(audios);
+        // Initialize volume and mute state for each audio
+        const initialVolume = {};
+        const initialMute = {};
+        audios.forEach(audio => {
+          initialVolume[audio._id] = 1;
+          initialMute[audio._id] = false;
+        });
+        setVolume(initialVolume);
+        setIsMuted(initialMute);
+      }
+    } catch (error) {
+      console.error('Error fetching audio list:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePlayPause = (audioId) => {
+    const audio = audioRefs.current[audioId];
+    if (!audio) return;
+
+    if (playingId === audioId) {
+      audio.pause();
+      setPlayingId(null);
+    } else {
+      // Pause other audios
+      Object.keys(audioRefs.current).forEach(id => {
+        if (id !== audioId && audioRefs.current[id]) {
+          audioRefs.current[id].pause();
+        }
+      });
+      audio.play();
+      setPlayingId(audioId);
+    }
+  };
+
+  const handleTimeUpdate = (audioId) => {
+    const audio = audioRefs.current[audioId];
+    if (audio) {
+      setCurrentTime(prev => ({ ...prev, [audioId]: audio.currentTime }));
+    }
+  };
+
+  const handleLoadedMetadata = (audioId) => {
+    const audio = audioRefs.current[audioId];
+    if (audio) {
+      setDuration(prev => ({ ...prev, [audioId]: audio.duration }));
+    }
+  };
+
+  const handleSeek = (audioId, value) => {
+    const audio = audioRefs.current[audioId];
+    if (audio) {
+      audio.currentTime = value;
+      setCurrentTime(prev => ({ ...prev, [audioId]: value }));
+    }
+  };
+
+  const handleVolumeChange = (audioId, value) => {
+    const audio = audioRefs.current[audioId];
+    if (audio) {
+      audio.volume = value;
+      setVolume(prev => ({ ...prev, [audioId]: value }));
+      if (value > 0) {
+        setIsMuted(prev => ({ ...prev, [audioId]: false }));
+      }
+    }
+  };
+
+  const handleMuteToggle = (audioId) => {
+    const audio = audioRefs.current[audioId];
+    if (audio) {
+      const newMuted = !isMuted[audioId];
+      audio.muted = newMuted;
+      setIsMuted(prev => ({ ...prev, [audioId]: newMuted }));
+    }
+  };
+
+  const handleSkip = (audioId, seconds) => {
+    const audio = audioRefs.current[audioId];
+    if (audio) {
+      audio.currentTime = Math.max(0, Math.min(audio.duration, audio.currentTime + seconds));
+    }
+  };
+
+  const formatTime = (time) => {
+    if (isNaN(time)) return '0:00';
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const handleDeleteAudio = async (audioId) => {
+    if (!confirm('کیا آپ واقعی اس آڈیو کو حذف کرنا چاہتے ہیں؟')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_BASE_URL}/learning/audio/${audioId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setUploadStatus({
+        type: 'success',
+        message: 'آڈیو کامیابی سے حذف ہو گئی'
+      });
+      
+      // Refresh the list
+      fetchAudioList();
+    } catch (error) {
+      console.error('Delete error:', error);
+      setUploadStatus({
+        type: 'error',
+        message: 'آڈیو حذف کرنے میں خرابی'
+      });
+    }
+  };
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
@@ -80,6 +220,18 @@ const LearningResourcesUpload = () => {
 
     try {
       const token = localStorage.getItem('token');
+      
+      if (!token) {
+        setUploadStatus({
+          type: 'error',
+          message: 'لاگ ان کی ضرورت ہے / Please login first'
+        });
+        return;
+      }
+      
+      console.log('Token found:', token ? 'Yes' : 'No');
+      console.log('Uploading to:', `${API_BASE_URL}/learning/audio/upload`);
+      
       const response = await axios.post(
         `${API_BASE_URL}/learning/audio/upload`,
         uploadFormData,
@@ -116,11 +268,26 @@ const LearningResourcesUpload = () => {
       const fileInput = document.getElementById('file-upload');
       if (fileInput) fileInput.value = '';
 
+      // Refresh the audio list
+      fetchAudioList();
+
     } catch (error) {
       console.error('Upload error:', error);
+      console.error('Error response:', error.response?.data);
+      
+      let errorMessage = 'اپ لوڈ میں خرابی آ گئی';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       setUploadStatus({
         type: 'error',
-        message: error.response?.data?.message || 'اپ لوڈ میں خرابی آ گئی'
+        message: errorMessage
       });
     } finally {
       setUploading(false);
@@ -370,6 +537,174 @@ const LearningResourcesUpload = () => {
             <span>• اپ لوڈ کے بعد فائلز تعلیمی مرکز میں نظر آئیں گی</span>
           </li>
         </ul>
+      </div>
+
+      {/* Uploaded Audio List */}
+      <div className="mt-8">
+        <h3 className="text-xl font-bold text-urdu-brown mb-4 text-right flex items-center justify-end gap-2">
+          <Music className="w-6 h-6" />
+          اپ لوڈ شدہ آڈیو فائلز ({audioList.length})
+        </h3>
+
+        {loading ? (
+          <div className="text-center py-8">
+            <Loader className="w-8 h-8 animate-spin mx-auto text-urdu-gold" />
+            <p className="text-gray-600 mt-2">لوڈ ہو رہا ہے...</p>
+          </div>
+        ) : audioList.length === 0 ? (
+          <div className="text-center py-8 bg-gray-50 rounded-lg">
+            <Music className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+            <p className="text-gray-600">ابھی تک کوئی آڈیو فائل اپ لوڈ نہیں ہوئی</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {audioList.map((audio) => (
+              <div
+                key={audio._id}
+                className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white"
+              >
+                <div className="flex flex-col gap-4">
+                  {/* Audio Info */}
+                  <div className="text-right" dir="rtl">
+                    <div className="flex items-start justify-between">
+                      <button
+                        onClick={() => handleDeleteAudio(audio._id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="حذف کریں"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-urdu-brown text-lg mb-1">
+                          {audio.title}
+                        </h4>
+                        {audio.description && (
+                          <p className="text-gray-600 text-sm mb-2">
+                            {audio.description}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-2 justify-end mb-2">
+                          {audio.tags?.map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-1 bg-urdu-gold/10 text-urdu-brown text-xs rounded"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                        {audio.author?.name && (
+                          <p className="text-sm text-gray-500">
+                            اپ لوڈ کردہ: {audio.author.name}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Custom Audio Player */}
+                  {audio.media?.audio?.url && (
+                    <div className="bg-gradient-to-r from-urdu-gold/5 to-urdu-brown/5 rounded-lg p-4 border border-urdu-gold/20">
+                      {/* Hidden Audio Element */}
+                      <audio
+                        ref={el => audioRefs.current[audio._id] = el}
+                        src={audio.media.audio.url}
+                        onTimeUpdate={() => handleTimeUpdate(audio._id)}
+                        onLoadedMetadata={() => handleLoadedMetadata(audio._id)}
+                        onEnded={() => setPlayingId(null)}
+                        className="hidden"
+                      />
+
+                      {/* Custom Controls */}
+                      <div className="space-y-3">
+                        {/* Progress Bar */}
+                        <div className="space-y-1">
+                          <input
+                            type="range"
+                            min="0"
+                            max={duration[audio._id] || 0}
+                            value={currentTime[audio._id] || 0}
+                            onChange={(e) => handleSeek(audio._id, parseFloat(e.target.value))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-urdu-gold"
+                            style={{
+                              background: `linear-gradient(to right, #C4A747 0%, #C4A747 ${((currentTime[audio._id] || 0) / (duration[audio._id] || 1)) * 100}%, #e5e7eb ${((currentTime[audio._id] || 0) / (duration[audio._id] || 1)) * 100}%, #e5e7eb 100%)`
+                            }}
+                          />
+                          <div className="flex justify-between text-xs text-gray-600">
+                            <span>{formatTime(currentTime[audio._id] || 0)}</span>
+                            <span>{formatTime(duration[audio._id] || 0)}</span>
+                          </div>
+                        </div>
+
+                        {/* Control Buttons */}
+                        <div className="flex items-center justify-center gap-4">
+                          {/* Skip Back */}
+                          <button
+                            onClick={() => handleSkip(audio._id, -10)}
+                            className="p-2 hover:bg-urdu-gold/10 rounded-full transition-colors"
+                            title="10 سیکنڈ پیچھے"
+                          >
+                            <SkipBack className="w-5 h-5 text-urdu-brown" />
+                          </button>
+
+                          {/* Play/Pause */}
+                          <button
+                            onClick={() => handlePlayPause(audio._id)}
+                            className="p-4 bg-urdu-gold hover:bg-urdu-brown text-white rounded-full transition-colors shadow-lg"
+                          >
+                            {playingId === audio._id ? (
+                              <Pause className="w-6 h-6" />
+                            ) : (
+                              <Play className="w-6 h-6" />
+                            )}
+                          </button>
+
+                          {/* Skip Forward */}
+                          <button
+                            onClick={() => handleSkip(audio._id, 10)}
+                            className="p-2 hover:bg-urdu-gold/10 rounded-full transition-colors"
+                            title="10 سیکنڈ آگے"
+                          >
+                            <SkipForward className="w-5 h-5 text-urdu-brown" />
+                          </button>
+                        </div>
+
+                        {/* Volume Control */}
+                        <div className="flex items-center gap-3 justify-center">
+                          <button
+                            onClick={() => handleMuteToggle(audio._id)}
+                            className="p-2 hover:bg-urdu-gold/10 rounded-full transition-colors"
+                          >
+                            {isMuted[audio._id] || volume[audio._id] === 0 ? (
+                              <VolumeX className="w-5 h-5 text-urdu-brown" />
+                            ) : (
+                              <Volume2 className="w-5 h-5 text-urdu-brown" />
+                            )}
+                          </button>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={isMuted[audio._id] ? 0 : (volume[audio._id] || 1)}
+                            onChange={(e) => handleVolumeChange(audio._id, parseFloat(e.target.value))}
+                            className="w-24 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-urdu-gold"
+                            style={{
+                              background: `linear-gradient(to right, #C4A747 0%, #C4A747 ${(isMuted[audio._id] ? 0 : (volume[audio._id] || 1)) * 100}%, #e5e7eb ${(isMuted[audio._id] ? 0 : (volume[audio._id] || 1)) * 100}%, #e5e7eb 100%)`
+                            }}
+                          />
+                          <span className="text-xs text-gray-600 w-8">
+                            {Math.round((isMuted[audio._id] ? 0 : (volume[audio._id] || 1)) * 100)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

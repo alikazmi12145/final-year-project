@@ -177,6 +177,19 @@ const AdminDashboard = () => {
     };
   }, []); // Empty dependency array - only run once on mount
 
+  // Set dynamic page title
+  useEffect(() => {
+    if (user) {
+      document.title = `ایڈمن ڈیش بورڈ - ${user.name} | بزم سخن`;
+    } else {
+      document.title = "ایڈمن ڈیش بورڈ | بزم سخن";
+    }
+    
+    return () => {
+      document.title = "بزم سخن - Urdu Poetry Platform";
+    };
+  }, [user]);
+
   const loadDashboardData = async () => {
     try {
       setLoading(true);
