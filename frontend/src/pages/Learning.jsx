@@ -1,3 +1,85 @@
+  // ...existing code...
+
+  // Move renderHarfRavi below urduLetters declaration
+  // Urdu letters for Harf-e-Ravi
+  const urduLetters = [
+    'ا', 'ب', 'پ', 'ت', 'ٹ', 'ث', 'ج', 'چ', 'ح', 'خ',
+    'د', 'ڈ', 'ذ', 'ر', 'ڑ', 'ز', 'ژ', 'س', 'ش', 'ص',
+    'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ک', 'گ', 'ل',
+    'م', 'ن', 'ں', 'و', 'ہ', 'ء', 'ی', 'ے'
+  ];
+
+  // ...existing code...
+
+  // Add missing renderHarfRavi function below urduLetters
+  // Fix: Pass state as props to renderHarfRavi
+  const renderHarfRavi = (selectedLetterProp, harfResultsProp, handleLetterClickProp) => (
+    <div className="space-y-6">
+      <div className="card p-6">
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-gradient-to-r from-urdu-gold to-urdu-brown rounded-full flex items-center justify-center mx-auto mb-4">
+            <FileText className="text-white w-8 h-8" />
+          </div>
+          <h3 className="text-2xl font-bold text-urdu-brown mb-2">
+            حرف راوی - اردو حروف تہجی
+          </h3>
+          <p className="text-urdu-maroon">
+            اردو حروف کی تفصیلی معلومات اور مثالیں
+          </p>
+        </div>
+        <div className="grid grid-cols-6 md:grid-cols-10 gap-3 mb-6">
+          {urduLetters.map((letter, index) => (
+            <button
+              key={index}
+              onClick={() => handleLetterClickProp(letter)}
+              className={`p-3 rounded-lg border-2 text-xl font-bold transition-colors ${
+                selectedLetterProp === letter
+                  ? 'bg-urdu-gold text-white border-urdu-gold'
+                  : 'bg-white text-urdu-brown border-urdu-cream hover:border-urdu-gold hover:bg-urdu-gold hover:text-white'
+              }`}
+            >
+              {letter}
+            </button>
+          ))}
+        </div>
+        {harfResultsProp && selectedLetterProp && (
+          <div className="bg-urdu-cream/30 p-6 rounded-lg">
+            <h4 className="text-xl font-bold mb-4 text-right text-urdu-brown">
+              حرف "{selectedLetterProp}" ({harfResultsProp.name})
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h5 className="font-bold mb-3 text-right">مثالی الفاظ:</h5>
+                <div className="space-y-2">
+                  {harfResultsProp.examples?.map((example, index) => (
+                    <div key={index} className="bg-white p-3 rounded text-right border">
+                      {example}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h5 className="font-bold mb-3 text-right">شاعری میں استعمال:</h5>
+                <div className="space-y-2">
+                  {harfResultsProp.poetry?.map((poem, index) => (
+                    <div key={index} className="bg-white p-3 rounded text-right italic border">
+                      "{poem}"
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {!selectedLetterProp && (
+          <div className="text-center text-urdu-maroon py-8">
+            <Book className="w-12 h-12 mx-auto mb-4 text-urdu-gold" />
+            <p>کوئی حرف منتخب کریں تفصیلات دیکھنے کے لیے</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -1053,7 +1135,13 @@ const Learning = () => {
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      // If Qaafia tab is clicked, also show Harf-e-Ravi section
+                      if (tab.id === 'qaafia') {
+                        setActiveTab('harf-ravi');
+                      }
+                    }}
                     className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
                       activeTab === tab.id
                         ? 'bg-urdu-gold text-white shadow-lg'
@@ -1076,7 +1164,7 @@ const Learning = () => {
                 <>
                   {activeTab === 'tutorials' && renderTutorials()}
                   {activeTab === 'qaafia' && renderQaafia()}
-                  {activeTab === 'harf-ravi' && renderHarfRavi()}
+                  {activeTab === 'harf-ravi' && renderHarfRavi(selectedLetter, harfResults, handleLetterClick)}
                   {activeTab === 'audio' && renderAudioRecitations()}
                   {activeTab === 'meters' && renderMeters()}
                 </>
