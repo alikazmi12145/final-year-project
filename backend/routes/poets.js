@@ -88,6 +88,7 @@ router.get("/", poetOperationLimit, async (req, res) => {
     const userPoetQuery = {
       role: "poet",
       status: "active",
+      isApproved: true, // Only show approved poets
       _id: { $nin: poetUserIds } // Exclude users already in Poet collection
     };
     if (search) {
@@ -109,13 +110,14 @@ router.get("/", poetOperationLimit, async (req, res) => {
       avatar: u.avatar
     })));
 
-    // Check ALL poet users (for debugging)
-    const allPoetUsers = await User.find({ role: "poet", status: "active" }).lean();
-    console.log("ALL poet users:", allPoetUsers.map(u => ({
+    // Check ALL approved poet users (for debugging)
+    const allPoetUsers = await User.find({ role: "poet", status: "active", isApproved: true }).lean();
+    console.log("ALL approved poet users:", allPoetUsers.map(u => ({
       _id: u._id,
       name: u.name,
       fullName: u.fullName,
-      profileImage: u.profileImage
+      profileImage: u.profileImage,
+      isApproved: u.isApproved
     })));
 
     // Add poem counts for each poet from Poet collection

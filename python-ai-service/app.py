@@ -31,7 +31,7 @@ except ImportError as e:
     print(f"⚠️  ML features not available: {e}")
 
 # Import lightweight qaafia utilities
-from qaafia_utils import URDU_RHYME_PATTERNS, analyze_word_pattern, get_urdu_phonetic
+from qaafia_utils import URDU_RHYME_PATTERNS, analyze_word_pattern, get_urdu_phonetic, calculate_qaafia_similarity
 
 # Configure logging
 logging.basicConfig(
@@ -698,7 +698,7 @@ def update_index():
 
 @app.route('/ai/qaafia-search', methods=['POST'])
 def ai_qaafia_search():
-    """AI-powered Urdu rhyming word (qaafia) search"""
+    """AI-powered Urdu rhyming word (qaafia) search with advanced phonetic matching"""
     try:
         if not request.is_json:
             return jsonify({'success': False, 'error': 'Content-Type must be application/json'}), 400
@@ -715,70 +715,56 @@ def ai_qaafia_search():
         
         pattern = analyze_word_pattern(word)
         rhymes_found = []
-        seen_words = set()
+        seen_words = set([word])  # Exclude the search word itself
         
-        # Strategy 1: Phonetic/Qaafia matching
-        for key, words in URDU_RHYME_PATTERNS.items():
-            for rhyme_word in words:
-                if rhyme_word != word and rhyme_word not in seen_words:
-                    rhyme_pattern = analyze_word_pattern(rhyme_word)
-                    score = 0.0
-                    
-                    if rhyme_pattern['phonetic'] == pattern['phonetic'] and pattern['phonetic']:
-                        score = 0.95
-                    elif rhyme_pattern['phonetic'] and pattern['phonetic'] and \
-                         rhyme_pattern['phonetic'][0] == pattern['phonetic'][0]:
-                        score = 0.80
-                    elif rhyme_pattern['last_two'] == pattern['last_two']:
-                        score = 0.75
-                    elif rhyme_pattern['real_qaafia'][-1] == pattern['real_qaafia'][-1]:
-                        score = 0.65
-                    
-                    if abs(rhyme_pattern['length'] - pattern['length']) <= 1:
-                        score += 0.05
-                    
-                    if score >= min_similarity:
-                        rhymes_found.append({
-                            'word': rhyme_word,
-                            'similarity_score': round(score, 2),
-                            'phonetic_pattern': rhyme_pattern['phonetic'],
-                            'qaafia_type': 'exact' if score >= 0.9 else 'similar'
-                        })
-                        seen_words.add(rhyme_word)
+        # Strategy 1: Search all words in rhyme dictionary using weighted similarity
+        all_words = [w for words in URDU_RHYME_PATTERNS.values() for w in words]
         
-        # Strategy 2: Extended search if needed
-        if len(rhymes_found) < limit // 2:
-            all_words = [w for words in URDU_RHYME_PATTERNS.values() for w in words]
-            for candidate in all_words:
-                if candidate != word and candidate not in seen_words:
+        for candidate in all_words:
+            if candidate not in seen_words:
+                # Calculate similarity using advanced algorithm
+                similarity = calculate_qaafia_similarity(word, candidate)
+                
+                if similarity >= min_similarity:
                     candidate_pattern = analyze_word_pattern(candidate)
-                    score = 0.0
-                    if candidate_pattern['phonetic'] and pattern['phonetic']:
-                        if candidate_pattern['phonetic'][0] == pattern['phonetic'][0]:
-                            score = 0.60
-                    elif candidate[-1] == word[-1]:
-                        score = 0.50
                     
-                    if score >= min_similarity and len(rhymes_found) < limit:
-                        rhymes_found.append({
-                            'word': candidate,
-                            'similarity_score': round(score, 2),
-                            'phonetic_pattern': candidate_pattern['phonetic'],
-                            'qaafia_type': 'loose'
-                        })
-                        seen_words.add(candidate)
+                    # Determine match type based on similarity score
+                    if similarity >= 0.85:
+                        match_type = 'exact'  # بلکل درست
+                    elif similarity >= 0.65:
+                        match_type = 'similar'  # مماثل
+                    elif similarity >= 0.50:
+                        match_type = 'close'  # قریب
+                    else:
+                        match_type = 'loose'  # ڈھیلا
+                    
+                    rhymes_found.append({
+                        'word': candidate,
+                        'similarity_score': round(similarity, 3),
+                        'phonetic_pattern': candidate_pattern['phonetic'],
+                        'qaafia_type': match_type,
+                        'last_chars': candidate_pattern['last_three']
+                    })
+                    seen_words.add(candidate)
         
+        # Sort by similarity score (descending)
         rhymes_found.sort(key=lambda x: x['similarity_score'], reverse=True)
+        
+        # Limit results
         rhymes_found = rhymes_found[:limit]
         
+        # Pattern analysis for response
         pattern_analysis = {
+            'input_word': word,
             'phonetic_qaafia': pattern['phonetic'],
             'word_length': pattern['length'],
             'rhyme_type': 'qaafia',
-            'matching_strategy': 'phonetic_consonant_vowel'
+            'matching_strategy': 'ai_weighted_phonetic',
+            'last_three_chars': pattern['last_three'],
+            'consonant_count': len(pattern['consonants'])
         }
         
-        logger.info(f"✅ Found {len(rhymes_found)} rhymes for '{word}'")
+        logger.info(f"✅ Found {len(rhymes_found)} rhymes for '{word}' (min_similarity={min_similarity})")
         
         return jsonify({
             'success': True,
@@ -795,7 +781,7 @@ def ai_qaafia_search():
 
 @app.route('/ai/harf-ravi-extract', methods=['POST'])
 def ai_harf_ravi_extract():
-    """AI-powered Harf-e-Ravi extraction"""
+    """AI-powered Harf-e-Ravi (rhyme letter) extraction from Urdu poetry text"""
     try:
         if not request.is_json:
             return jsonify({'success': False, 'error': 'Content-Type must be application/json'}), 400
@@ -809,40 +795,70 @@ def ai_harf_ravi_extract():
         
         logger.info(f"🔍 AI Harf-e-Ravi extraction from: '{text[:50]}...'")
         
-        # Import qaafia logic
-        from qaafia_utils import get_urdu_phonetic
+        # Split text into lines (misras)
+        lines = [line.strip() for line in text.split('\n') if line.strip()]
         
-        words = text.split()
+        if not lines:
+            return jsonify({'success': False, 'error': 'No valid lines found in text'}), 400
+        
+        # Analyze last words of each line for rhyme patterns
+        last_words = []
         letter_freq = {}
         
-        for word in words:
-            phonetic = get_urdu_phonetic(word)
-            if phonetic:
-                letter = phonetic[0]
-                letter_freq[letter] = letter_freq.get(letter, 0) + 1
+        for line in lines:
+            words = line.split()
+            if words:
+                last_word = words[-1].strip('۔،؛:!؟')
+                last_words.append(last_word)
+                
+                # Analyze phonetic pattern
+                pattern = analyze_word_pattern(last_word)
+                
+                # Get the actual rhyming letter (last consonant)
+                if pattern['consonants']:
+                    rhyme_letter = pattern['consonants'][-1]
+                    letter_freq[rhyme_letter] = letter_freq.get(rhyme_letter, 0) + 1
+                elif pattern['last_char']:
+                    # Fallback to last character
+                    letter_freq[pattern['last_char']] = letter_freq.get(pattern['last_char'], 0) + 1
         
         if not letter_freq:
-            return jsonify({'success': False, 'error': 'No valid letters found in text'}), 400
+            return jsonify({'success': False, 'error': 'No valid rhyme letters found in text'}), 400
         
+        # Sort by frequency
         sorted_letters = sorted(letter_freq.items(), key=lambda x: x[1], reverse=True)
         harf_ravi = sorted_letters[0][0]
         frequency = sorted_letters[0][1]
         
-        all_candidates = [{'letter': letter, 'frequency': freq} for letter, freq in sorted_letters]
+        # Build candidate list with details
+        all_candidates = [
+            {
+                'letter': letter,
+                'frequency': freq,
+                'percentage': round((freq / len(lines)) * 100, 1)
+            } 
+            for letter, freq in sorted_letters
+        ]
+        
+        # Find example words with this rhyme letter
+        example_words = [word for word in last_words if word.endswith(harf_ravi) or harf_ravi in analyze_word_pattern(word)['consonants']][:5]
         
         result = {
             'success': True,
             'harf_ravi': harf_ravi,
             'analysis': {
-                'confidence': round(frequency / len(words), 2),
+                'confidence': round(frequency / len(lines), 2),
                 'frequency': frequency,
-                'pattern': get_urdu_phonetic(harf_ravi),
-                'total_words': len(words)
+                'total_lines': len(lines),
+                'unique_rhyme_letters': len(letter_freq),
+                'example_words': example_words,
+                'pattern_type': 'consistent' if frequency / len(lines) > 0.7 else 'mixed'
             },
-            'all_candidates': all_candidates if extract_all else all_candidates[:5]
+            'all_candidates': all_candidates if extract_all else all_candidates[:5],
+            'last_words_analyzed': last_words
         }
         
-        logger.info(f"✅ Extracted Harf-Ravi: {harf_ravi}")
+        logger.info(f"✅ Extracted Harf-Ravi: {harf_ravi} (confidence: {result['analysis']['confidence']})")
         
         return jsonify(result), 200
         

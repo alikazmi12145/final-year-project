@@ -1,102 +1,15 @@
-  // ...existing code...
-
-  // Move renderHarfRavi below urduLetters declaration
-  // Urdu letters for Harf-e-Ravi
-  const urduLetters = [
-    'ا', 'ب', 'پ', 'ت', 'ٹ', 'ث', 'ج', 'چ', 'ح', 'خ',
-    'د', 'ڈ', 'ذ', 'ر', 'ڑ', 'ز', 'ژ', 'س', 'ش', 'ص',
-    'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ک', 'گ', 'ل',
-    'م', 'ن', 'ں', 'و', 'ہ', 'ء', 'ی', 'ے'
-  ];
-
-  // ...existing code...
-
-  // Add missing renderHarfRavi function below urduLetters
-  // Fix: Pass state as props to renderHarfRavi
-  const renderHarfRavi = (selectedLetterProp, harfResultsProp, handleLetterClickProp) => (
-    <div className="space-y-6">
-      <div className="card p-6">
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-gradient-to-r from-urdu-gold to-urdu-brown rounded-full flex items-center justify-center mx-auto mb-4">
-            <FileText className="text-white w-8 h-8" />
-          </div>
-          <h3 className="text-2xl font-bold text-urdu-brown mb-2">
-            حرف راوی - اردو حروف تہجی
-          </h3>
-          <p className="text-urdu-maroon">
-            اردو حروف کی تفصیلی معلومات اور مثالیں
-          </p>
-        </div>
-        <div className="grid grid-cols-6 md:grid-cols-10 gap-3 mb-6">
-          {urduLetters.map((letter, index) => (
-            <button
-              key={index}
-              onClick={() => handleLetterClickProp(letter)}
-              className={`p-3 rounded-lg border-2 text-xl font-bold transition-colors ${
-                selectedLetterProp === letter
-                  ? 'bg-urdu-gold text-white border-urdu-gold'
-                  : 'bg-white text-urdu-brown border-urdu-cream hover:border-urdu-gold hover:bg-urdu-gold hover:text-white'
-              }`}
-            >
-              {letter}
-            </button>
-          ))}
-        </div>
-        {harfResultsProp && selectedLetterProp && (
-          <div className="bg-urdu-cream/30 p-6 rounded-lg">
-            <h4 className="text-xl font-bold mb-4 text-right text-urdu-brown">
-              حرف "{selectedLetterProp}" ({harfResultsProp.name})
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h5 className="font-bold mb-3 text-right">مثالی الفاظ:</h5>
-                <div className="space-y-2">
-                  {harfResultsProp.examples?.map((example, index) => (
-                    <div key={index} className="bg-white p-3 rounded text-right border">
-                      {example}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h5 className="font-bold mb-3 text-right">شاعری میں استعمال:</h5>
-                <div className="space-y-2">
-                  {harfResultsProp.poetry?.map((poem, index) => (
-                    <div key={index} className="bg-white p-3 rounded text-right italic border">
-                      "{poem}"
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        {!selectedLetterProp && (
-          <div className="text-center text-urdu-maroon py-8">
-            <Book className="w-12 h-12 mx-auto mb-4 text-urdu-gold" />
-            <p>کوئی حرف منتخب کریں تفصیلات دیکھنے کے لیے</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
 import React, { useState, useEffect, useRef } from 'react';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import axios from 'axios';
 import {
   BookOpen,
   Search,
   PlayCircle,
-  Download,
   Book,
   Users,
   Award,
   FileText,
   Headphones,
-  Star,
   Pause,
   Volume2,
   VolumeX,
@@ -107,17 +20,26 @@ import {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 const Learning = () => {
+  // Tab and navigation state
   const [activeTab, setActiveTab] = useState('tutorials');
-  const [resources, setResources] = useState([]);
-  const [qaafiResults, setQaafiResults] = useState(null);
-  const [harfResults, setHarfResults] = useState([]);
-  const [meterResults, setMeterResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  
+  // Learning resources state
+  const [resources, setResources] = useState([]);
+  const [selectedTutorial, setSelectedTutorial] = useState(null);
+  const [showTutorialModal, setShowTutorialModal] = useState(false);
+  
+  // Qaafia search state
   const [searchWord, setSearchWord] = useState('');
+  const [qaafiResults, setQaafiResults] = useState(null);
+  
+  // Harf-e-Ravi state
   const [selectedLetter, setSelectedLetter] = useState('');
-  const [wordAnalysis, setWordAnalysis] = useState(null);
+  const [harfResults, setHarfResults] = useState(null);
   const [harfRaviText, setHarfRaviText] = useState('');
   const [harfRaviResult, setHarfRaviResult] = useState(null);
+  
+  // Audio player state
   const [audioRecitations, setAudioRecitations] = useState([]);
   const [playingId, setPlayingId] = useState(null);
   const [currentTime, setCurrentTime] = useState({});
@@ -125,87 +47,6 @@ const Learning = () => {
   const [volume, setVolume] = useState({});
   const [isMuted, setIsMuted] = useState({});
   const audioRefs = useRef({});
-    // Custom audio player logic
-    const handlePlayPause = (audioId) => {
-      const audio = audioRefs.current[audioId];
-      if (!audio) return;
-      if (playingId === audioId) {
-        audio.pause();
-        setPlayingId(null);
-      } else {
-        Object.keys(audioRefs.current).forEach(id => {
-          if (id !== audioId && audioRefs.current[id]) {
-            audioRefs.current[id].pause();
-          }
-        });
-        setPlayingId(audioId);
-      }
-    };
-
-    // Auto-play when player expands
-    useEffect(() => {
-      if (playingId && audioRefs.current[playingId]) {
-        audioRefs.current[playingId].play();
-      }
-    }, [playingId]);
-
-    const handleTimeUpdate = (audioId) => {
-      const audio = audioRefs.current[audioId];
-      if (audio) {
-        setCurrentTime(prev => ({ ...prev, [audioId]: audio.currentTime }));
-      }
-    };
-
-    const handleLoadedMetadata = (audioId) => {
-      const audio = audioRefs.current[audioId];
-      if (audio) {
-        setDuration(prev => ({ ...prev, [audioId]: audio.duration }));
-      }
-    };
-
-    const handleSeek = (audioId, value) => {
-      const audio = audioRefs.current[audioId];
-      if (audio) {
-        audio.currentTime = value;
-        setCurrentTime(prev => ({ ...prev, [audioId]: value }));
-      }
-    };
-
-    const handleVolumeChange = (audioId, value) => {
-      const audio = audioRefs.current[audioId];
-      if (audio) {
-        audio.volume = value;
-        setVolume(prev => ({ ...prev, [audioId]: value }));
-        if (value > 0) {
-          setIsMuted(prev => ({ ...prev, [audioId]: false }));
-        }
-      }
-    };
-
-    const handleMuteToggle = (audioId) => {
-      const audio = audioRefs.current[audioId];
-      if (audio) {
-        const newMuted = !isMuted[audioId];
-        audio.muted = newMuted;
-        setIsMuted(prev => ({ ...prev, [audioId]: newMuted }));
-      }
-    };
-
-    const handleSkip = (audioId, seconds) => {
-      const audio = audioRefs.current[audioId];
-      if (audio) {
-        audio.currentTime = Math.max(0, Math.min(audio.duration, audio.currentTime + seconds));
-      }
-    };
-
-    const formatTime = (time) => {
-      if (isNaN(time)) return '0:00';
-      const minutes = Math.floor(time / 60);
-      const seconds = Math.floor(time % 60);
-      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    };
-  const [selectedTutorial, setSelectedTutorial] = useState(null);
-  const [showTutorialModal, setShowTutorialModal] = useState(false);
 
   // Urdu letters for Harf-e-Ravi
   const urduLetters = [
@@ -215,7 +56,7 @@ const Learning = () => {
     'م', 'ن', 'ں', 'و', 'ہ', 'ء', 'ی', 'ے'
   ];
 
-  // Poetry meters data (for display)
+  // Poetry meters data
   const poetryMeters = {
     "بحر_ہزج": {
       name: "بحر ہزج",
@@ -234,13 +75,96 @@ const Learning = () => {
     }
   };
 
+  // Audio player functions
+  const handlePlayPause = (audioId) => {
+    const audio = audioRefs.current[audioId];
+    if (!audio) return;
+    
+    if (playingId === audioId) {
+      audio.pause();
+      setPlayingId(null);
+    } else {
+      Object.keys(audioRefs.current).forEach(id => {
+        if (id !== audioId && audioRefs.current[id]) {
+          audioRefs.current[id].pause();
+        }
+      });
+      setPlayingId(audioId);
+    }
+  };
+
+  const handleTimeUpdate = (audioId) => {
+    const audio = audioRefs.current[audioId];
+    if (audio) {
+      setCurrentTime(prev => ({ ...prev, [audioId]: audio.currentTime }));
+    }
+  };
+
+  const handleLoadedMetadata = (audioId) => {
+    const audio = audioRefs.current[audioId];
+    if (audio) {
+      setDuration(prev => ({ ...prev, [audioId]: audio.duration }));
+    }
+  };
+
+  const handleSeek = (audioId, value) => {
+    const audio = audioRefs.current[audioId];
+    if (audio) {
+      audio.currentTime = value;
+      setCurrentTime(prev => ({ ...prev, [audioId]: value }));
+    }
+  };
+
+  const handleVolumeChange = (audioId, value) => {
+    const audio = audioRefs.current[audioId];
+    if (audio) {
+      audio.volume = value;
+      setVolume(prev => ({ ...prev, [audioId]: value }));
+      if (value > 0) {
+        setIsMuted(prev => ({ ...prev, [audioId]: false }));
+      }
+    }
+  };
+
+  const handleMuteToggle = (audioId) => {
+    const audio = audioRefs.current[audioId];
+    if (audio) {
+      const newMuted = !isMuted[audioId];
+      audio.muted = newMuted;
+      setIsMuted(prev => ({ ...prev, [audioId]: newMuted }));
+    }
+  };
+
+  const handleSkip = (audioId, seconds) => {
+    const audio = audioRefs.current[audioId];
+    if (audio) {
+      audio.currentTime = Math.max(0, Math.min(audio.duration, audio.currentTime + seconds));
+    }
+  };
+
+  const formatTime = (time) => {
+    if (isNaN(time)) return '0:00';
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Auto-play when player expands
+  useEffect(() => {
+    if (playingId && audioRefs.current[playingId]) {
+      audioRefs.current[playingId].play().catch(err => {
+        console.error('Autoplay failed:', err);
+      });
+    }
+  }, [playingId]);
+
+  // Fetch data on component mount
   useEffect(() => {
     fetchLearningResources();
-    fetchHarfRavi();
-    fetchMeters();
     fetchAudioRecitations();
   }, []);
 
+  // API Functions
   const fetchLearningResources = async () => {
     try {
       setLoading(true);
@@ -248,7 +172,6 @@ const Learning = () => {
       setResources(response.data.resources || []);
     } catch (error) {
       console.error('Error fetching learning resources:', error);
-      // Set empty array on error to avoid breaking the UI
       setResources([]);
     } finally {
       setLoading(false);
@@ -256,11 +179,13 @@ const Learning = () => {
   };
 
   const searchQaafia = async () => {
-    if (!searchWord.trim()) return;
+    if (!searchWord.trim()) {
+      alert('براہ کرم لفظ درج کریں');
+      return;
+    }
     
     try {
       setLoading(true);
-      // Use new AI endpoint
       const response = await axios.post(`${API_BASE_URL}/learning/ai/qaafia`, {
         word: searchWord,
         limit: 20,
@@ -270,15 +195,16 @@ const Learning = () => {
     } catch (error) {
       console.error('Error searching qaafia:', error);
       
-      // Fallback to old endpoint if AI service is unavailable
       if (error.response?.data?.fallback) {
         try {
           const fallbackResponse = await axios.get(`${API_BASE_URL}/learning/qaafia/${searchWord}?advanced=true`);
           setQaafiResults(fallbackResponse.data);
         } catch (fallbackError) {
+          alert('قافیہ تلاش میں خرابی');
           setQaafiResults(null);
         }
       } else {
+        alert('قافیہ تلاش میں خرابی');
         setQaafiResults(null);
       }
     } finally {
@@ -286,50 +212,25 @@ const Learning = () => {
     }
   };
 
-  const fetchHarfRavi = async (letter = '') => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/learning/harf-ravi/${letter}`);
-      setHarfResults(letter ? response.data.info : response.data.letters);
-    } catch (error) {
-      console.error('Error fetching harf-ravi:', error);
-      setHarfResults([]);
-    }
-  };
-
-  const fetchMeters = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/learning/meters`);
-      setMeterResults(response.data.meters || []);
-    } catch (error) {
-      console.error('Error fetching meters:', error);
-      setMeterResults([]);
-    }
-  };
-
-  const analyzeWord = async () => {
-    if (!searchWord.trim()) return;
-
+  const handleLetterClick = async (letter) => {
+    setSelectedLetter(letter);
     try {
       setLoading(true);
-      const response = await axios.post(`${API_BASE_URL}/learning/analyze-word`, {
-        word: searchWord
-      });
-      setWordAnalysis(response.data.analysis);
+      const response = await axios.get(`${API_BASE_URL}/learning/harf-ravi/${letter}`);
+      setHarfResults(response.data.info);
     } catch (error) {
-      console.error('Error analyzing word:', error);
-      setWordAnalysis(null);
+      console.error('Error fetching harf-ravi:', error);
+      setHarfResults(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLetterClick = (letter) => {
-    setSelectedLetter(letter);
-    fetchHarfRavi(letter);
-  };
-
   const extractHarfRavi = async () => {
-    if (!harfRaviText.trim()) return;
+    if (!harfRaviText.trim()) {
+      alert('براہ کرم متن داخل کریں');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -340,6 +241,7 @@ const Learning = () => {
       setHarfRaviResult(response.data);
     } catch (error) {
       console.error('Error extracting harf-ravi:', error);
+      alert('حرف راوی نکالنے میں خرابی');
       setHarfRaviResult(null);
     } finally {
       setLoading(false);
@@ -356,35 +258,14 @@ const Learning = () => {
     }
   };
 
-  const playAudio = (audio) => {
-    if (currentAudio?._id === audio._id && isPlaying) {
-      // Pause current audio
-      audioElement?.pause();
-      setIsPlaying(false);
-    } else {
-      // Play new audio
-      if (audioElement) {
-        audioElement.pause();
-      }
-      const newAudio = new Audio(audio.media?.audio?.url);
-      newAudio.play();
-      setAudioElement(newAudio);
-      setCurrentAudio(audio);
-      setIsPlaying(true);
-
-      newAudio.onended = () => {
-        setIsPlaying(false);
-      };
-    }
-  };
-
   const handleTutorialClick = (tutorial) => {
     setSelectedTutorial(tutorial);
     setShowTutorialModal(true);
   };
 
+  // Render Functions
   const renderTutorials = () => {
-    const tutorials = resources.filter(r => r.category === 'tutorial');
+    const tutorials = resources.filter(r => r.category === 'tutorial' || r.type === 'tutorial');
     
     if (tutorials.length === 0) {
       return (
@@ -401,12 +282,12 @@ const Learning = () => {
           <div key={tutorial._id || index} className="card p-6 hover:shadow-xl transition-all duration-300">
             <div className="flex items-center justify-between mb-4">
               <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                tutorial.level === 'beginner' ? 'bg-green-100 text-green-800' :
-                tutorial.level === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                tutorial.level === 'beginner' || tutorial.difficulty === 'beginner' ? 'bg-green-100 text-green-800' :
+                tutorial.level === 'intermediate' || tutorial.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
                 'bg-red-100 text-red-800'
               }`}>
-                {tutorial.level === 'beginner' ? 'ابتدائی' :
-                 tutorial.level === 'intermediate' ? 'درمیانی' : 'اعلیٰ'}
+                {(tutorial.level === 'beginner' || tutorial.difficulty === 'beginner') ? 'ابتدائی' :
+                 (tutorial.level === 'intermediate' || tutorial.difficulty === 'intermediate') ? 'درمیانی' : 'اعلیٰ'}
               </div>
               <BookOpen className="text-urdu-gold w-5 h-5" />
             </div>
@@ -424,7 +305,7 @@ const Learning = () => {
                 {tutorial.duration || '30 منٹ'}
               </span>
               <span className="text-sm text-urdu-gold font-medium">
-                {tutorial.author?.name || 'سسٹم'}
+                {tutorial.author?.name || tutorial.author?.username || 'سسٹم'}
               </span>
             </div>
             
@@ -460,12 +341,12 @@ const Learning = () => {
             <div className="mb-6">
               <div className="flex items-center justify-end gap-4 mb-4">
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  selectedTutorial.level === 'beginner' ? 'bg-green-100 text-green-800' :
-                  selectedTutorial.level === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                  (selectedTutorial.level === 'beginner' || selectedTutorial.difficulty === 'beginner') ? 'bg-green-100 text-green-800' :
+                  (selectedTutorial.level === 'intermediate' || selectedTutorial.difficulty === 'intermediate') ? 'bg-yellow-100 text-yellow-800' :
                   'bg-red-100 text-red-800'
                 }`}>
-                  {selectedTutorial.level === 'beginner' ? 'ابتدائی' :
-                   selectedTutorial.level === 'intermediate' ? 'درمیانی' : 'اعلیٰ'}
+                  {(selectedTutorial.level === 'beginner' || selectedTutorial.difficulty === 'beginner') ? 'ابتدائی' :
+                   (selectedTutorial.level === 'intermediate' || selectedTutorial.difficulty === 'intermediate') ? 'درمیانی' : 'اعلیٰ'}
                 </span>
                 <span className="text-sm text-gray-500">{selectedTutorial.duration || '30 منٹ'}</span>
               </div>
@@ -479,7 +360,7 @@ const Learning = () => {
               <div className="bg-urdu-cream/30 p-6 rounded-lg mb-6">
                 <h3 className="text-xl font-bold text-urdu-brown mb-4">تفصیل:</h3>
                 <div className="text-urdu-maroon leading-relaxed whitespace-pre-line">
-                  {selectedTutorial.content || 'یہ ٹیوٹوریل آپ کو اردو شاعری کے بنیادی اصولوں سے آشنا کرائے گا۔ اس میں قافیہ، ردیف، بحر اور دیگر اہم عناصر کی تفصیل شامل ہے۔'}
+                  {selectedTutorial.content?.text || selectedTutorial.content || 'یہ ٹیوٹوریل آپ کو اردو شاعری کے بنیادی اصولوں سے آشنا کرائے گا۔ اس میں قافیہ، ردیف، بحر اور دیگر اہم عناصر کی تفصیل شامل ہے۔'}
                 </div>
               </div>
 
@@ -513,220 +394,172 @@ const Learning = () => {
       <div className="card p-6">
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-gradient-to-r from-urdu-gold to-urdu-brown rounded-full flex items-center justify-center mx-auto mb-4">
-            <>
-              <div className="space-y-6">
-                <div className="card p-6">
-                  <div className="text-center mb-6">
-                    <div className="w-16 h-16 bg-gradient-to-r from-urdu-gold to-urdu-brown rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Search className="text-white w-8 h-8" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-urdu-brown mb-2">
-                      قافیہ تلاش کنندہ
-                    </h3>
-                    <p className="text-urdu-maroon">
-                      اردو الفاظ کے ہم قافیہ الفاظ تلاش کریں
-                    </p>
-                  </div>
-                  <div className="max-w-md mx-auto mb-6">
-                    <div className="flex gap-4">
-                      <input
-                        type="text"
-                        placeholder="اردو لفظ داخل کریں..."
-                        value={searchWord}
-                        onChange={(e) => setSearchWord(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  {/* Move the audio player fragment outside the input */}
-                  <>
-                    {playingId
-                      ? audioRecitations.filter(audio => audio._id === playingId).map((audio) => (
-                          <div key={audio._id} className="w-full flex flex-col items-center justify-center py-12">
-                            <div className="max-w-xl w-full bg-white rounded-2xl shadow-2xl p-10 border border-urdu-gold/30">
-                              <h4 className="text-3xl font-bold text-urdu-brown mb-4 text-center">{audio.title}</h4>
-                              {audio.description && (
-                                <p className="text-lg text-urdu-maroon mb-4 text-center">{audio.description}</p>
-                              )}
-                              {audio.tags && audio.tags.length > 0 && (
-                                <div className="flex flex-wrap gap-2 justify-center mb-4">
-                                  {audio.tags.slice(0, 3).map((tag, idx) => (
-                                    <span key={idx} className="text-xs bg-urdu-cream px-3 py-1 rounded-full font-semibold">{tag}</span>
-                                  ))}
-                                </div>
-                              )}
-                              {audio.media?.audio?.url && (
-                                <div className="bg-gradient-to-r from-urdu-gold/10 to-urdu-brown/10 rounded-xl p-8 border border-urdu-gold/30 mx-auto">
-                                  <audio
-                                    ref={el => audioRefs.current[audio._id] = el}
-                                    src={audio.media.audio.url}
-                                    onTimeUpdate={() => handleTimeUpdate(audio._id)}
-                                    onLoadedMetadata={() => handleLoadedMetadata(audio._id)}
-                                    onEnded={() => setPlayingId(null)}
-                                    className="hidden"
-                                  />
-                                  <div className="space-y-6">
-                                    <div className="space-y-2">
-                                      <input
-                                        type="range"
-                                        min="0"
-                                        max={duration[audio._id] || 0}
-                                        value={currentTime[audio._id] || 0}
-                                        onChange={(e) => handleSeek(audio._id, parseFloat(e.target.value))}
-                                        className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-urdu-gold"
-                                        style={{
-                                          background: `linear-gradient(to right, #C4A747 0%, #C4A747 ${((currentTime[audio._id] || 0) / (duration[audio._id] || 1)) * 100}%, #e5e7eb ${((currentTime[audio._id] || 0) / (duration[audio._id] || 1)) * 100}%, #e5e7eb 100%)`
-                                        }}
-                                      />
-                                      <div className="flex justify-between text-sm text-gray-600">
-                                        <span>{formatTime(currentTime[audio._id] || 0)}</span>
-                                        <span>{formatTime(duration[audio._id] || 0)}</span>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center justify-center gap-6">
-                                      <button onClick={() => handleSkip(audio._id, -10)} className="p-3 hover:bg-urdu-gold/10 rounded-full transition-colors" title="10 سیکنڈ پیچھے">
-                                        <SkipBack className="w-6 h-6 text-urdu-brown" />
-                                      </button>
-                                      <button onClick={() => handlePlayPause(audio._id)} className="p-6 bg-urdu-gold hover:bg-urdu-brown text-white rounded-full transition-colors shadow-lg text-center">
-                                        {playingId === audio._id ? (<Pause className="w-8 h-8" />) : (<PlayCircle className="w-8 h-8" />)}
-                                      </button>
-                                      <button onClick={() => handleSkip(audio._id, 10)} className="p-3 hover:bg-urdu-gold/10 rounded-full transition-colors" title="10 سیکنڈ آگے">
-                                        <SkipForward className="w-6 h-6 text-urdu-brown" />
-                                      </button>
-                                    </div>
-                                    <div className="flex items-center gap-4 justify-center">
-                                      <button onClick={() => handleMuteToggle(audio._id)} className="p-2 hover:bg-urdu-gold/10 rounded-full transition-colors">
-                                        {isMuted[audio._id] || volume[audio._id] === 0 ? (<VolumeX className="w-6 h-6 text-urdu-brown" />) : (<Volume2 className="w-6 h-6 text-urdu-brown" />)}
-                                      </button>
-                                      <input
-                                        type="range"
-                                        min="0"
-                                        max="1"
-                                        step="0.01"
-                                        value={isMuted[audio._id] ? 0 : (volume[audio._id] || 1)}
-                                        onChange={(e) => handleVolumeChange(audio._id, parseFloat(e.target.value))}
-                                        className="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-urdu-gold"
-                                        style={{
-                                          background: `linear-gradient(to right, #C4A747 0%, #C4A747 ${(isMuted[audio._id] ? 0 : (volume[audio._id] || 1)) * 100}%, #e5e7eb ${(isMuted[audio._id] ? 0 : (volume[audio._id] || 1)) * 100}%, #e5e7eb 100%)`
-                                        }}
-                                      />
-                                      <span className="text-sm text-gray-600 w-10">{Math.round((isMuted[audio._id] ? 0 : (volume[audio._id] || 1)) * 100)}%</span>
-                                    </div>
-                                  </div>
-                                  <button onClick={() => setPlayingId(null)} className="mt-8 px-8 py-3 bg-gray-200 hover:bg-gray-300 rounded-lg text-urdu-brown font-bold mx-auto block text-lg">بند کریں</button>
-                                </div>
-                              )}
-                              {audio.media?.audio?.transcript && (
-                                <div className="mt-8 p-5 bg-gray-50 rounded text-right text-lg text-urdu-brown">
-                                  <p className="font-bold mb-2">نقل:</p>
-                                  <p className="text-urdu-maroon leading-relaxed">{audio.media.audio.transcript}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                      : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {audioRecitations.map((audio) => (
-                            <div key={audio._id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow">
-                              <div className="p-6 flex items-center justify-between">
-                                <div className="flex-1 text-right">
-                                  <h4 className="text-lg font-bold text-urdu-brown mb-2">{audio.title}</h4>
-                                  {audio.description && (<p className="text-sm text-urdu-maroon mb-2">{audio.description}</p>)}
-                                  {audio.tags && audio.tags.length > 0 && (
-                                    <div className="flex flex-wrap gap-2 justify-end mt-2">
-                                      {audio.tags.slice(0, 3).map((tag, idx) => (
-                                        <span key={idx} className="text-xs bg-urdu-cream px-2 py-1 rounded">{tag}</span>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="mr-4 flex flex-col items-center gap-2">
-                                  <button
-                                    onClick={() => setPlayingId(audio._id)}
-                                    className="bg-urdu-gold hover:bg-urdu-brown text-white p-3 rounded-full transition-colors shadow-md hover:shadow-lg"
-                                  >
-                                    <PlayCircle className="w-6 h-6" />
-                                  </button>
-                                  <span className="text-xs text-gray-500">{audio.author?.name || 'نامعلوم'}</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                  </>
-                  <h3 className="text-2xl font-bold text-urdu-brown mt-10 mb-2">
-                    🤖 AI حرف راوی نکالنے والا
-                  </h3>
-                  <p className="text-urdu-maroon">
-                    اپنی شاعری داخل کریں اور AI سے حرف راوی دریافت کریں
+            <Search className="text-white w-8 h-8" />
+          </div>
+          <h3 className="text-2xl font-bold text-urdu-brown mb-2">
+            قافیہ تلاش کنندہ (AI)
+          </h3>
+          <p className="text-urdu-maroon">
+            اردو الفاظ کے ہم قافیہ الفاظ تلاش کریں
+          </p>
+        </div>
+        
+        <div className="max-w-md mx-auto mb-6">
+          <div className="flex gap-4">
+            <button
+              onClick={searchQaafia}
+              disabled={loading || !searchWord.trim()}
+              className="btn-primary px-8 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? <LoadingSpinner size="sm" /> : 'تلاش کریں'}
+            </button>
+            <input
+              type="text"
+              placeholder="اردو لفظ داخل کریں... (مثلاً: دل، محبت، رات)"
+              value={searchWord}
+              onChange={(e) => setSearchWord(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && !loading && searchQaafia()}
+              className="input-field flex-1 text-right"
+              dir="rtl"
+            />
+          </div>
+          <p className="text-xs text-gray-500 mt-2 text-right">
+            💡 مثالیں: دل، محبت، رات، شب، نظر، خیال، دنیا، زندگی
+          </p>
+        </div>
+
+        {qaafiResults && (
+          <div className="bg-urdu-cream/30 p-6 rounded-lg">
+            <div className="mb-4">
+              <h4 className="text-xl font-bold text-right text-urdu-brown">
+                لفظ "{qaafiResults.word}" کے ہم قافیہ الفاظ:
+              </h4>
+              
+              {/* Display pattern analysis from AI */}
+              {qaafiResults.pattern_analysis && (
+                <div className="text-right mt-2 space-y-1">
+                  <p className="text-sm text-gray-600">
+                    🔍 صوتی نمونہ: <span className="font-bold text-urdu-brown">{qaafiResults.pattern_analysis.phonetic_qaafia || 'N/A'}</span>
                   </p>
-                  <div className="max-w-2xl mx-auto mb-6">
-                    <textarea
-                      placeholder="شاعری یا الفاظ یہاں لکھیں... مثال: دل گل مل"
-                      value={harfRaviText}
-                      onChange={(e) => setHarfRaviText(e.target.value)}
-                      className="input-field w-full h-32 text-right resize-none"
-                      dir="rtl"
-                    />
-                    <button
-                      onClick={extractHarfRavi}
-                      disabled={loading || !harfRaviText.trim()}
-                      className="btn-primary w-full mt-4"
+                  <p className="text-xs text-gray-500">
+                    الگورتھم: {qaafiResults.pattern_analysis.matching_strategy === 'ai_weighted_phonetic' ? 'AI وزنی صوتی' : 'بنیادی'}
+                  </p>
+                </div>
+              )}
+              
+              {/* Display count and match type */}
+              {qaafiResults.count !== undefined && (
+                <p className="text-sm text-urdu-gold text-right mt-2 font-bold">
+                  ✨ {qaafiResults.count} نتائج ملے
+                </p>
+              )}
+            </div>
+            
+            {qaafiResults.rhymes && qaafiResults.rhymes.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {qaafiResults.rhymes.map((rhyme, index) => {
+                  const matchType = rhyme.qaafia_type;
+                  const similarityScore = rhyme.similarity_score || rhyme.similarity;
+                  
+                  // Color coding based on match quality
+                  let borderColor = 'border-gray-300';
+                  let bgColor = 'bg-white';
+                  let matchLabel = '';
+                  
+                  if (matchType === 'exact') {
+                    borderColor = 'border-green-500';
+                    bgColor = 'bg-green-50';
+                    matchLabel = '✓ بالکل درست';
+                  } else if (matchType === 'similar') {
+                    borderColor = 'border-blue-500';
+                    bgColor = 'bg-blue-50';
+                    matchLabel = '≈ مماثل';
+                  } else if (matchType === 'close') {
+                    borderColor = 'border-yellow-500';
+                    bgColor = 'bg-yellow-50';
+                    matchLabel = '~ قریب';
+                  } else if (matchType === 'loose') {
+                    borderColor = 'border-orange-400';
+                    bgColor = 'bg-orange-50';
+                    matchLabel = '◊ ڈھیلا';
+                  }
+                  
+                  return (
+                    <div 
+                      key={index} 
+                      className={`${bgColor} p-4 rounded-lg text-right border-2 ${borderColor} hover:shadow-lg hover:scale-105 transition-all duration-200 cursor-pointer`}
+                      onClick={() => {
+                        setSearchWord(typeof rhyme === 'string' ? rhyme : rhyme.word);
+                        searchQaafia();
+                      }}
+                      title={`صوتی نمونہ: ${rhyme.phonetic_pattern || 'N/A'}`}
                     >
-                      {loading ? <LoadingSpinner size="sm" /> : '🔍 AI سے حرف راوی نکالیں'}
-                    </button>
-                  </div>
-                  {harfRaviResult && (
-                    <div className="bg-white p-6 rounded-lg shadow-lg">
-                      <div className="text-center mb-4">
-                        <div className="bg-gradient-to-r from-urdu-gold to-urdu-brown text-white text-4xl font-bold p-6 rounded-full w-24 h-24 flex items-center justify-center mx-auto">
-                          {harfRaviResult.harf_ravi}
-                        </div>
-                        <h4 className="text-xl font-bold text-urdu-brown mt-4">
-                          حرف راوی: <span className="text-urdu-gold text-3xl">{harfRaviResult.harf_ravi}</span>
-                        </h4>
-                      </div>
-                      {harfRaviResult.analysis && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                          <div className="bg-urdu-cream/30 p-4 rounded text-center">
-                            <div className="font-bold text-urdu-brown">اعتماد</div>
-                            <div className="text-2xl text-urdu-gold mt-2">
-                              {(harfRaviResult.analysis.confidence * 100).toFixed(0)}%
-                            </div>
-                          </div>
-                          <div className="bg-urdu-cream/30 p-4 rounded text-center">
-                            <div className="font-bold text-urdu-brown">تعدد</div>
-                            <div className="text-2xl text-urdu-gold mt-2">
-                              {harfRaviResult.analysis.frequency}
-                            </div>
-                          </div>
-                          <div className="bg-urdu-cream/30 p-4 rounded text-center">
-                            <div className="font-bold text-urdu-brown">نمونہ</div>
-                            <div className="text-lg text-urdu-gold mt-2">
-                              {harfRaviResult.analysis.pattern}
-                            </div>
+                      <span className="text-xl font-bold text-urdu-brown block">
+                        {typeof rhyme === 'string' ? rhyme : rhyme.word}
+                      </span>
+                      
+                      {/* Display similarity score */}
+                      {similarityScore !== undefined && (
+                        <div className="flex items-center justify-end gap-1 mt-1">
+                          <span className="text-xs font-semibold text-gray-700">
+                            {(similarityScore * 100).toFixed(0)}%
+                          </span>
+                          <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                            <div 
+                              className="bg-urdu-gold h-1.5 rounded-full transition-all"
+                              style={{ width: `${(similarityScore * 100)}%` }}
+                            ></div>
                           </div>
                         </div>
                       )}
-                      {harfRaviResult.all_candidates && harfRaviResult.all_candidates.length > 1 && (
-                        <div className="mt-6">
-                          <h5 className="font-bold text-right mb-3">دیگر ممکنہ حرف راوی:</h5>
-                          <div className="flex flex-wrap gap-2 justify-end">
-                            {harfRaviResult.all_candidates.slice(1, 6).map((candidate, index) => (
-                              <div key={index} className="bg-gray-100 px-4 py-2 rounded-lg">
-                                <span className="font-bold text-xl">{candidate.letter}</span>
-                                <span className="text-sm text-gray-600 ml-2">({candidate.frequency})</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                      
+                      {/* Display match type label */}
+                      {matchLabel && (
+                        <span className="text-xs text-gray-600 block mt-1">
+                          {matchLabel}
+                        </span>
+                      )}
+                      
+                      {/* Display phonetic pattern */}
+                      {rhyme.phonetic_pattern && (
+                        <span className="text-xs text-gray-500 block mt-0.5">
+                          صوتی: {rhyme.phonetic_pattern}
+                        </span>
                       )}
                     </div>
-                  )}
-                </div>
+                  );
+                })}
               </div>
-            </>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-urdu-maroon text-lg">
+                  😕 افسوس! کوئی ہم قافیہ الفاظ نہیں ملے
+                </p>
+                <p className="text-sm text-gray-600 mt-2">
+                  کسی دوسرے لفظ سے کوشش کریں
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {!qaafiResults && (
+          <div className="text-center py-12">
+            <Search className="w-16 h-16 mx-auto mb-4 text-urdu-gold opacity-30" />
+            <p className="text-urdu-maroon">
+              اوپر اردو لفظ داخل کر کے "تلاش کریں" پر کلک کریں
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderHarfRavi = () => (
+    <div className="space-y-6">
+      <div className="card p-6">
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-gradient-to-r from-urdu-gold to-urdu-brown rounded-full flex items-center justify-center mx-auto mb-4">
             <FileText className="text-white w-8 h-8" />
           </div>
           <h3 className="text-2xl font-bold text-urdu-brown mb-2">
@@ -753,7 +586,13 @@ const Learning = () => {
           ))}
         </div>
 
-        {harfResults && selectedLetter && (
+        {loading && selectedLetter && (
+          <div className="flex justify-center py-8">
+            <LoadingSpinner />
+          </div>
+        )}
+
+        {harfResults && selectedLetter && !loading && (
           <div className="bg-urdu-cream/30 p-6 rounded-lg">
             <h4 className="text-xl font-bold mb-4 text-right text-urdu-brown">
               حرف "{selectedLetter}" ({harfResults.name})
@@ -791,6 +630,125 @@ const Learning = () => {
             <p>کوئی حرف منتخب کریں تفصیلات دیکھنے کے لیے</p>
           </div>
         )}
+
+        {/* AI Harf-e-Ravi Extractor */}
+        <div className="mt-8 pt-8 border-t border-urdu-cream">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-bold text-urdu-brown mb-2">
+              🤖 AI حرف راوی نکالنے والا
+            </h3>
+            <p className="text-urdu-maroon">
+              اپنی شاعری داخل کریں اور AI سے حرف راوی دریافت کریں
+            </p>
+          </div>
+          
+          <div className="max-w-2xl mx-auto">
+            <textarea
+              placeholder="شاعری یا الفاظ یہاں لکھیں... مثال: دل گل مل"
+              value={harfRaviText}
+              onChange={(e) => setHarfRaviText(e.target.value)}
+              className="input-field w-full h-32 text-right resize-none"
+              dir="rtl"
+            />
+            <button
+              onClick={extractHarfRavi}
+              disabled={loading || !harfRaviText.trim()}
+              className="btn-primary w-full mt-4"
+            >
+              {loading ? <LoadingSpinner size="sm" /> : '🔍 AI سے حرف راوی نکالیں'}
+            </button>
+          </div>
+
+          {harfRaviResult && (
+            <div className="bg-white p-6 rounded-lg shadow-lg mt-6">
+              <div className="text-center mb-4">
+                <div className="bg-gradient-to-r from-urdu-gold to-urdu-brown text-white text-4xl font-bold p-6 rounded-full w-24 h-24 flex items-center justify-center mx-auto">
+                  {harfRaviResult.harf_ravi}
+                </div>
+                <h4 className="text-xl font-bold text-urdu-brown mt-4">
+                  حرف راوی: <span className="text-urdu-gold text-3xl">{harfRaviResult.harf_ravi}</span>
+                </h4>
+              </div>
+              
+              {harfRaviResult.analysis && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-urdu-cream/30 p-4 rounded text-center">
+                      <div className="font-bold text-urdu-brown text-sm">اعتماد</div>
+                      <div className="text-2xl text-urdu-gold mt-2 font-bold">
+                        {(harfRaviResult.analysis.confidence * 100).toFixed(0)}%
+                      </div>
+                    </div>
+                    <div className="bg-urdu-cream/30 p-4 rounded text-center">
+                      <div className="font-bold text-urdu-brown text-sm">تعدد</div>
+                      <div className="text-2xl text-urdu-gold mt-2 font-bold">
+                        {harfRaviResult.analysis.frequency}
+                      </div>
+                    </div>
+                    <div className="bg-urdu-cream/30 p-4 rounded text-center">
+                      <div className="font-bold text-urdu-brown text-sm">کل سطریں</div>
+                      <div className="text-2xl text-urdu-gold mt-2 font-bold">
+                        {harfRaviResult.analysis.total_lines || harfRaviResult.analysis.total_words || 'N/A'}
+                      </div>
+                    </div>
+                    <div className="bg-urdu-cream/30 p-4 rounded text-center">
+                      <div className="font-bold text-urdu-brown text-sm">قسم</div>
+                      <div className="text-lg text-urdu-gold mt-2 font-bold">
+                        {harfRaviResult.analysis.pattern_type === 'consistent' ? '✓ مستقل' : 
+                         harfRaviResult.analysis.pattern_type === 'mixed' ? '≈ مخلوط' : 
+                         harfRaviResult.analysis.pattern || 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {harfRaviResult.analysis.example_words && harfRaviResult.analysis.example_words.length > 0 && (
+                    <div className="mt-4">
+                      <h5 className="font-bold text-right mb-2 text-urdu-brown">مثالی الفاظ:</h5>
+                      <div className="flex flex-wrap gap-2 justify-end">
+                        {harfRaviResult.analysis.example_words.map((word, index) => (
+                          <span key={index} className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold">
+                            {word}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {harfRaviResult.last_words_analyzed && harfRaviResult.last_words_analyzed.length > 0 && (
+                    <div className="mt-4">
+                      <h5 className="font-bold text-right mb-2 text-urdu-brown">تجزیہ شدہ آخری الفاظ:</h5>
+                      <div className="flex flex-wrap gap-2 justify-end">
+                        {harfRaviResult.last_words_analyzed.slice(0, 8).map((word, index) => (
+                          <span key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm">
+                            {word}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {harfRaviResult.all_candidates && harfRaviResult.all_candidates.length > 1 && (
+                <div className="mt-6">
+                  <h5 className="font-bold text-right mb-3 text-urdu-brown">دیگر ممکنہ حرف راوی:</h5>
+                  <div className="flex flex-wrap gap-3 justify-end">
+                    {harfRaviResult.all_candidates.slice(1, 6).map((candidate, index) => (
+                      <div key={index} className="bg-gray-100 px-4 py-2 rounded-lg border-2 border-gray-300 hover:border-urdu-gold transition-colors">
+                        <div className="text-center">
+                          <span className="font-bold text-2xl text-urdu-brown block">{candidate.letter}</span>
+                          <span className="text-xs text-gray-600">
+                            {candidate.frequency} ({candidate.percentage || 0}%)
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -800,7 +758,7 @@ const Learning = () => {
       <div className="card p-6">
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-gradient-to-r from-urdu-gold to-urdu-brown rounded-full flex items-center justify-center mx-auto mb-4">
-            <Headphones className="text-white w-8 h-8" />
+            <Book className="text-white w-8 h-8" />
           </div>
           <h3 className="text-2xl font-bold text-urdu-brown mb-2">
             شاعری کی بحور
@@ -887,123 +845,222 @@ const Learning = () => {
                   </li>
                 </ul>
               </div>
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-gray-700">
-                  💡 <strong>نوٹ:</strong> اگر آپ کے پاس اردو شاعری کی صوتی تلاوتیں ہیں تو براہ کرم انہیں اپ لوڈ کریں
-                </p>
-              </div>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-6">
             {audioRecitations.map((audio) => (
-              <div key={audio._id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow">
+              <div key={audio._id}>
                 {playingId === audio._id ? (
-                  <div className="p-8">
-                    {/* Expanded Player UI */}
-                    <h4 className="text-2xl font-bold text-urdu-brown mb-2 text-center">{audio.title}</h4>
-                    {audio.description && (
-                      <p className="text-md text-urdu-maroon mb-4 text-center">{audio.description}</p>
-                    )}
-                    {audio.tags && audio.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-2 justify-center mb-4">
-                        {audio.tags.slice(0, 3).map((tag, idx) => (
-                          <span key={idx} className="text-xs bg-urdu-cream px-2 py-1 rounded">{tag}</span>
-                        ))}
+                  // Full Display Expanded Audio Player
+                  <div className="bg-gradient-to-br from-urdu-cream via-white to-urdu-gold/10 rounded-2xl shadow-2xl overflow-hidden border-2 border-urdu-gold/30 animate-fade-in">
+                    {/* Header Section with Decorative Background */}
+                    <div className="relative bg-gradient-to-r from-urdu-gold to-urdu-brown p-8 text-white overflow-hidden">
+                      {/* Decorative Pattern Overlay */}
+                      <div className="absolute inset-0 opacity-10">
+                        <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full -translate-x-16 -translate-y-16"></div>
+                        <div className="absolute bottom-0 right-0 w-40 h-40 bg-white rounded-full translate-x-20 translate-y-20"></div>
+                        <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-white rounded-full -translate-x-12 -translate-y-12"></div>
                       </div>
-                    )}
-                    {/* Custom Audio Player */}
-                    <div className="bg-gradient-to-r from-urdu-gold/10 to-urdu-brown/10 rounded-xl p-6 border border-urdu-gold/30 mx-auto max-w-lg">
+                      
+                      <div className="relative z-10">
+                        <div className="flex items-start justify-between mb-4">
+                          <button 
+                            onClick={() => setPlayingId(null)} 
+                            className="p-2 hover:bg-white/20 rounded-full transition-all hover:scale-110"
+                            title="بند کریں"
+                          >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                          
+                          <div className="flex-1 text-center">
+                            <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full mb-4 animate-pulse">
+                              <Headphones className="w-10 h-10" />
+                            </div>
+                            <h3 className="text-3xl font-bold mb-2" dir="rtl">{audio.title}</h3>
+                            {audio.description && (
+                              <p className="text-white/90 text-lg mb-3" dir="rtl">{audio.description}</p>
+                            )}
+                            <div className="flex items-center justify-center gap-2 text-sm text-white/80">
+                              <span>🎙️</span>
+                              <span>{audio.author?.name || 'نامعلوم فنکار'}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="w-10"></div>
+                        </div>
+                        
+                        {audio.tags && audio.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-2 justify-center mt-4">
+                            {audio.tags.map((tag, idx) => (
+                              <span key={idx} className="px-4 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Main Player Controls */}
+                    <div className="p-8">
                       <audio
                         ref={el => audioRefs.current[audio._id] = el}
-                        src={audio.media.audio.url}
+                        src={audio.media?.audio?.url}
                         onTimeUpdate={() => handleTimeUpdate(audio._id)}
                         onLoadedMetadata={() => handleLoadedMetadata(audio._id)}
                         onEnded={() => setPlayingId(null)}
                         className="hidden"
                       />
-                      <div className="space-y-4">
-                        <div className="space-y-1">
-                          <input
-                            type="range"
-                            min="0"
-                            max={duration[audio._id] || 0}
-                            value={currentTime[audio._id] || 0}
-                            onChange={(e) => handleSeek(audio._id, parseFloat(e.target.value))}
-                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-urdu-gold"
-                            style={{
-                              background: `linear-gradient(to right, #C4A747 0%, #C4A747 ${((currentTime[audio._id] || 0) / (duration[audio._id] || 1)) * 100}%, #e5e7eb ${((currentTime[audio._id] || 0) / (duration[audio._id] || 1)) * 100}%, #e5e7eb 100%)`
-                            }}
-                          />
-                          <div className="flex justify-between text-xs text-gray-600">
-                            <span>{formatTime(currentTime[audio._id] || 0)}</span>
-                            <span>{formatTime(duration[audio._id] || 0)}</span>
+                      
+                      <div className="space-y-8">
+                        {/* Waveform Progress Bar */}
+                        <div className="space-y-3">
+                          <div className="relative">
+                            <input
+                              type="range"
+                              min="0"
+                              max={duration[audio._id] || 0}
+                              value={currentTime[audio._id] || 0}
+                              onChange={(e) => handleSeek(audio._id, parseFloat(e.target.value))}
+                              className="w-full h-3 bg-gradient-to-r from-urdu-gold/20 to-urdu-brown/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-urdu-gold [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform"
+                              style={{
+                                background: `linear-gradient(to right, #D4AF37 0%, #D4AF37 ${((currentTime[audio._id] || 0) / (duration[audio._id] || 1)) * 100}%, #e5d5a8 ${((currentTime[audio._id] || 0) / (duration[audio._id] || 1)) * 100}%, #e5d5a8 100%)`
+                              }}
+                            />
+                          </div>
+                          
+                          <div className="flex justify-between items-center">
+                            <div className="text-sm font-bold text-urdu-brown bg-urdu-cream px-3 py-1 rounded-full">
+                              {formatTime(currentTime[audio._id] || 0)}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {Math.round(((currentTime[audio._id] || 0) / (duration[audio._id] || 1)) * 100)}%
+                            </div>
+                            <div className="text-sm font-bold text-urdu-brown bg-urdu-cream px-3 py-1 rounded-full">
+                              {formatTime(duration[audio._id] || 0)}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center justify-center gap-4">
-                          <button onClick={() => handleSkip(audio._id, -10)} className="p-2 hover:bg-urdu-gold/10 rounded-full transition-colors" title="10 سیکنڈ پیچھے">
-                            <SkipBack className="w-5 h-5 text-urdu-brown" />
+                        
+                        {/* Main Control Buttons */}
+                        <div className="flex items-center justify-center gap-6">
+                          <button 
+                            onClick={() => handleSkip(audio._id, -10)} 
+                            className="group p-4 bg-white hover:bg-urdu-gold/10 rounded-2xl transition-all shadow-md hover:shadow-xl hover:scale-110 border-2 border-transparent hover:border-urdu-gold"
+                            title="10 سیکنڈ پیچھے"
+                          >
+                            <SkipBack className="w-7 h-7 text-urdu-brown group-hover:text-urdu-gold transition-colors" />
                           </button>
+                          
                           <button
                             onClick={() => handlePlayPause(audio._id)}
-                            className="p-4 bg-urdu-gold hover:bg-urdu-brown text-white rounded-full transition-colors shadow-lg"
-                            disabled={!audioRefs.current[audio._id]}
+                            className="group p-8 bg-gradient-to-br from-urdu-gold to-urdu-brown hover:from-urdu-brown hover:to-urdu-gold text-white rounded-full transition-all shadow-2xl hover:shadow-3xl hover:scale-110 transform"
                           >
-                            {playingId === audio._id ? (<Pause className="w-6 h-6" />) : (<PlayCircle className="w-6 h-6" />)}
+                            {playingId === audio._id ? 
+                              <Pause className="w-12 h-12 animate-pulse" /> : 
+                              <PlayCircle className="w-12 h-12" />
+                            }
                           </button>
-                          <button onClick={() => handleSkip(audio._id, 10)} className="p-2 hover:bg-urdu-gold/10 rounded-full transition-colors" title="10 سیکنڈ آگے">
-                            <SkipForward className="w-5 h-5 text-urdu-brown" />
+                          
+                          <button 
+                            onClick={() => handleSkip(audio._id, 10)} 
+                            className="group p-4 bg-white hover:bg-urdu-gold/10 rounded-2xl transition-all shadow-md hover:shadow-xl hover:scale-110 border-2 border-transparent hover:border-urdu-gold"
+                            title="10 سیکنڈ آگے"
+                          >
+                            <SkipForward className="w-7 h-7 text-urdu-brown group-hover:text-urdu-gold transition-colors" />
                           </button>
                         </div>
-                        <div className="flex items-center gap-3 justify-center">
-                          <button onClick={() => handleMuteToggle(audio._id)} className="p-2 hover:bg-urdu-gold/10 rounded-full transition-colors">
-                            {isMuted[audio._id] || volume[audio._id] === 0 ? (<VolumeX className="w-5 h-5 text-urdu-brown" />) : (<Volume2 className="w-5 h-5 text-urdu-brown" />)}
-                          </button>
-                          <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            value={isMuted[audio._id] ? 0 : (volume[audio._id] || 1)}
-                            onChange={(e) => handleVolumeChange(audio._id, parseFloat(e.target.value))}
-                            className="w-24 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-urdu-gold"
-                            style={{
-                              background: `linear-gradient(to right, #C4A747 0%, #C4A747 ${(isMuted[audio._id] ? 0 : (volume[audio._id] || 1)) * 100}%, #e5e7eb ${(isMuted[audio._id] ? 0 : (volume[audio._id] || 1)) * 100}%, #e5e7eb 100%)`
-                            }}
-                          />
-                          <span className="text-xs text-gray-600 w-8">{Math.round((isMuted[audio._id] ? 0 : (volume[audio._id] || 1)) * 100)}%</span>
+                        
+                        {/* Volume Control */}
+                        <div className="bg-white rounded-2xl p-6 shadow-inner border border-gray-100">
+                          <div className="flex items-center gap-4">
+                            <button 
+                              onClick={() => handleMuteToggle(audio._id)} 
+                              className="p-3 bg-urdu-cream hover:bg-urdu-gold/20 rounded-xl transition-all hover:scale-110"
+                            >
+                              {isMuted[audio._id] ? 
+                                <VolumeX className="w-6 h-6 text-urdu-brown" /> : 
+                                <Volume2 className="w-6 h-6 text-urdu-brown" />
+                              }
+                            </button>
+                            
+                            <div className="flex-1">
+                              <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value={isMuted[audio._id] ? 0 : (volume[audio._id] || 1)}
+                                onChange={(e) => handleVolumeChange(audio._id, parseFloat(e.target.value))}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-urdu-gold [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:scale-125 [&::-webkit-slider-thumb]:transition-transform"
+                              />
+                            </div>
+                            
+                            <div className="min-w-[60px] text-center">
+                              <div className="text-lg font-bold text-urdu-brown bg-urdu-cream px-3 py-1 rounded-lg">
+                                {Math.round((isMuted[audio._id] ? 0 : (volume[audio._id] || 1)) * 100)}%
+                              </div>
+                            </div>
+                          </div>
                         </div>
+                        
+                        {/* Transcript Section */}
+                        {audio.media?.audio?.transcript && (
+                          <div className="bg-gradient-to-br from-urdu-cream/50 to-white rounded-2xl p-6 border-2 border-urdu-gold/20">
+                            <div className="flex items-center gap-2 mb-3">
+                              <FileText className="w-5 h-5 text-urdu-gold" />
+                              <h5 className="font-bold text-urdu-brown text-lg">متن نقل:</h5>
+                            </div>
+                            <div className="text-right text-lg text-urdu-brown leading-relaxed" dir="rtl">
+                              {audio.media.audio.transcript}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <button onClick={() => setPlayingId(null)} className="mt-6 px-6 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-urdu-brown font-medium mx-auto block">بند کریں</button>
                     </div>
-                    {audio.media?.audio?.transcript && (
-                      <div className="mt-6 p-4 bg-gray-50 rounded text-right text-md text-urdu-brown">
-                        <p className="font-bold mb-1">نقل:</p>
-                        <p className="text-urdu-maroon leading-relaxed">{audio.media.audio.transcript}</p>
-                      </div>
-                    )}
                   </div>
                 ) : (
-                  <div className="p-6 flex items-center justify-between">
-                    <div className="flex-1 text-right">
-                      <h4 className="text-lg font-bold text-urdu-brown mb-2">{audio.title}</h4>
-                      {audio.description && (<p className="text-sm text-urdu-maroon mb-2">{audio.description}</p>)}
-                      {audio.tags && audio.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 justify-end mt-2">
-                          {audio.tags.slice(0, 3).map((tag, idx) => (
-                            <span key={idx} className="text-xs bg-urdu-cream px-2 py-1 rounded">{tag}</span>
-                          ))}
+                  // Collapsed Card View
+                  <div className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-[1.02] border-2 border-transparent hover:border-urdu-gold/50 overflow-hidden">
+                    <div className="p-6 flex items-center justify-between gap-6">
+                      <div className="flex-1 text-right" dir="rtl">
+                        <h4 className="text-xl font-bold text-urdu-brown mb-2">{audio.title}</h4>
+                        {audio.description && (
+                          <p className="text-sm text-urdu-maroon mb-3 leading-relaxed">{audio.description}</p>
+                        )}
+                        <div className="flex items-center gap-2 justify-end text-sm text-gray-600">
+                          <span>{audio.author?.name || 'نامعلوم'}</span>
+                          <span>•</span>
+                          <span>🎙️</span>
                         </div>
-                      )}
-                    </div>
-                    <div className="mr-4 flex flex-col items-center gap-2">
+                        {audio.tags && audio.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-2 justify-end mt-3">
+                            {audio.tags.slice(0, 3).map((tag, idx) => (
+                              <span key={idx} className="text-xs bg-urdu-cream text-urdu-brown px-3 py-1 rounded-full font-medium">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      
                       <button
                         onClick={() => setPlayingId(audio._id)}
-                        className="bg-urdu-gold hover:bg-urdu-brown text-white p-3 rounded-full transition-colors shadow-md hover:shadow-lg"
+                        className="group flex flex-col items-center gap-3 min-w-[100px]"
                       >
-                        <PlayCircle className="w-6 h-6" />
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-urdu-gold rounded-full animate-ping opacity-20"></div>
+                          <div className="relative bg-gradient-to-br from-urdu-gold to-urdu-brown hover:from-urdu-brown hover:to-urdu-gold text-white p-5 rounded-full transition-all shadow-lg group-hover:shadow-2xl group-hover:scale-110 transform">
+                            <PlayCircle className="w-8 h-8" />
+                          </div>
+                        </div>
+                        <span className="text-sm font-bold text-urdu-gold group-hover:text-urdu-brown transition-colors">
+                          سنیں
+                        </span>
                       </button>
-                      <span className="text-xs text-gray-500">{audio.author?.name || 'نامعلوم'}</span>
                     </div>
                   </div>
                 )}
@@ -1015,8 +1072,9 @@ const Learning = () => {
     </div>
   );
 
+  // Tab configuration
   const tabs = [
-    { id: 'tutorials', label: 'ٹیوٹوریلز', icon: BookOpen },
+    { id: 'tutorials', label: 'سبق', icon: BookOpen },
     { id: 'qaafia', label: 'قافیہ تلاش (AI)', icon: Search },
     { id: 'harf-ravi', label: 'حرف راوی (AI)', icon: FileText },
     { id: 'audio', label: 'صوتی تلاوتیں', icon: Headphones },
@@ -1026,171 +1084,77 @@ const Learning = () => {
   return (
     <div className="min-h-screen cultural-bg py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {playingId ? (
-          // Full display audio player UI
-          <div className="flex flex-col items-center justify-center min-h-[70vh]">
-            {audioRecitations.filter(audio => audio._id === playingId).map((audio) => (
-              <div key={audio._id} className="w-full flex flex-col items-center justify-center">
-                <div className="max-w-xl w-full bg-white rounded-2xl shadow-2xl p-10 border border-urdu-gold/30">
-                  <h4 className="text-3xl font-bold text-urdu-brown mb-4 text-center">{audio.title}</h4>
-                  {audio.description && (
-                    <p className="text-lg text-urdu-maroon mb-4 text-center">{audio.description}</p>
-                  )}
-                  {audio.tags && audio.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 justify-center mb-4">
-                      {audio.tags.slice(0, 3).map((tag, idx) => (
-                        <span key={idx} className="text-xs bg-urdu-cream px-3 py-1 rounded-full font-semibold">{tag}</span>
-                      ))}
-                    </div>
-                  )}
-                  {audio.media?.audio?.url && (
-                    <div className="bg-gradient-to-r from-urdu-gold/10 to-urdu-brown/10 rounded-xl p-8 border border-urdu-gold/30 mx-auto">
-                      <audio
-                        ref={el => audioRefs.current[audio._id] = el}
-                        src={audio.media.audio.url}
-                        onTimeUpdate={() => handleTimeUpdate(audio._id)}
-                        onLoadedMetadata={() => handleLoadedMetadata(audio._id)}
-                        onEnded={() => setPlayingId(null)}
-                        className="hidden"
-                      />
-                      <div className="space-y-6">
-                        <div className="space-y-2">
-                          <input
-                            type="range"
-                            min="0"
-                            max={duration[audio._id] || 0}
-                            value={currentTime[audio._id] || 0}
-                            onChange={(e) => handleSeek(audio._id, parseFloat(e.target.value))}
-                            className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-urdu-gold"
-                            style={{
-                              background: `linear-gradient(to right, #C4A747 0%, #C4A747 ${((currentTime[audio._id] || 0) / (duration[audio._id] || 1)) * 100}%, #e5e7eb ${((currentTime[audio._id] || 0) / (duration[audio._id] || 1)) * 100}%, #e5e7eb 100%)`
-                            }}
-                          />
-                          <div className="flex justify-between text-sm text-gray-600">
-                            <span>{formatTime(currentTime[audio._id] || 0)}</span>
-                            <span>{formatTime(duration[audio._id] || 0)}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-center gap-6">
-                          <button onClick={() => handleSkip(audio._id, -10)} className="p-3 hover:bg-urdu-gold/10 rounded-full transition-colors" title="10 سیکنڈ پیچھے">
-                            <SkipBack className="w-6 h-6 text-urdu-brown" />
-                          </button>
-                          <button onClick={() => handlePlayPause(audio._id)} className="p-6 bg-urdu-gold hover:bg-urdu-brown text-white rounded-full transition-colors shadow-lg text-center">
-                            {playingId === audio._id ? (<Pause className="w-8 h-8" />) : (<PlayCircle className="w-8 h-8" />)}
-                          </button>
-                          <button onClick={() => handleSkip(audio._id, 10)} className="p-3 hover:bg-urdu-gold/10 rounded-full transition-colors" title="10 سیکنڈ آگے">
-                            <SkipForward className="w-6 h-6 text-urdu-brown" />
-                          </button>
-                        </div>
-                        <div className="flex items-center gap-4 justify-center">
-                          <button onClick={() => handleMuteToggle(audio._id)} className="p-2 hover:bg-urdu-gold/10 rounded-full transition-colors">
-                            {isMuted[audio._id] || volume[audio._id] === 0 ? (<VolumeX className="w-6 h-6 text-urdu-brown" />) : (<Volume2 className="w-6 h-6 text-urdu-brown" />)}
-                          </button>
-                          <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            value={isMuted[audio._id] ? 0 : (volume[audio._id] || 1)}
-                            onChange={(e) => handleVolumeChange(audio._id, parseFloat(e.target.value))}
-                            className="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-urdu-gold"
-                            style={{
-                              background: `linear-gradient(to right, #C4A747 0%, #C4A747 ${(isMuted[audio._id] ? 0 : (volume[audio._id] || 1)) * 100}%, #e5e7eb ${(isMuted[audio._id] ? 0 : (volume[audio._id] || 1)) * 100}%, #e5e7eb 100%)`
-                            }}
-                          />
-                          <span className="text-sm text-gray-600 w-10">{Math.round((isMuted[audio._id] ? 0 : (volume[audio._id] || 1)) * 100)}%</span>
-                        </div>
-                      </div>
-                      <button onClick={() => setPlayingId(null)} className="mt-8 px-8 py-3 bg-gray-200 hover:bg-gray-300 rounded-lg text-urdu-brown font-bold mx-auto block text-lg">بند کریں</button>
-                    </div>
-                  )}
-                  {audio.media?.audio?.transcript && (
-                    <div className="mt-8 p-5 bg-gray-50 rounded text-right text-lg text-urdu-brown">
-                      <p className="font-bold mb-2">نقل:</p>
-                      <p className="text-urdu-maroon leading-relaxed">{audio.media.audio.transcript}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 bg-gradient-to-r from-urdu-gold to-urdu-brown rounded-full flex items-center justify-center mx-auto mb-4">
+            <BookOpen className="text-white w-10 h-10" />
           </div>
-        ) : (
-          <>
-            {/* Header */}
-            <div className="text-center mb-8">
-              <div className="w-20 h-20 bg-gradient-to-r from-urdu-gold to-urdu-brown rounded-full flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="text-white w-10 h-10" />
+          <h1 className="text-4xl font-bold gradient-text mb-4">
+            📚 تعلیمی مرکز
+          </h1>
+          <p className="text-lg text-urdu-brown">
+            اردو شاعری سیکھنے کے لیے جامع وسائل - AI قافیہ تلاش، حرف راوی، صوتی تلاوتیں، بحور اور سبق
+          </p>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                  activeTab === tab.id
+                    ? 'bg-urdu-gold text-white shadow-lg'
+                    : 'bg-white text-urdu-brown hover:bg-urdu-cream shadow border border-urdu-cream'
+                }`}
+              >
+                <Icon size={18} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tab Content */}
+        <div className="max-w-6xl mx-auto">
+          {loading && activeTab === 'tutorials' ? (
+            <div className="flex justify-center py-12">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <>
+              {activeTab === 'tutorials' && renderTutorials()}
+              {activeTab === 'qaafia' && renderQaafia()}
+              {activeTab === 'harf-ravi' && renderHarfRavi()}
+              {activeTab === 'audio' && renderAudioRecitations()}
+              {activeTab === 'meters' && renderMeters()}
+            </>
+          )}
+        </div>
+
+        {/* Tutorial Modal */}
+        {renderTutorialModal()}
+
+        {/* Learning Stats */}
+        <div className="grid md:grid-cols-4 gap-6 mt-12">
+          {[
+            { icon: Book, label: "وسائل", value: "50+" },
+            { icon: PlayCircle, label: "سبق", value: "25+" },
+            { icon: Users, label: "اساتذہ", value: "15+" },
+            { icon: Award, label: "کورسز", value: "10+" },
+          ].map((stat, index) => (
+            <div key={index} className="card p-6 text-center">
+              <stat.icon className="w-8 h-8 text-urdu-gold mx-auto mb-3" />
+              <div className="text-2xl font-bold text-urdu-brown mb-1">
+                {stat.value}
               </div>
-              <h1 className="text-4xl font-bold gradient-text mb-4">
-                📚 تعلیمی مرکز
-              </h1>
-              <p className="text-lg text-urdu-brown">
-                اردو شاعری سیکھنے کے لیے جامع وسائل - AI قافیہ تلاش، حرف راوی، صوتی تلاوتیں، بحور اور ٹیوٹوریلز
-              </p>
+              <div className="text-sm text-urdu-maroon">{stat.label}</div>
             </div>
-            {/* Tab Navigation */}
-            <div className="flex flex-wrap justify-center gap-2 mb-8">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => {
-                      setActiveTab(tab.id);
-                      // If Qaafia tab is clicked, also show Harf-e-Ravi section
-                      if (tab.id === 'qaafia') {
-                        setActiveTab('harf-ravi');
-                      }
-                    }}
-                    className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                      activeTab === tab.id
-                        ? 'bg-urdu-gold text-white shadow-lg'
-                        : 'bg-white text-urdu-brown hover:bg-urdu-cream shadow border border-urdu-cream'
-                    }`}
-                  >
-                    <Icon size={18} />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-            {/* Tab Content */}
-            <div className="max-w-6xl mx-auto">
-              {loading && activeTab === 'tutorials' ? (
-                <div className="flex justify-center py-12">
-                  <LoadingSpinner />
-                </div>
-              ) : (
-                <>
-                  {activeTab === 'tutorials' && renderTutorials()}
-                  {activeTab === 'qaafia' && renderQaafia()}
-                  {activeTab === 'harf-ravi' && renderHarfRavi(selectedLetter, harfResults, handleLetterClick)}
-                  {activeTab === 'audio' && renderAudioRecitations()}
-                  {activeTab === 'meters' && renderMeters()}
-                </>
-              )}
-            </div>
-            {/* Tutorial Modal */}
-            {renderTutorialModal()}
-            {/* Learning Stats */}
-            <div className="grid md:grid-cols-4 gap-6 mt-12">
-              {[
-                { icon: Book, label: "وسائل", value: "50+" },
-                { icon: PlayCircle, label: "ٹیوٹوریلز", value: "25+" },
-                { icon: Users, label: "اساتذہ", value: "15+" },
-                { icon: Award, label: "کورسز", value: "10+" },
-              ].map((stat, index) => (
-                <div key={index} className="card p-6 text-center">
-                  <stat.icon className="w-8 h-8 text-urdu-gold mx-auto mb-3" />
-                  <div className="text-2xl font-bold text-urdu-brown mb-1">
-                    {stat.value}
-                  </div>
-                  <div className="text-sm text-urdu-maroon">{stat.label}</div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+          ))}
+        </div>
       </div>
     </div>
   );
