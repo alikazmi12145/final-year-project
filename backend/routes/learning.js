@@ -40,40 +40,137 @@ const learningLimit = rateLimit({
   message: "Too many requests from this IP, please try again later."
 });
 
-// Comprehensive Urdu rhyming words database
+// Comprehensive Urdu rhyming words database - Expanded for better qaafia matching
 const qaafiaDictionary = {
-  // Common Urdu rhyming patterns
-  "دل": ["گل", "مل", "قل", "بل", "ہل", "جل"],
-  "شب": ["لب", "حب", "رب", "نب", "سب"],
-  "آنکھ": ["دیکھ", "دیکھ", "سیکھ"],
-  "دن": ["من", "تن", "بن", "سن"],
-  "رات": ["بات", "ہات", "سات", "جات"],
-  "محبت": ["عادت", "قدرت", "خصوصیت"],
-  "زندگی": ["زندگی", "بندگی", "سادگی"],
-  "دنیا": ["دنیا", "کریا", "ہویا"],
-  "خوشی": ["خوشی", "خاموشی", "جوشی"],
-  "غم": ["غم", "سم", "دم", "قم"],
-  "پیار": ["یار", "کار", "بار", "دار"],
-  "امید": ["امید", "تائید", "وعید"],
-  "خواب": ["خراب", "عذاب", "شراب", "باب"],
-  "سورج": ["چاند", "ستارہ", "چمک"],
-  "چاند": ["چاند", "بند", "کند"],
-  "آسمان": ["جہان", "انسان", "مکان", "شان"],
-  "زمین": ["یقین", "آمین", "تمکین"],
-  "پھول": ["گول", "کول", "مول"],
-  "ہوا": ["دوا", "قوا", "جوا"],
-  "پانی": ["نانی", "بانی", "شانی"],
-  "آگ": ["باغ", "آغ", "بھاگ"],
-  "سکون": ["فنون", "شئون", "مضمون"],
-  "جنون": ["فنون", "شئون", "سکون"],
-  "عشق": ["رشق", "فشق", "بشق"],
-  "حسن": ["روشن", "چشن", "کشن"],
-  "جمال": ["کمال", "خیال", "مال"],
-  "نظر": ["گذر", "سفر", "اثر"],
-  "نگاہ": ["راہ", "چاہ", "خواہ"],
-  "دعا": ["خدا", "ہوا", "رہا"],
-  "رحمت": ["قیامت", "کرامت", "سلامت"],
-  "برکت": ["حرکت", "شرکت", "قدرت"]
+  // Words ending with 'ل'
+  "دل": ["گل", "مل", "قل", "بل", "ہل", "جل", "پھل", "شکل", "عقل"],
+  "گل": ["دل", "مل", "قل", "بل", "ہل", "جل", "پھل", "شکل", "عقل"],
+  "مل": ["دل", "گل", "قل", "بل", "ہل", "جل", "پھل", "شکل", "عقل"],
+  "پھل": ["دل", "گل", "مل", "قل", "بل", "ہل", "جل", "شکل", "عقل"],
+  
+  // Words ending with 'ب'
+  "شب": ["لب", "حب", "رب", "نب", "سب", "طلب", "غیب", "عیب"],
+  "لب": ["شب", "حب", "رب", "نب", "سب", "طلب", "غیب", "عیب"],
+  "حب": ["شب", "لب", "رب", "نب", "سب", "طلب", "غیب", "عیب"],
+  "رب": ["شب", "لب", "حب", "نب", "سب", "طلب", "غیب", "عیب"],
+  
+  // Words ending with 'ن'
+  "دن": ["من", "تن", "بن", "سن", "چن", "دھن", "گن", "جن"],
+  "من": ["دن", "تن", "بن", "سن", "چن", "دھن", "گن", "جن"],
+  "تن": ["دن", "من", "بن", "سن", "چن", "دھن", "گن", "جن"],
+  "بن": ["دن", "من", "تن", "سن", "چن", "دھن", "گن", "جن"],
+  
+  // Words ending with 'ت'
+  "رات": ["بات", "ہات", "سات", "جات", "خات", "ذات", "نجات", "حیات"],
+  "بات": ["رات", "ہات", "سات", "جات", "خات", "ذات", "نجات", "حیات"],
+  "محبت": ["عادت", "قدرت", "خصوصیت", "نعمت", "رحمت", "غیرت", "عزت"],
+  "عادت": ["محبت", "قدرت", "خصوصیت", "نعمت", "رحمت", "غیرت", "عزت"],
+  "رحمت": ["محبت", "عادت", "قدرت", "قیامت", "کرامت", "سلامت", "برکت"],
+  "برکت": ["محبت", "رحمت", "حرکت", "شرکت", "قدرت", "نعمت"],
+  
+  // Words ending with 'ی' or 'ے'
+  "زندگی": ["بندگی", "سادگی", "آزادی", "خوشی", "خاموشی", "جوشی"],
+  "بندگی": ["زندگی", "سادگی", "آزادی", "خوشی", "خاموشی", "جوشی"],
+  "خوشی": ["زندگی", "بندگی", "خاموشی", "جوشی", "آزادی", "سادگی"],
+  "آزادی": ["زندگی", "بندگی", "خوشی", "خاموشی", "سادگی", "شادی"],
+  "دنیا": ["کریا", "ہویا", "بنیا", "رویا", "سویا", "کیا"],
+  
+  // Words ending with 'م'
+  "غم": ["سم", "دم", "قم", "کم", "نم", "رقم", "علم", "قلم"],
+  "سم": ["غم", "دم", "قم", "کم", "نم", "رقم", "علم", "قلم"],
+  "دم": ["غم", "سم", "قم", "کم", "نم", "رقم", "علم", "قلم"],
+  "قلم": ["غم", "سم", "دم", "علم", "رقم", "کلام", "سلام", "آرام"],
+  "علم": ["غم", "سم", "دم", "قلم", "رقم", "کلام", "سلام"],
+  
+  // Words ending with 'ر'
+  "پیار": ["یار", "کار", "بار", "دار", "مار", "چار", "نار", "بہار"],
+  "یار": ["پیار", "کار", "بار", "دار", "مار", "چار", "نار", "بہار"],
+  "کار": ["پیار", "یار", "بار", "دار", "مار", "چار", "نار", "بہار"],
+  "بار": ["پیار", "یار", "کار", "دار", "مار", "چار", "نار", "بہار"],
+  "نظر": ["گذر", "سفر", "اثر", "خبر", "نگر", "اکبر", "کفر"],
+  "گذر": ["نظر", "سفر", "اثر", "خبر", "نگر", "اکبر", "کفر"],
+  "سفر": ["نظر", "گذر", "اثر", "خبر", "نگر", "اکبر", "کفر"],
+  
+  // Words ending with 'د'
+  "امید": ["تائید", "وعید", "شہید", "مزید", "عید", "سعید", "وحید"],
+  "تائید": ["امید", "وعید", "شہید", "مزید", "عید", "سعید", "وحید"],
+  "وعید": ["امید", "تائید", "شہید", "مزید", "عید", "سعید", "وحید"],
+  
+  // Words ending with 'ب'
+  "خواب": ["خراب", "عذاب", "شراب", "باب", "جواب", "کباب", "حساب"],
+  "خراب": ["خواب", "عذاب", "شراب", "باب", "جواب", "کباب", "حساب"],
+  "عذاب": ["خواب", "خراب", "شراب", "باب", "جواب", "کباب", "حساب"],
+  "شراب": ["خواب", "خراب", "عذاب", "باب", "جواب", "کباب", "حساب"],
+  
+  // Words ending with 'ن'
+  "چاند": ["بند", "کند", "پسند", "بلند", "قند", "مند"],
+  "بند": ["چاند", "کند", "پسند", "بلند", "قند", "مند"],
+  "آسمان": ["جہان", "انسان", "مکان", "شان", "مہربان", "دکان", "زمان"],
+  "جہان": ["آسمان", "انسان", "مکان", "شان", "مہربان", "دکان", "زمان"],
+  "انسان": ["آسمان", "جہان", "مکان", "شان", "مہربان", "دکان", "زمان"],
+  "مکان": ["آسمان", "جہان", "انسان", "شان", "مہربان", "دکان", "زمان"],
+  
+  // Words ending with 'ن' (continued)
+  "زمین": ["یقین", "آمین", "تمکین", "حسین", "نشین"],
+  "یقین": ["زمین", "آمین", "تمکین", "حسین", "نشین"],
+  "سکون": ["فنون", "شئون", "مضمون", "جنون", "خون", "کون"],
+  "جنون": ["فنون", "شئون", "سکون", "مضمون", "خون", "کون"],
+  "فنون": ["سکون", "جنون", "شئون", "مضمون", "خون", "کون"],
+  
+  // Words ending with 'ق'
+  "عشق": ["رشق", "اشتیاق", "اتفاق", "فرق", "شوق", "حق", "رزق"],
+  "رشق": ["عشق", "اشتیاق", "اتفاق", "فرق", "شوق", "حق", "رزق"],
+  "شوق": ["عشق", "رشق", "فرق", "حق", "رزق", "ذوق"],
+  
+  // Words ending with 'ن'
+  "حسن": ["روشن", "وطن", "چمن", "دشمن", "سخن", "بدن"],
+  "روشن": ["حسن", "وطن", "چمن", "دشمن", "سخن", "بدن"],
+  "جمال": ["کمال", "خیال", "مال", "حال", "سوال", "مثال", "زوال"],
+  "کمال": ["جمال", "خیال", "مال", "حال", "سوال", "مثال", "زوال"],
+  "خیال": ["جمال", "کمال", "مال", "حال", "سوال", "مثال", "زوال"],
+  
+  // Words ending with 'ہ'
+  "نگاہ": ["راہ", "چاہ", "خواہ", "ماہ", "آہ", "اللہ", "گناہ"],
+  "راہ": ["نگاہ", "چاہ", "خواہ", "ماہ", "آہ", "اللہ", "گناہ"],
+  "خواہ": ["نگاہ", "راہ", "چاہ", "ماہ", "آہ", "اللہ", "گناہ"],
+  
+  // Words ending with 'ا'
+  "دعا": ["خدا", "ہوا", "رہا", "کیا", "سوا", "جدا", "عطا"],
+  "خدا": ["دعا", "ہوا", "رہا", "کیا", "سوا", "جدا", "عطا"],
+  "ہوا": ["دعا", "خدا", "رہا", "کیا", "سوا", "جدا", "عطا"],
+  
+  // Words ending with 'ل'
+  "پھول": ["گول", "کول", "مول", "شول", "چول", "بول"],
+  "گول": ["پھول", "کول", "مول", "شول", "چول", "بول"],
+  
+  // Words ending with 'ی' 
+  "پانی": ["نانی", "بانی", "شانی", "جانی", "ثانی", "عالی"],
+  "نانی": ["پانی", "بانی", "شانی", "جانی", "ثانی", "عالی"],
+  
+  // Words ending with 'غ'
+  "آگ": ["باغ", "داغ", "بھاگ", "میاغ", "راغ"],
+  "باغ": ["آگ", "داغ", "بھاگ", "میاغ", "راغ"],
+  
+  // Additional common words
+  "نام": ["کام", "شام", "آرام", "اعلام", "قیام", "تمام"],
+  "کام": ["نام", "شام", "آرام", "اعلام", "قیام", "تمام"],
+  "شام": ["نام", "کام", "آرام", "اعلام", "قیام", "تمام"],
+  "آرام": ["نام", "کام", "شام", "اعلام", "قیام", "تمام"],
+  
+  "آنکھ": ["دیکھ", "سیکھ", "پیکھ", "بھیکھ"],
+  "دیکھ": ["آنکھ", "سیکھ", "پیکھ", "بھیکھ"],
+  "سیکھ": ["آنکھ", "دیکھ", "پیکھ", "بھیکھ"],
+  
+  "دوست": ["پوست", "کوست", "جوست", "ہوست"],
+  "ہست": ["دست", "برست", "جست", "کشت"],
+  
+  "دور": ["نور", "حور", "طور", "ظہور", "مشہور", "منور"],
+  "نور": ["دور", "حور", "طور", "ظہور", "مشہور", "منور"],
+  
+  "صبح": ["فتح", "سطح", "مدح", "ذبح"],
+  "رنگ": ["ننگ", "سنگ", "جنگ", "تنگ", "ہنگ"],
+  "سنگ": ["رنگ", "ننگ", "جنگ", "تنگ", "ہنگ"],
+  "جنگ": ["رنگ", "سنگ", "ننگ", "تنگ", "ہنگ"]
 };
 
 // Harf-e-Ravi (Complete Urdu alphabet with examples)
@@ -237,39 +334,72 @@ router.get("/resources", learningLimit, async (req, res) => {
   }
 });
 
-// Qaafia (Rhyming words) search
+// Qaafia (Rhyming words) search - Improved algorithm
 router.get("/qaafia/:word", learningLimit, async (req, res) => {
   try {
     const word = req.params.word.trim();
     const { limit = 20, advanced = false } = req.query;
 
-    // Check in our comprehensive dictionary first
-    let rhymes = qaafiaDictionary[word] || [];
+    let rhymes = [];
+    let matchType = "exact";
 
-    // If not found in dictionary, try pattern matching
-    if (rhymes.length === 0) {
-      // Extract last syllable/sound pattern
+    // 1. First check for exact match in dictionary
+    if (qaafiaDictionary[word]) {
+      rhymes = qaafiaDictionary[word];
+      matchType = "exact";
+    } 
+    // 2. If not found, try phonetic/pattern matching
+    else {
+      // Extract last 1, 2, and 3 characters for matching
       const lastChar = word.slice(-1);
       const lastTwoChars = word.slice(-2);
+      const lastThreeChars = word.slice(-3);
 
-      // Find words with similar endings
       const allWords = Object.keys(qaafiaDictionary);
-      rhymes = allWords.filter(w => {
-        return w.endsWith(lastChar) || w.endsWith(lastTwoChars);
-      }).slice(0, limit);
+      const matches = new Set();
 
-      // If still no matches, find words from our database
+      // Find words with matching endings (weighted by similarity)
+      allWords.forEach(dictWord => {
+        // Exact last 3 chars match (highest priority)
+        if (word.length >= 3 && dictWord.endsWith(lastThreeChars)) {
+          qaafiaDictionary[dictWord].forEach(rhyme => matches.add(rhyme));
+          matches.add(dictWord);
+        }
+        // Exact last 2 chars match (medium priority)
+        else if (word.length >= 2 && dictWord.endsWith(lastTwoChars)) {
+          qaafiaDictionary[dictWord].forEach(rhyme => matches.add(rhyme));
+        }
+        // Last char match (lowest priority)
+        else if (dictWord.endsWith(lastChar)) {
+          qaafiaDictionary[dictWord].slice(0, 3).forEach(rhyme => matches.add(rhyme));
+        }
+      });
+
+      rhymes = Array.from(matches).filter(w => w !== word);
+      matchType = rhymes.length > 0 ? "pattern" : "none";
+
+      // 3. If still no matches, try database search
       if (rhymes.length === 0) {
-        const poetWords = await Poem.aggregate([
-          { $unwind: "$content" },
-          { $match: { "content": { $regex: lastChar + "$", $options: "i" } } },
-          { $group: { _id: null, words: { $addToSet: "$content" } } },
-          { $project: { words: { $slice: ["$words", parseInt(limit)] } } }
-        ]);
+        try {
+          const poetWords = await Poem.aggregate([
+            { $match: { content: { $regex: lastChar + "$", $options: "i" } } },
+            { $project: { words: { $split: ["$content", " "] } } },
+            { $unwind: "$words" },
+            { $match: { words: { $regex: lastChar + "$", $options: "i" } } },
+            { $group: { _id: "$words" } },
+            { $limit: parseInt(limit) }
+          ]);
 
-        rhymes = poetWords.length > 0 ? poetWords[0].words : [];
+          rhymes = poetWords.map(p => p._id).filter(w => w && w !== word);
+          matchType = rhymes.length > 0 ? "database" : "none";
+        } catch (dbError) {
+          console.error("Database search error:", dbError);
+        }
       }
     }
+
+    // Remove duplicates and limit results
+    rhymes = [...new Set(rhymes)].slice(0, parseInt(limit));
 
     // Advanced analysis if requested
     let analysis = {};
@@ -279,22 +409,25 @@ router.get("/qaafia/:word", learningLimit, async (req, res) => {
         syllablePattern: analyzeSyllables(word),
         meterSuggestions: findMeterSuggestions(word),
         relatedWords: findRelatedWords(word),
-        poetryExamples: await findPoetryExamples(word)
+        poetryExamples: await findPoetryExamples(word),
+        matchType: matchType
       };
     }
 
     res.json({
       success: true,
       word,
-      rhymes: rhymes.slice(0, parseInt(limit)),
+      rhymes: rhymes,
       total: rhymes.length,
+      matchType: matchType,
       analysis: advanced === 'true' ? analysis : undefined
     });
   } catch (error) {
     console.error("Qaafia search error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to search rhyming words"
+      message: "Failed to search rhyming words",
+      error: error.message
     });
   }
 });
