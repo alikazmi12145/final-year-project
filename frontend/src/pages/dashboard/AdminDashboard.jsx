@@ -47,6 +47,7 @@ import {
   Upload,
 } from "lucide-react";
 import LearningResourcesUpload from "../../components/admin/LearningResourcesUpload";
+import UserApprovalPanel from "../../components/admin/UserApprovalPanel";
 import {
   adminDashboardAPI,
   formatTimeAgo,
@@ -821,6 +822,12 @@ const AdminDashboard = () => {
       color: "text-indigo-600",
     },
     {
+      id: "user-approval",
+      label: "صارفین کی منظوری",
+      icon: UserCheck,
+      color: "text-emerald-600",
+    },
+    {
       id: "learning-resources",
       label: "تعلیمی وسائل",
       icon: Upload,
@@ -1052,6 +1059,7 @@ const AdminDashboard = () => {
             {activeTab === "contest-management" && (
               <ContestManagementTab contests={contests} />
             )}
+            {activeTab === "user-approval" && <UserApprovalPanel />}
             {activeTab === "learning-resources" && <LearningResourcesUpload />}
             {activeTab === "analytics" && (
               <AnalyticsTab dashboardData={dashboardData} />

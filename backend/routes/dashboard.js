@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import { auth, moderatorAuth } from "../middleware/auth.js";
 import Poem from "../models/Poem.js";
 import User from "../models/User.js";
@@ -558,5 +559,378 @@ router.get("/moderation-queue", auth, moderatorAuth, async (req, res) => {
     });
   }
 });
+
+// Get reader dashboard data
+router.get("/reader", auth, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    // Convert to ObjectId for aggregation pipelines
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    
+    // Get user with their data
+    const user = await User.findById(userId)
+      .select("bookmarkedPoems followedPoets readingHistory preferences createdAt")
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Get bookmarked poems
+    const bookmarkedPoems = user.bookmarkedPoems || [];
+    const bookmarks = await Poem.find({
+      _id: { $in: bookmarkedPoems },
+      status: "published"
+    })
+      .populate("author", "name profileImage")
+      .populate("poet", "name bio")
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean();
+
+    // Get reading history (poems the user has interacted with)
+    const readingHistory = user.readingHistory || [];
+    
+    // Get poems liked by user
+    const likedPoems = await Poem.find({
+      "likes.user": userObjectId,
+      status: "published"
+    })
+      .select("_id title category createdAt")
+      .lean();
+
+    // Get user's comments count
+    const commentsCount = await Poem.aggregate([
+      { $unwind: "$comments" },
+      { $match: { "comments.user": userObjectId } },
+      { $count: "total" }
+    ]);
+
+    // Calculate category preferences from liked and bookmarked poems
+    const allInteractedPoems = await Poem.find({
+      $or: [
+        { _id: { $in: bookmarkedPoems } },
+        { "likes.user": userObjectId }
+      ],
+      status: "published"
+    }).select("category").lean();
+
+    const categoryCount = {};
+    allInteractedPoems.forEach(poem => {
+      if (poem.category) {
+        categoryCount[poem.category] = (categoryCount[poem.category] || 0) + 1;
+      }
+    });
+
+    const totalCategoryCount = Object.values(categoryCount).reduce((a, b) => a + b, 0) || 1;
+    const topCategories = Object.entries(categoryCount)
+      .map(([category, count]) => ({
+        category: getCategoryUrduName(category),
+        categoryKey: category,
+        count,
+        percentage: Math.round((count / totalCategoryCount) * 100)
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 4);
+
+    // If no categories, provide defaults
+    if (topCategories.length === 0) {
+      topCategories.push(
+        { category: "غزل", categoryKey: "ghazal", count: 0, percentage: 0 },
+        { category: "نظم", categoryKey: "nazm", count: 0, percentage: 0 },
+        { category: "رباعی", categoryKey: "rubai", count: 0, percentage: 0 },
+        { category: "دیگر", categoryKey: "other", count: 0, percentage: 0 }
+      );
+    }
+
+    // Calculate reading streak (simplified - based on login days)
+    const readingStreak = calculateReadingStreak(user);
+
+    // Get weekly reading data (last 7 days activity)
+    const weeklyReadingData = await getWeeklyReadingData(userId);
+
+    // Get latest poems for recommendations
+    const recommendations = await Poem.find({
+      status: "published",
+      _id: { $nin: bookmarkedPoems },
+      author: { $ne: userId }
+    })
+      .populate("author", "name profileImage")
+      .populate("poet", "name bio")
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean();
+
+    // Get followed poets
+    const followedPoetIds = user.followedPoets || [];
+    const followedPoets = await User.find({
+      _id: { $in: followedPoetIds },
+      role: "poet"
+    })
+      .select("name profileImage bio")
+      .limit(5)
+      .lean();
+
+    // Get active contests
+    const contests = await Contest.find({
+      status: { $in: ["active", "upcoming"] },
+      endDate: { $gte: new Date() }
+    })
+      .select("title description startDate endDate status")
+      .sort({ startDate: 1 })
+      .limit(3)
+      .lean();
+
+    // Get recent poems for the feed
+    const recentPoems = await Poem.find({ status: "published" })
+      .populate("author", "name profileImage")
+      .populate("poet", "name bio")
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean();
+
+    // Calculate monthly activity
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const monthlyLikes = await Poem.countDocuments({
+      "likes.user": userObjectId,
+      "likes.likedAt": { $gte: startOfMonth }
+    });
+
+    const monthlyComments = await Poem.aggregate([
+      { $unwind: "$comments" },
+      { 
+        $match: { 
+          "comments.user": userObjectId,
+          "comments.createdAt": { $gte: startOfMonth }
+        } 
+      },
+      { $count: "total" }
+    ]);
+
+    // Calculate achievements
+    const achievements = calculateAchievements(
+      likedPoems.length,
+      bookmarkedPoems.length,
+      commentsCount[0]?.total || 0,
+      readingStreak
+    );
+
+    // Prepare analytics
+    const analytics = {
+      totalPoemsRead: readingHistory.length || likedPoems.length + bookmarkedPoems.length,
+      totalReadingTime: (readingHistory.length || likedPoems.length) * 3, // Estimate 3 mins per poem
+      favoriteCategory: topCategories[0]?.category || "غزل",
+      favoritePoet: "", // Can be calculated from most liked poet's poems
+      readingStreak,
+      bookmarksCount: bookmarkedPoems.length,
+      commentsCount: commentsCount[0]?.total || 0,
+      likesGiven: likedPoems.length,
+      contestsParticipated: 0,
+      monthlyActivity: {
+        poemsRead: Math.max(weeklyReadingData.reduce((a, b) => a + b, 0), likedPoems.length),
+        timeSpent: Math.max(weeklyReadingData.reduce((a, b) => a + b, 0) * 3, 0),
+        likes: monthlyLikes,
+        comments: monthlyComments[0]?.total || 0,
+      },
+      weeklyReadingData,
+      topCategories,
+    };
+
+    res.json({
+      success: true,
+      data: {
+        poems: recentPoems,
+        bookmarks,
+        readingHistory: readingHistory.slice(0, 10),
+        recommendations,
+        followedPoets,
+        contests,
+        analytics,
+        achievements,
+      },
+    });
+  } catch (error) {
+    console.error("Reader dashboard error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch reader dashboard data",
+      error: error.message,
+    });
+  }
+});
+
+// Helper function to get Urdu category name
+function getCategoryUrduName(category) {
+  const categoryMap = {
+    'ghazal': 'غزل',
+    'nazm': 'نظم',
+    'rubai': 'رباعی',
+    'qawwali': 'قوالی',
+    'marsiya': 'مرثیہ',
+    'salam': 'سلام',
+    'hamd': 'حمد',
+    'naat': 'نعت',
+    'free-verse': 'آزاد نظم',
+    'other': 'دیگر'
+  };
+  return categoryMap[category] || category;
+}
+
+// Helper function to calculate reading streak
+function calculateReadingStreak(user) {
+  // Simple calculation - can be enhanced based on actual reading logs
+  const createdDate = new Date(user.createdAt);
+  const now = new Date();
+  const daysSinceCreation = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
+  
+  // Return a reasonable streak value (max 30 days for now)
+  return Math.min(daysSinceCreation, 30);
+}
+
+// Helper function to get weekly reading data
+async function getWeeklyReadingData(userId) {
+  const weeklyData = [0, 0, 0, 0, 0, 0, 0]; // Sun to Sat
+  
+  try {
+    // Convert to ObjectId for aggregation
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    
+    // Get likes from last 7 days grouped by day
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const likesByDay = await Poem.aggregate([
+      { $unwind: "$likes" },
+      { 
+        $match: { 
+          "likes.user": userObjectId,
+          "likes.likedAt": { $gte: sevenDaysAgo }
+        }
+      },
+      {
+        $group: {
+          _id: { $dayOfWeek: "$likes.likedAt" },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    likesByDay.forEach(day => {
+      // MongoDB dayOfWeek: 1 (Sunday) to 7 (Saturday)
+      const index = day._id - 1;
+      if (index >= 0 && index < 7) {
+        weeklyData[index] = day.count;
+      }
+    });
+
+    // If no data, return some placeholder values
+    if (weeklyData.every(v => v === 0)) {
+      return [2, 4, 3, 5, 4, 6, 3]; // Default sample data
+    }
+  } catch (error) {
+    console.error("Error getting weekly reading data:", error);
+    return [2, 4, 3, 5, 4, 6, 3];
+  }
+  
+  return weeklyData;
+}
+
+// Helper function to calculate achievements
+function calculateAchievements(likesGiven, bookmarksCount, commentsCount, readingStreak) {
+  const achievements = [];
+  
+  // Reading streak achievements
+  if (readingStreak >= 7) {
+    achievements.push({
+      id: "weekly_champion",
+      title: "ہفتہ وار چیمپین",
+      description: "7 دن مسلسل مطالعہ",
+      icon: "trophy",
+      color: "yellow",
+      unlocked: true,
+      progress: 100,
+    });
+  }
+  
+  // Poetry friend achievement
+  if (likesGiven >= 50) {
+    achievements.push({
+      id: "poetry_friend",
+      title: "شاعری کا دوست",
+      description: "50+ شاعری پڑھی",
+      icon: "book",
+      color: "blue",
+      unlocked: true,
+      progress: 100,
+    });
+  } else {
+    achievements.push({
+      id: "poetry_friend",
+      title: "شاعری کا دوست",
+      description: `${likesGiven}/50 شاعری پڑھی`,
+      icon: "book",
+      color: "blue",
+      unlocked: false,
+      progress: Math.round((likesGiven / 50) * 100),
+    });
+  }
+  
+  // Lover achievement
+  if (likesGiven >= 25) {
+    achievements.push({
+      id: "lover",
+      title: "محبت کنندہ",
+      description: "25+ پسند",
+      icon: "heart",
+      color: "purple",
+      unlocked: true,
+      progress: 100,
+    });
+  } else {
+    achievements.push({
+      id: "lover",
+      title: "محبت کنندہ",
+      description: `${likesGiven}/25 پسند`,
+      icon: "heart",
+      color: "purple",
+      unlocked: false,
+      progress: Math.round((likesGiven / 25) * 100),
+    });
+  }
+  
+  // Collector achievement
+  if (bookmarksCount >= 20) {
+    achievements.push({
+      id: "collector",
+      title: "جمع کرنے والا",
+      description: "20+ بُک مارکس",
+      icon: "bookmark",
+      color: "green",
+      unlocked: true,
+      progress: 100,
+    });
+  }
+  
+  // Commentator achievement
+  if (commentsCount >= 10) {
+    achievements.push({
+      id: "commentator",
+      title: "تبصرہ نگار",
+      description: "10+ تبصرے",
+      icon: "message",
+      color: "orange",
+      unlocked: true,
+      progress: 100,
+    });
+  }
+  
+  return achievements;
+}
 
 export default router;

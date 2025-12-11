@@ -136,18 +136,18 @@ const PoemDetail = () => {
     }
 
     try {
-      const response = await fetch(`/api/poetry/${id}/bookmark`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const BookmarkAPI = (await import('../../services/bookmarkAPI')).default;
+      const checkResult = await BookmarkAPI.checkBookmark(id);
+      
+      if (checkResult.isBookmarked) {
+        await BookmarkAPI.removeByPoemId(id);
+      } else {
+        await BookmarkAPI.addBookmark(id);
+      }
 
-      const data = await response.json();
-      if (data.success) {
-        setUserEngagement((prev) => ({
-          ...prev,
+      setUserEngagement((prev) => ({
+        ...prev,
+        hasBookmarked: !checkResult.isBookmarked,
           hasBookmarked: data.isBookmarked,
         }));
         alert(data.message);

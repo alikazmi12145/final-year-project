@@ -305,6 +305,9 @@ const startServer = async () => {
     const chatRoutes = await import("./routes/chat.js");
     const newsletterRoutes = await import("./routes/newsletter.js");
     const homepageRoutes = await import("./routes/homepage.js");
+    const bookmarkRoutes = await import("./routes/bookmarks.js");
+    const historyRoutes = await import("./routes/history.js");
+    const pdfExportRoutes = await import("./routes/pdfExport.js");
 
     // Apply routes
     app.use("/api/auth", authRoutes.default);
@@ -322,14 +325,26 @@ const startServer = async () => {
     app.use("/api/chat", chatRoutes.default);
     app.use("/api/newsletter", newsletterRoutes.default);
     app.use("/api/homepage", homepageRoutes.default);
+    app.use("/api/bookmarks", bookmarkRoutes.default);
+    app.use("/api/history", historyRoutes.default);
+    app.use("/api/pdf", pdfExportRoutes.default);
 
     console.log("✅ Routes loaded successfully");
   } catch (error) {
     console.log("❌ Error loading routes:", error.message);
+    console.log("❌ Stack trace:", error.stack);
     console.log("⚠️ Server will continue with limited functionality");
   }
 
-  // Error handling middleware (must be after routes)
+  // 404 handler (must be BEFORE error handler, AFTER routes)
+  app.use("*", (req, res) => {
+    res.status(404).json({
+      success: false,
+      message: "Route not found",
+    });
+  });
+
+  // Error handling middleware (must be LAST)
   app.use((err, req, res, next) => {
     console.error(
       `💥 Unhandled error in ${req.method} ${req.path}:`,
@@ -346,14 +361,6 @@ const startServer = async () => {
         error: err.message,
         stack: err.stack,
       }),
-    });
-  });
-
-  // 404 handler (must be last)
-  app.use("*", (req, res) => {
-    res.status(404).json({
-      success: false,
-      message: "Route not found",
     });
   });
 

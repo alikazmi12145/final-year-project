@@ -50,8 +50,15 @@ const getImageUrl = (url) => {
 };
 
 const Profile = () => {
-  const { user, updateProfile, logout } = useAuth();
+  const { user, updateProfile, updateUser, logout } = useAuth();
   const { showSuccess, showError, showWarning, showConfirm } = useMessage();
+  
+  // Helper function for showing messages
+  const showMessage = (type, message) => {
+    if (type === "success") showSuccess(message);
+    else if (type === "error") showError(message);
+    else if (type === "warning") showWarning(message);
+  };
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [activeSection, setActiveSection] = useState("profile");
@@ -142,7 +149,7 @@ const Profile = () => {
       }));
 
       // Fetch user statistics
-      const userStats = await api.getUserStats();
+      const userStats = await dashboardAPI.getUserStats();
       setStatistics((prev) => ({
         ...prev,
         joinedDate: user?.createdAt,
@@ -169,7 +176,7 @@ const Profile = () => {
 
   const fetchRecentActivity = async () => {
     try {
-      const userActivity = await api.getUserActivity();
+      const userActivity = await dashboardAPI.getUserActivity();
 
       // Map activity types to icons
       const iconMap = {
@@ -293,10 +300,9 @@ const Profile = () => {
 
       if (response.data.success) {
         // Update user state with new profile image
-        setUser((prev) => ({
-          ...prev,
+        updateUser({
           profileImage: response.data.profileImage,
-        }));
+        });
         showMessage("success", "Profile picture updated successfully!");
       } else {
         showMessage("error", response.data.message || "Failed to upload image");

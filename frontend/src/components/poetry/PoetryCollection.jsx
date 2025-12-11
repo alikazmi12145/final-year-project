@@ -276,17 +276,16 @@ const PoetryCollection = () => {
     }
 
     try {
-      const response = await fetch(`/api/poetry/${poemId}/bookmark`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        alert(data.message);
+      const BookmarkAPI = (await import('../../services/bookmarkAPI')).default;
+      const checkResult = await BookmarkAPI.checkBookmark(poemId);
+      
+      if (checkResult.isBookmarked) {
+        await BookmarkAPI.removeByPoemId(poemId);
+        alert("بک مارک ہٹا دیا گیا");
+      } else {
+        await BookmarkAPI.addBookmark(poemId);
+        alert("بک مارک کر دیا گیا");
+      }
       }
     } catch (error) {
       console.error("Error bookmarking poem:", error);

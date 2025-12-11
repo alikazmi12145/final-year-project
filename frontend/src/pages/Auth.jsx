@@ -221,19 +221,20 @@ const Auth = () => {
         console.log("✅ Authentication successful");
 
         if (!isLogin && result.requiresApproval) {
-          // For poet registration requiring approval, redirect to signin
+          // For all registrations requiring approval (poet, reader, moderator)
+          const roleMessages = {
+            poet: "شاعر اکاؤنٹ کامیابی سے بن گیا! براہ کرم ایڈمن کی منظوری کا انتظار کریں۔",
+            moderator: "موڈریٹر اکاؤنٹ کامیابی سے بن گیا! براہ کرم ایڈمن کی منظوری کا انتظار کریں۔",
+            reader: "قاری اکاؤنٹ کامیابی سے بن گیا! براہ کرم ایڈمن کی منظوری کا انتظار کریں۔"
+          };
           showAlertMessage(
-            "اکاؤنٹ کامیابی سے بن گیا! براہ کرم ایڈمن کی منظوری کا انتظار کریں۔ / Account created successfully! Please wait for admin approval.",
+            roleMessages[result.role || selectedRole] || "اکاؤنٹ کامیابی سے بن گیا! براہ کرم ایڈمن کی منظوری کا انتظار کریں۔ / Account created successfully! Please wait for admin approval.",
             "success"
           );
           setTimeout(() => {
-            setIsLogin(true); // Switch to login mode
-            reset(); // Clear form
-            showAlertMessage(
-              "اب آپ لاگ ان کر سکتے ہیں جب ایڈمن آپ کے اکاؤنٹ کی منظوری دے دے۔ / You can now login once admin approves your account.",
-              "success"
-            );
-          }, 3000);
+            // Navigate to pending approval page
+            navigate("/pending-approval", { state: { role: result.role || selectedRole } });
+          }, 2000);
           return;
         }
 
@@ -251,16 +252,28 @@ const Auth = () => {
       } else {
         console.log("❌ Authentication failed:", result?.message);
 
+        // Handle pending approval - redirect to pending page
+        if (result?.code === "PENDING_APPROVAL") {
+          showAlertMessage(
+            result?.message || "آپ کا اکاؤنٹ ایڈمن کی منظوری کا منتظر ہے۔",
+            "warning"
+          );
+          setTimeout(() => {
+            navigate("/pending-approval", { state: { role: result?.role || selectedRole } });
+          }, 1500);
+          return;
+        }
+
         // Show specific error messages
         let errorMessage =
           result?.message || "Authentication failed. Please try again.";
 
         if (result?.code === "POET_PENDING_APPROVAL") {
-          errorMessage =
-            "Authentication failed: Your poet account is pending admin approval. Please wait for approval.";
+          navigate("/pending-approval", { state: { role: "poet" } });
+          return;
         } else if (result?.code === "READER_PENDING_APPROVAL") {
-          errorMessage =
-            "Authentication failed: Your reader account is pending admin approval. Please wait for approval.";
+          navigate("/pending-approval", { state: { role: "reader" } });
+          return;
         } else if (errorMessage.toLowerCase().includes("email")) {
           errorMessage =
             "آپ کا ای میل درست نہیں ہے۔ براہ کرم چیک کریں۔ (Your email is not correct. Please check.)";
@@ -287,12 +300,15 @@ const Auth = () => {
           "ای میل یا پاس ورڈ غلط ہے۔ براہ کرم چیک کریں۔ (Email or password is incorrect. Please check.)";
       } else if (error.response?.status === 403) {
         const responseData = error.response?.data;
-        if (responseData?.code === "POET_PENDING_APPROVAL") {
-          errorMessage =
-            "Authentication failed: Your poet account is pending admin approval. Please wait for approval.";
-        } else if (responseData?.code === "READER_PENDING_APPROVAL") {
-          errorMessage =
-            "Authentication failed: Your reader account is pending admin approval. Please wait for approval.";
+        if (responseData?.code === "PENDING_APPROVAL") {
+          showAlertMessage(
+            responseData?.message || "آپ کا اکاؤنٹ ایڈمن کی منظوری کا منتظر ہے۔",
+            "warning"
+          );
+          setTimeout(() => {
+            navigate("/pending-approval", { state: { role: responseData?.role || selectedRole } });
+          }, 1500);
+          return;
         } else {
           errorMessage =
             responseData?.message || "Access denied. Please contact support.";

@@ -178,14 +178,25 @@ const Navbar = () => {
               <div className="flex items-center space-x-3">
                 {/* User Menu with Cultural Design */}
                 <div className="relative group">
-                  <button className="flex items-center space-x-2 bg-gradient-to-r from-urdu-cream/50 to-white/70 px-4 py-2.5 rounded-xl hover:from-urdu-cream hover:to-urdu-gold/20 transition-all duration-300 shadow-sm hover:shadow-md border border-urdu-gold/20">
-                    <div className="w-7 h-7 bg-gradient-to-br from-urdu-maroon to-urdu-brown rounded-full flex items-center justify-center shadow-sm">
-                      <User className="w-4 h-4 text-white" />
-                    </div>
+                  <Link
+                    to="/profile"
+                    className="flex items-center space-x-2 bg-gradient-to-r from-urdu-cream/50 to-white/70 px-4 py-2.5 rounded-xl hover:from-urdu-cream hover:to-urdu-gold/20 transition-all duration-300 shadow-sm hover:shadow-md border border-urdu-gold/20 cursor-pointer"
+                  >
+                    {user?.profileImage?.url ? (
+                      <img
+                        src={user.profileImage.url}
+                        alt={user?.name || user?.username || "User"}
+                        className="w-7 h-7 rounded-full object-cover shadow-sm border border-urdu-gold/30"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 bg-gradient-to-br from-urdu-maroon to-urdu-brown rounded-full flex items-center justify-center shadow-sm">
+                        <User className="w-4 h-4 text-white" />
+                      </div>
+                    )}
                     <span className="text-sm font-medium text-urdu-brown max-w-24 truncate nastaleeq-primary">
                       {user?.name || user?.username || "User"}
                     </span>
-                  </button>
+                  </Link>
 
                   {/* Dropdown with Cultural Styling */}
                   <div className="absolute right-0 mt-2 w-52 bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border-2 border-urdu-gold/30 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-1 group-hover:translate-y-0 overflow-hidden">
@@ -376,28 +387,36 @@ const Navbar = () => {
               <div className="border-t-2 border-urdu-gold/30 pt-4 mt-4 bg-gradient-to-r from-urdu-cream/20 to-transparent rounded-xl p-3">
                 {isAuthenticated ? (
                   <>
-                    <div className="px-4 py-3 mb-3 bg-gradient-to-r from-white/70 to-urdu-cream/30 rounded-xl border border-urdu-gold/20">
-                      <p className="font-medium text-urdu-brown nastaleeq-primary">
-                        {user?.profile?.fullName || user?.username}
-                      </p>
-                      <p className="text-sm text-urdu-maroon capitalize nastaleeq-primary">
-                        {user?.role === "admin"
-                          ? "ایڈمن"
-                          : user?.role === "poet"
-                          ? "شاعر"
-                          : user?.role === "moderator"
-                          ? "منیجر"
-                          : "قاری"}
-                      </p>
-                    </div>
-
                     <Link
                       to="/profile"
-                      className="flex items-center space-x-3 px-4 py-3 rounded-xl text-urdu-brown hover:bg-urdu-cream/40 hover:text-urdu-maroon transition-all nastaleeq-primary"
+                      className="flex items-center space-x-3 px-4 py-3 mb-3 bg-gradient-to-r from-white/70 to-urdu-cream/30 rounded-xl border border-urdu-gold/20 hover:shadow-md transition-all"
                       onClick={() => setIsOpen(false)}
                     >
-                      <User size={18} />
-                      <span className="font-medium">پروفائل</span>
+                      {user?.profileImage?.url ? (
+                        <img
+                          src={user.profileImage.url}
+                          alt={user?.name || user?.username || "User"}
+                          className="w-10 h-10 rounded-full object-cover shadow-sm border border-urdu-gold/30"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-gradient-to-br from-urdu-maroon to-urdu-brown rounded-full flex items-center justify-center shadow-sm">
+                          <User className="w-5 h-5 text-white" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium text-urdu-brown nastaleeq-primary">
+                          {user?.name || user?.username || "User"}
+                        </p>
+                        <p className="text-sm text-urdu-maroon capitalize nastaleeq-primary">
+                          {user?.role === "admin"
+                            ? "ایڈمن"
+                            : user?.role === "poet"
+                            ? "شاعر"
+                            : user?.role === "moderator"
+                            ? "منیجر"
+                            : "قاری"}
+                        </p>
+                      </div>
                     </Link>
 
                     <Link

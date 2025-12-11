@@ -8,7 +8,10 @@ const connectDB = async () => {
     const conn = await mongoose.connect(
       process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bazm-e-sukhan",
       {
-        serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+        serverSelectionTimeoutMS: 30000, // Increased to 30s for slow connections
+        socketTimeoutMS: 45000, // Socket timeout
+        bufferCommands: false, // Disable buffering to fail fast
+        maxPoolSize: 10, // Maximum connection pool size
       }
     );
 
