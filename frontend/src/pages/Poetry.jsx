@@ -153,7 +153,15 @@ const Poetry = () => {
     }
 
     try {
-      const response = await poetryAPI.toggleBookmark(id);
+      // Use new bookmark system
+      const BookmarkAPI = (await import('../services/bookmarkAPI')).default;
+      
+      if (isBookmarked) {
+        await BookmarkAPI.removeByPoemId(id);
+      } else {
+        await BookmarkAPI.addBookmark(id);
+      }
+      
       setIsBookmarked(!isBookmarked);
 
       // Show success feedback

@@ -106,7 +106,7 @@ const PoetOfTheDay = () => {
                     <img
                       src={dailyContent.poet.profileImage.url.startsWith('http') 
                         ? dailyContent.poet.profileImage.url 
-                        : `http://localhost:5000${dailyContent.poet.profileImage.url}`}
+                        : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000'}${dailyContent.poet.profileImage.url}`}
                       alt={dailyContent.poet.name}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       onError={(e) => {

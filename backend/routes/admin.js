@@ -905,9 +905,15 @@ router.get("/users/pending", adminAuth, async (req, res) => {
   try {
     const { role } = req.query;
 
-    const query = { status: "pending" };
+    // Find users with pending status OR users who are not approved (for all roles needing approval)
+    const query = {
+      $or: [
+        { status: "pending" },
+        { isApproved: { $ne: true }, role: { $ne: "admin" } }
+      ]
+    };
     if (role && role !== "all") {
-      query.role = role;
+      query.$or = query.$or.map(condition => ({ ...condition, role }));
     }
 
     const pendingUsers = await User.find(query)

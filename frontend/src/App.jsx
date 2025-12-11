@@ -15,6 +15,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { PublicOnlyRoute } from "./components/auth/ProtectedRoute";
 import RedirectToHome from "./components/RedirectToHome";
 import NotFoundPage from "./components/NotFoundPage";
+import PendingApproval from "./pages/PendingApproval";
 
 // Poetry CRUD Pages
 import PoemsPage from "./pages/PoemsPage";
@@ -52,6 +53,7 @@ function App() {
         <Route path="/contests/:id" element={<Contests />} />
         <Route path="/learning" element={<Learning />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="/pending-approval" element={<PendingApproval />} />
 
         {/* Poetry CRUD Routes */}
         <Route path="/poems" element={<PoemsPage />} />

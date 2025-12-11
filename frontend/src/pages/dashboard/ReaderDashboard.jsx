@@ -62,6 +62,7 @@ const ReaderDashboard = () => {
   const [followedPoets, setFollowedPoets] = useState([]);
   const [contests, setContests] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [achievements, setAchievements] = useState([]);
 
   // Analytics state
   const [readerStats, setReaderStats] = useState({
@@ -80,13 +81,8 @@ const ReaderDashboard = () => {
       likes: 0,
       comments: 0,
     },
-    weeklyReadingData: [5, 8, 12, 6, 9, 15, 11],
-    topCategories: [
-      { category: "غزل", count: 25, percentage: 35 },
-      { category: "نظم", count: 18, percentage: 25 },
-      { category: "رومانس", count: 15, percentage: 21 },
-      { category: "قطعہ", count: 14, percentage: 19 },
-    ],
+    weeklyReadingData: [0, 0, 0, 0, 0, 0, 0],
+    topCategories: [],
   });
 
   // UI state
@@ -116,8 +112,51 @@ const ReaderDashboard = () => {
   }, [user]);
 
   const showMessage = (type, text) => {
+    if (!type || !text) return;
     setMessage({ type, text });
     setTimeout(() => setMessage({ type: "", text: "" }), 5000);
+  };
+
+  // Helper function to safely get like count
+  const getLikeCount = (likes) => {
+    if (Array.isArray(likes)) {
+      return likes.length;
+    }
+    return typeof likes === 'number' ? likes : 0;
+  };
+
+  // Helper function to safely get poet/author name
+  const getAuthorName = (poem) => {
+    if (!poem) return 'نامعلوم';
+    return poem.poet?.name || poem.author?.name || 'نامعلوم';
+  };
+
+  // Helper function to safely format date
+  const formatDate = (date) => {
+    if (!date) return '';
+    try {
+      return new Date(date).toLocaleDateString('ur-PK');
+    } catch (e) {
+      return '';
+    }
+  };
+
+  // Helper function to safely get category name
+  const getCategoryName = (category) => {
+    if (!category) return 'دیگر';
+    const categoryMap = {
+      'ghazal': 'غزل',
+      'nazm': 'نظم',
+      'rubai': 'رباعی',
+      'qawwali': 'قوالی',
+      'marsiya': 'مرثیہ',
+      'salam': 'سلام',
+      'hamd': 'حمد',
+      'naat': 'نعت',
+      'free-verse': 'آزاد نظم',
+      'other': 'دیگر'
+    };
+    return categoryMap[category] || category;
   };
 
   const fetchReaderData = async () => {
@@ -127,7 +166,7 @@ const ReaderDashboard = () => {
       // Try to use the dashboard API first
       try {
         const response = await dashboardAPI.getReaderDashboard();
-        if (response.data.success) {
+        if (response?.data?.success && response.data.data) {
           const {
             poems,
             bookmarks,
@@ -136,123 +175,128 @@ const ReaderDashboard = () => {
             followedPoets,
             contests,
             analytics,
+            achievements: userAchievements,
           } = response.data.data;
 
-          setPoems(poems || []);
-          setBookmarkedPoems(bookmarks || []);
-          setReadingHistory(readingHistory || []);
-          setRecommendations(recommendations || []);
-          setFollowedPoets(followedPoets || []);
-          setContests(contests || []);
-          setReaderStats({
-            ...readerStats,
-            ...analytics,
-          });
+          // Validate and set data with defaults
+          setPoems(Array.isArray(poems) ? poems.filter(p => p && p._id) : []);
+          setBookmarkedPoems(Array.isArray(bookmarks) ? bookmarks.filter(b => b && b._id) : []);
+          setReadingHistory(Array.isArray(readingHistory) ? readingHistory : []);
+          setRecommendations(Array.isArray(recommendations) ? recommendations.filter(r => r && r._id) : []);
+          setFollowedPoets(Array.isArray(followedPoets) ? followedPoets : []);
+          setContests(Array.isArray(contests) ? contests : []);
+          setAchievements(Array.isArray(userAchievements) ? userAchievements : []);
+          
+          // Update analytics with validation
+          if (analytics && typeof analytics === 'object') {
+            setReaderStats(prevStats => ({
+              ...prevStats,
+              totalPoemsRead: analytics.totalPoemsRead || 0,
+              totalReadingTime: analytics.totalReadingTime || 0,
+              favoriteCategory: analytics.favoriteCategory || "غزل",
+              favoritePoet: analytics.favoritePoet || "",
+              readingStreak: analytics.readingStreak || 0,
+              bookmarksCount: analytics.bookmarksCount || (Array.isArray(bookmarks) ? bookmarks.length : 0),
+              commentsCount: analytics.commentsCount || 0,
+              likesGiven: analytics.likesGiven || 0,
+              contestsParticipated: analytics.contestsParticipated || 0,
+              monthlyActivity: {
+                poemsRead: analytics.monthlyActivity?.poemsRead || 0,
+                timeSpent: analytics.monthlyActivity?.timeSpent || 0,
+                likes: analytics.monthlyActivity?.likes || 0,
+                comments: analytics.monthlyActivity?.comments || 0,
+              },
+              weeklyReadingData: Array.isArray(analytics.weeklyReadingData) && analytics.weeklyReadingData.length === 7
+                ? analytics.weeklyReadingData
+                : [0, 0, 0, 0, 0, 0, 0],
+              topCategories: Array.isArray(analytics.topCategories) && analytics.topCategories.length > 0
+                ? analytics.topCategories
+                : [
+                    { category: "غزل", count: 0, percentage: 0 },
+                    { category: "نظم", count: 0, percentage: 0 },
+                    { category: "رباعی", count: 0, percentage: 0 },
+                    { category: "دیگر", count: 0, percentage: 0 },
+                  ],
+            }));
+          }
+          return; // Success, no need for fallback
         }
       } catch (apiError) {
-        // If dashboard API doesn't exist, fall back to individual APIs
-        await fetchFallbackData();
+        console.log("Dashboard API not available, using fallback:", apiError.message);
       }
+      
+      // If dashboard API doesn't exist, fall back to individual APIs
+      await fetchFallbackData();
     } catch (error) {
       console.error("Error fetching reader data:", error);
       setMessage({
         type: "error",
-        text: "ڈیٹا لوڈ کرنے میں خرابی ہوئی",
+        text: error.response?.data?.message || "ڈیٹا لوڈ کرنے میں خرابی ہوئی",
       });
-      // Use fallback data for demo
-      setPoems([
-        {
-          _id: "1",
-          title: "محبت کا گیت",
-          poet: { name: "احمد فراز" },
-          category: "غزل",
-          content: "یہ ایک خوبصورت محبت کا گیت ہے...",
-          views: 245,
-          likes: 18,
-          averageRating: 4.5,
-          publishedAt: "2024-01-15",
-          isBookmarked: false,
-        },
-        {
-          _id: "2",
-          title: "وطن کی مٹی",
-          poet: { name: "علامہ اقبال" },
-          category: "نظم",
-          content: "اے وطن کی مٹی، تجھ پر لٹ جائیں...",
-          views: 189,
-          likes: 24,
-          averageRating: 4.8,
-          publishedAt: "2024-01-12",
-          isBookmarked: true,
-        },
-        {
-          _id: "3",
-          title: "بارش کی رات",
-          poet: { name: "پروین شاکر" },
-          category: "رومانس",
-          content: "بارش کی رات میں تیری یاد آئی...",
-          views: 156,
-          likes: 12,
-          averageRating: 4.2,
-          publishedAt: "2024-01-10",
-          isBookmarked: false,
-        },
-      ]);
-
-      setReaderStats({
-        totalPoemsRead: 47,
-        totalReadingTime: 125,
-        favoriteCategory: "غزل",
-        favoritePoet: "احمد فراز",
-        readingStreak: 7,
-        bookmarksCount: 12,
-        commentsCount: 8,
-        likesGiven: 23,
-        contestsParticipated: 2,
-        monthlyActivity: {
-          poemsRead: 15,
-          timeSpent: 45,
-          likes: 8,
-          comments: 3,
-        },
-        weeklyReadingData: [5, 8, 12, 6, 9, 15, 11],
-        topCategories: [
-          { category: "غزل", count: 25, percentage: 35 },
-          { category: "نظم", count: 18, percentage: 25 },
-          { category: "رومانس", count: 15, percentage: 21 },
-          { category: "قطعہ", count: 14, percentage: 19 },
-        ],
-      });
+      
+      // Set empty arrays to prevent undefined errors
+      setPoems([]);
+      setBookmarkedPoems([]);
+      setRecommendations([]);
+      setAchievements([]);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchFallbackData = async () => {
-    // Fetch poems
-    const poemsRes = await poetryAPI.getAllPoems();
-    if (poemsRes.data && poemsRes.data.poems) {
-      setPoems(poemsRes.data.poems);
-    }
-
-    // Fetch bookmarks (if API exists)
     try {
-      const bookmarksRes = await poetryAPI.getBookmarks();
-      if (bookmarksRes.data.success) {
-        setBookmarkedPoems(bookmarksRes.data.bookmarks || []);
+      // Fetch poems with validation
+      const poemsRes = await poetryAPI.getAllPoems();
+      if (poemsRes?.data?.poems && Array.isArray(poemsRes.data.poems)) {
+        const validPoems = poemsRes.data.poems.filter(poem => 
+          poem && poem._id && poem.title && poem.content
+        );
+        setPoems(validPoems);
+      } else {
+        setPoems([]);
       }
     } catch (error) {
-      // Bookmarks API not available yet
+      console.error("Error fetching poems:", error);
+      setPoems([]);
     }
 
-    // Fetch recommendations
+    // Fetch bookmarks with validation
+    try {
+      const bookmarksRes = await poetryAPI.getBookmarkedPoems();
+      if (bookmarksRes?.data?.success) {
+        const poems = bookmarksRes.data.poems || bookmarksRes.data.bookmarks || [];
+        if (Array.isArray(poems)) {
+          const validBookmarks = poems.filter(bookmark =>
+            bookmark && bookmark._id
+          );
+          setBookmarkedPoems(validBookmarks);
+        } else {
+          setBookmarkedPoems([]);
+        }
+      } else {
+        setBookmarkedPoems([]);
+      }
+    } catch (error) {
+      console.error("Error fetching bookmarks:", error.message);
+      setBookmarkedPoems([]);
+    }
+
+    // Fetch recommendations with validation
     try {
       const recommendationsRes = await poetryAPI.getRecommendations();
-      if (recommendationsRes.data.success) {
-        setRecommendations(recommendationsRes.data.poems || []);
+      if (recommendationsRes?.data?.success && Array.isArray(recommendationsRes.data.poems)) {
+        const validRecommendations = recommendationsRes.data.poems.filter(poem =>
+          poem && poem._id && poem.title
+        );
+        setRecommendations(validRecommendations);
+      } else {
+        setRecommendations([]);
       }
     } catch (error) {
-      // Recommendations API not available yet
+      // Silently handle recommendations error - feature may not be available yet
+      console.log("Recommendations not available:", error.response?.status || error.message);
+      setRecommendations([]);
     }
   };
 
@@ -264,9 +308,27 @@ const ReaderDashboard = () => {
   };
 
   const handleBookmark = async (poemId) => {
+    // Validation
+    if (!poemId) {
+      showMessage("error", "نامعتبر شاعری");
+      return;
+    }
+
     try {
-      const response = await poetryAPI.toggleBookmark(poemId);
+      // Use new bookmark system
+      const BookmarkAPI = (await import('../../services/bookmarkAPI')).default;
+      const poem = poems.find(p => p._id === poemId);
+      const isBookmarked = poem?.isBookmarked || false;
+      
+      if (isBookmarked) {
+        await BookmarkAPI.removeByPoemId(poemId);
+      } else {
+        await BookmarkAPI.addBookmark(poemId);
+      }
+      
+      const response = { data: { success: true, isBookmarked: !isBookmarked } };
       if (response.data.success) {
+        // Update poems list
         setPoems((prevPoems) =>
           prevPoems.map((poem) =>
             poem._id === poemId
@@ -274,43 +336,118 @@ const ReaderDashboard = () => {
               : poem
           )
         );
+        
+        // Update recommendations list
+        setRecommendations((prevRecs) =>
+          prevRecs.map((poem) =>
+            poem._id === poemId
+              ? { ...poem, isBookmarked: !poem.isBookmarked }
+              : poem
+          )
+        );
+        
         showMessage("success", "بُک مارک اپڈیٹ ہو گیا");
       }
     } catch (error) {
       console.error("Bookmark error:", error);
-      showMessage("error", "بُک مارک اپڈیٹ نہیں ہو سکا");
+      showMessage("error", error.response?.data?.message || "بُک مارک اپڈیٹ نہیں ہو سکا");
     }
   };
 
   const handleLike = async (poemId) => {
+    // Validation
+    if (!poemId) {
+      showMessage("error", "نامعتبر شاعری");
+      return;
+    }
+
     try {
       const response = await poetryAPI.likePoem(poemId);
-      if (response.data.success) {
+      if (response?.data?.success) {
+        // Update poems list
         setPoems((prevPoems) =>
           prevPoems.map((poem) =>
             poem._id === poemId
               ? {
                   ...poem,
-                  likes: poem.isLiked ? poem.likes - 1 : poem.likes + 1,
-                  isLiked: !poem.isLiked,
+                  likes: response.data.likesCount || (poem.isLiked ? getLikeCount(poem.likes) - 1 : getLikeCount(poem.likes) + 1),
+                  isLiked: response.data.isLiked ?? !poem.isLiked,
                 }
               : poem
           )
         );
+        
+        // Update recommendations list
+        setRecommendations((prevRecs) =>
+          prevRecs.map((poem) =>
+            poem._id === poemId
+              ? {
+                  ...poem,
+                  likes: response.data.likesCount || (poem.isLiked ? getLikeCount(poem.likes) - 1 : getLikeCount(poem.likes) + 1),
+                  isLiked: response.data.isLiked ?? !poem.isLiked,
+                }
+              : poem
+          )
+        );
+        
         showMessage("success", "پسند اپڈیٹ ہو گیا");
       }
     } catch (error) {
       console.error("Like error:", error);
-      showMessage("error", "پسند اپڈیٹ نہیں ہو سکا");
+      showMessage("error", error.response?.data?.message || "پسند اپڈیٹ نہیں ہو سکا");
     }
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("ur-PK", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
+  // Filter and sort poems with validation
+  const getFilteredAndSortedPoems = () => {
+    if (!Array.isArray(poems)) return [];
+    
+    let filtered = poems.filter(poem => {
+      if (!poem || !poem._id) return false;
+      
+      // Search filter
+      if (searchTerm && searchTerm.trim()) {
+        const searchLower = searchTerm.toLowerCase();
+        const title = (poem.title || '').toLowerCase();
+        const content = (poem.content || '').toLowerCase();
+        const authorName = getAuthorName(poem).toLowerCase();
+        
+        if (!title.includes(searchLower) && 
+            !content.includes(searchLower) && 
+            !authorName.includes(searchLower)) {
+          return false;
+        }
+      }
+      
+      // Category filter
+      if (filterCategory && filterCategory !== 'all') {
+        const poemCategory = (poem.category || '').toLowerCase();
+        if (poemCategory !== filterCategory.toLowerCase()) {
+          return false;
+        }
+      }
+      
+      return true;
     });
+    
+    // Sort poems
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'popular':
+          return getLikeCount(b.likes) - getLikeCount(a.likes);
+        case 'rating':
+          return (b.averageRating || 0) - (a.averageRating || 0);
+        case 'views':
+          return (b.views || 0) - (a.views || 0);
+        case 'recent':
+        default:
+          const dateA = new Date(a.createdAt || a.publishedAt || 0);
+          const dateB = new Date(b.createdAt || b.publishedAt || 0);
+          return dateB - dateA;
+      }
+    });
+    
+    return filtered;
   };
 
   const StatCard = ({ title, value, subtitle, icon: Icon, color = "blue" }) => (
@@ -383,9 +520,17 @@ const ReaderDashboard = () => {
         <div className="mb-8 bg-gradient-to-r from-urdu-brown to-urdu-maroon rounded-2xl shadow-xl p-8 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6">
-              <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
-                {user?.name?.charAt(0) || "ق"}
-              </div>
+              {user?.profileImage?.url ? (
+                <img
+                  src={user.profileImage.url}
+                  alt={user?.name || "قاری"}
+                  className="w-20 h-20 rounded-full object-cover border-4 border-white/30 shadow-lg"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold border-4 border-white/30">
+                  {user?.name?.charAt(0) || "ق"}
+                </div>
+              )}
               <div>
                 <h1 className="text-4xl font-bold mb-2 nastaleeq-heading">
                   قاری ڈیش بورڈ
@@ -443,28 +588,28 @@ const ReaderDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
             title="پڑھی گئی شاعری"
-            value={readerStats.totalPoemsRead}
-            subtitle={`+${readerStats.monthlyActivity.poemsRead} اس ماہ`}
+            value={readerStats?.totalPoemsRead || readingHistory?.length || 0}
+            subtitle={`+${readerStats?.monthlyActivity?.poemsRead || 0} اس ماہ`}
             icon={BookOpen}
             color="blue"
           />
           <StatCard
             title="بُک مارکس"
-            value={readerStats.bookmarksCount}
+            value={bookmarkedPoems?.length || readerStats?.bookmarksCount || 0}
             subtitle="محفوظ شدہ شاعری"
             icon={Bookmark}
             color="purple"
           />
           <StatCard
             title="پسندیدہ شاعری"
-            value={readerStats.likesGiven}
-            subtitle={`+${readerStats.monthlyActivity.likes} اس ماہ`}
+            value={readerStats?.likesGiven || 0}
+            subtitle={`+${readerStats?.monthlyActivity?.likes || 0} اس ماہ`}
             icon={Heart}
             color="red"
           />
           <StatCard
             title="پڑھنے کا سلسلہ"
-            value={`${readerStats.readingStreak} دن`}
+            value={`${readerStats?.readingStreak || 0} دن`}
             subtitle="مسلسل مطالعہ"
             icon={Target}
             color="green"
@@ -571,27 +716,35 @@ const ReaderDashboard = () => {
                 پسندیدہ اقسام
               </h3>
               <div className="space-y-4">
-                {readerStats.topCategories.map((category, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-urdu-brown font-medium">
-                        {category.category}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        {category.percentage}%
-                      </span>
+                {readerStats.topCategories.length > 0 ? (
+                  readerStats.topCategories.map((category, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-urdu-brown font-medium">
+                          {category.category}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {category.percentage}%
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-urdu-maroon to-urdu-gold rounded-full transition-all duration-1000"
+                          style={{ width: `${Math.max(category.percentage, 5)}%` }}
+                        ></div>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {category.count} شاعری
+                      </div>
                     </div>
-                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-urdu-maroon to-urdu-gold rounded-full transition-all duration-1000"
-                        style={{ width: `${category.percentage}%` }}
-                      ></div>
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {category.count} شاعری
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <PieChart className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>ابھی کوئی اقسام نہیں</p>
+                    <p className="text-sm">شاعری پڑھنا شروع کریں</p>
                   </div>
-                ))}
+                )}
               </div>
             </Card>
 
@@ -602,43 +755,96 @@ const ReaderDashboard = () => {
                 حالیہ کامیابیاں
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center p-4 bg-yellow-50 rounded-xl">
-                  <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mr-4">
-                    <Trophy className="w-6 h-6 text-yellow-600" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-yellow-800">
-                      ہفتہ وار چیمپین
+                {achievements.length > 0 ? (
+                  achievements.slice(0, 3).map((achievement, index) => {
+                    const colors = {
+                      yellow: { bg: "bg-yellow-50", text: "text-yellow-800", desc: "text-yellow-600", iconBg: "bg-yellow-100", icon: "text-yellow-600" },
+                      blue: { bg: "bg-blue-50", text: "text-blue-800", desc: "text-blue-600", iconBg: "bg-blue-100", icon: "text-blue-600" },
+                      purple: { bg: "bg-purple-50", text: "text-purple-800", desc: "text-purple-600", iconBg: "bg-purple-100", icon: "text-purple-600" },
+                      green: { bg: "bg-green-50", text: "text-green-800", desc: "text-green-600", iconBg: "bg-green-100", icon: "text-green-600" },
+                      orange: { bg: "bg-orange-50", text: "text-orange-800", desc: "text-orange-600", iconBg: "bg-orange-100", icon: "text-orange-600" },
+                    };
+                    const color = colors[achievement.color] || colors.blue;
+                    const IconComponent = achievement.icon === "trophy" ? Trophy : 
+                                         achievement.icon === "book" ? BookOpen : 
+                                         achievement.icon === "heart" ? Heart :
+                                         achievement.icon === "bookmark" ? Bookmark :
+                                         achievement.icon === "message" ? MessageCircle : Award;
+                    
+                    return (
+                      <div key={achievement.id || index} className={`flex items-center p-4 ${color.bg} rounded-xl ${!achievement.unlocked ? 'opacity-60' : ''}`}>
+                        <div className={`w-12 h-12 ${color.iconBg} rounded-full flex items-center justify-center mr-4`}>
+                          <IconComponent className={`w-6 h-6 ${color.icon}`} />
+                        </div>
+                        <div className="flex-1">
+                          <div className={`font-semibold ${color.text}`}>
+                            {achievement.title}
+                          </div>
+                          <div className={`text-sm ${color.desc}`}>
+                            {achievement.description}
+                          </div>
+                          {!achievement.unlocked && (
+                            <div className="mt-1">
+                              <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-urdu-maroon to-urdu-gold rounded-full"
+                                  style={{ width: `${achievement.progress || 0}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {achievement.unlocked && (
+                          <CheckCircle className={`w-5 h-5 ${color.icon} ml-2`} />
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <>
+                    <div className="flex items-center p-4 bg-yellow-50 rounded-xl">
+                      <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mr-4">
+                        <Trophy className="w-6 h-6 text-yellow-600" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-yellow-800">
+                          ہفتہ وار چیمپین
+                        </div>
+                        <div className="text-sm text-yellow-600">
+                          {readerStats.readingStreak >= 7 ? '7 دن مسلسل مطالعہ ✓' : `${readerStats.readingStreak}/7 دن`}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-sm text-yellow-600">
-                      7 دن مسلسل مطالعہ
-                    </div>
-                  </div>
-                </div>
 
-                <div className="flex items-center p-4 bg-blue-50 rounded-xl">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
-                    <BookOpen className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-blue-800">
-                      شاعری کا دوست
+                    <div className="flex items-center p-4 bg-blue-50 rounded-xl">
+                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
+                        <BookOpen className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-blue-800">
+                          شاعری کا دوست
+                        </div>
+                        <div className="text-sm text-blue-600">
+                          {readerStats.likesGiven >= 50 ? '50+ شاعری پڑھی ✓' : `${readerStats.likesGiven}/50 شاعری`}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-sm text-blue-600">50+ شاعری پڑھی</div>
-                  </div>
-                </div>
 
-                <div className="flex items-center p-4 bg-purple-50 rounded-xl">
-                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mr-4">
-                    <Heart className="w-6 h-6 text-purple-600" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-purple-800">
-                      محبت کنندہ
+                    <div className="flex items-center p-4 bg-purple-50 rounded-xl">
+                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mr-4">
+                        <Heart className="w-6 h-6 text-purple-600" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-purple-800">
+                          محبت کنندہ
+                        </div>
+                        <div className="text-sm text-purple-600">
+                          {readerStats.likesGiven >= 25 ? '25+ پسند ✓' : `${readerStats.likesGiven}/25 پسند`}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-sm text-purple-600">25+ پسند</div>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
             </Card>
           </div>
@@ -665,10 +871,15 @@ const ReaderDashboard = () => {
                   className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-urdu-brown nastaleeq-primary"
                 >
                   <option value="all">تمام اقسام</option>
-                  <option value="غزل">غزل</option>
-                  <option value="نظم">نظم</option>
-                  <option value="رومانس">رومانس</option>
-                  <option value="قطعہ">قطعہ</option>
+                  <option value="ghazal">غزل</option>
+                  <option value="nazm">نظم</option>
+                  <option value="rubai">رباعی</option>
+                  <option value="qawwali">قوالی</option>
+                  <option value="marsiya">مرثیہ</option>
+                  <option value="hamd">حمد</option>
+                  <option value="naat">نعت</option>
+                  <option value="free-verse">آزاد نظم</option>
+                  <option value="other">دیگر</option>
                 </select>
                 <select
                   value={sortBy}
@@ -685,53 +896,55 @@ const ReaderDashboard = () => {
 
             {/* Poems Grid */}
             <div className="grid gap-6">
-              {poems.length === 0 ? (
+              {loading ? (
+                <Card className="p-12 text-center">
+                  <LoadingSpinner />
+                  <p className="mt-4 text-gray-600">شاعری لوڈ ہو رہی ہے...</p>
+                </Card>
+              ) : getFilteredAndSortedPoems().length === 0 ? (
                 <Card className="p-12 text-center">
                   <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-gray-700 mb-2">
                     کوئی شاعری نہیں ملی
                   </h3>
-                  <p className="text-gray-500">
-                    براہ کرم اپنا تلاش کا معیار تبدیل کریں
+                  <p className="text-gray-500 mb-4">
+                    {searchTerm || filterCategory !== 'all' 
+                      ? 'براہ کرم اپنا تلاش کا معیار تبدیل کریں'
+                      : 'ابھی کوئی شاعری دستیاب نہیں ہے'}
                   </p>
+                  {(searchTerm || filterCategory !== 'all') && (
+                    <Button onClick={() => { setSearchTerm(''); setFilterCategory('all'); }}>
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      فلٹر صاف کریں
+                    </Button>
+                  )}
                 </Card>
               ) : (
-                poems
-                  .filter((poem) => {
-                    const matchesSearch = poem.title
-                      .toLowerCase()
-                      .includes(searchTerm.toLowerCase());
-                    const matchesCategory =
-                      filterCategory === "all" ||
-                      poem.category === filterCategory;
-                    return matchesSearch && matchesCategory;
-                  })
-                  .map((poem) => (
-                    <Card
-                      key={poem._id}
-                      className="p-6 hover:shadow-xl transition-all duration-300 border-l-4 border-urdu-gold"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-3">
-                            <h3 className="text-2xl font-semibold text-urdu-brown">
-                              {poem.title}
-                            </h3>
-                            <span className="px-3 py-1 bg-urdu-maroon/10 text-urdu-maroon text-sm rounded-full">
-                              {poem.category}
-                            </span>
-                          </div>
+                getFilteredAndSortedPoems().map((poem) => (
+                  <Card
+                    key={poem._id}
+                    className="p-6 hover:shadow-xl transition-all duration-300 border-l-4 border-urdu-gold"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <h3 className="text-2xl font-semibold text-urdu-brown">
+                            {poem.title || 'بے عنوان'}
+                          </h3>
+                          <span className="px-3 py-1 bg-urdu-maroon/10 text-urdu-maroon text-sm rounded-full">
+                            {getCategoryName(poem.category)}
+                          </span>
+                        </div>
 
-                          <p className="text-urdu-maroon text-lg mb-2">
-                            شاعر:{" "}
-                            {poem.poet?.name || poem.poetName || "نامعلوم"}
+                        <p className="text-urdu-maroon text-lg mb-2">
+                          شاعر: {getAuthorName(poem)}
+                        </p>
+
+                        {poem.content && (
+                          <p className="text-gray-700 mb-4 line-clamp-3 text-lg leading-relaxed">
+                            {poem.content.substring(0, 150)}...
                           </p>
-
-                          {poem.content && (
-                            <p className="text-gray-700 mb-4 line-clamp-3 text-lg leading-relaxed">
-                              {poem.content.substring(0, 150)}...
-                            </p>
-                          )}
+                        )}
 
                           <div className="flex items-center space-x-6 text-sm text-gray-500 mb-4">
                             <span className="flex items-center">
@@ -740,7 +953,7 @@ const ReaderDashboard = () => {
                             </span>
                             <span className="flex items-center">
                               <Heart className="w-4 h-4 mr-2" />
-                              {poem.likes || 0} پسند
+                              {getLikeCount(poem.likes)} پسند
                             </span>
                             {poem.averageRating > 0 && (
                               <div className="flex items-center">
@@ -810,11 +1023,16 @@ const ReaderDashboard = () => {
                 محفوظ شدہ شاعری
               </h2>
               <div className="text-sm text-gray-600">
-                {bookmarkedPoems.length} محفوظ شدہ آئٹمز
+                {Array.isArray(bookmarkedPoems) ? bookmarkedPoems.length : 0} محفوظ شدہ آئٹمز
               </div>
             </div>
 
-            {bookmarkedPoems.length === 0 ? (
+            {loading ? (
+              <Card className="p-12 text-center">
+                <LoadingSpinner />
+                <p className="mt-4 text-gray-600">بُک مارکس لوڈ ہو رہے ہیں...</p>
+              </Card>
+            ) : !Array.isArray(bookmarkedPoems) || bookmarkedPoems.length === 0 ? (
               <Card className="p-12 text-center">
                 <Bookmark className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-700 mb-2">
@@ -831,7 +1049,7 @@ const ReaderDashboard = () => {
               </Card>
             ) : (
               <div className="grid gap-4">
-                {bookmarkedPoems.map((poem) => (
+                {bookmarkedPoems.filter(poem => poem && poem._id).map((poem) => (
                   <Card
                     key={poem._id}
                     className="p-4 hover:shadow-lg transition-shadow"
@@ -839,13 +1057,13 @@ const ReaderDashboard = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <h4 className="font-semibold text-urdu-brown mb-1">
-                          {poem.title}
+                          {poem.title || 'بے عنوان'}
                         </h4>
                         <p className="text-sm text-gray-600 mb-2">
-                          {poem.poet?.name}
+                          {getAuthorName(poem)}
                         </p>
                         <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                          {poem.category}
+                          {getCategoryName(poem.category)}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -874,25 +1092,34 @@ const ReaderDashboard = () => {
               <h2 className="text-2xl font-semibold text-urdu-brown nastaleeq-heading">
                 آپ کے لیے تجاویز
               </h2>
-              <Button onClick={fetchReaderData}>
+              <Button onClick={fetchReaderData} disabled={refreshing}>
                 <Sparkles className="w-4 h-4 mr-2" />
-                نئی تجاویز
+                {refreshing ? 'لوڈ ہو رہا ہے...' : 'نئی تجاویز'}
               </Button>
             </div>
 
-            {recommendations.length === 0 ? (
+            {loading ? (
+              <Card className="p-12 text-center">
+                <LoadingSpinner />
+                <p className="mt-4 text-gray-600">تجاویز لوڈ ہو رہی ہیں...</p>
+              </Card>
+            ) : !Array.isArray(recommendations) || recommendations.length === 0 ? (
               <Card className="p-12 text-center">
                 <Sparkles className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                  تجاویز لوڈ ہو رہی ہیں
+                  کوئی تجاویز دستیاب نہیں
                 </h3>
-                <p className="text-gray-500">
-                  آپ کی پسند کے مطابق شاعری تلاش کی جا رہی ہے
+                <p className="text-gray-500 mb-4">
+                  اپنی پسند کی شاعری کو بُک مارک کریں تاکہ ہم آپ کے لیے بہتر تجاویز فراہم کر سکیں
                 </p>
+                <Button onClick={() => setActiveTab("شاعری")}>
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  شاعری تلاش کریں
+                </Button>
               </Card>
             ) : (
               <div className="grid gap-6">
-                {recommendations.map((poem) => (
+                {recommendations.filter(poem => poem && poem._id).map((poem) => (
                   <Card
                     key={poem._id}
                     className="p-6 hover:shadow-lg transition-shadow border-l-4 border-urdu-gold"
@@ -900,22 +1127,28 @@ const ReaderDashboard = () => {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h4 className="text-xl font-semibold text-urdu-brown mb-2">
-                          {poem.title}
+                          {poem.title || 'بے عنوان'}
                         </h4>
                         <p className="text-urdu-maroon mb-2">
-                          {poem.poet?.name || poem.author?.name}
+                          {getAuthorName(poem)}
                         </p>
-                        <p className="text-gray-700 mb-3 line-clamp-2">
-                          {poem.content?.substring(0, 120)}...
-                        </p>
+                        {poem.content && (
+                          <p className="text-gray-700 mb-3 line-clamp-2">
+                            {poem.content.substring(0, 120)}...
+                          </p>
+                        )}
                         <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span>{poem.category}</span>
+                          <span>{getCategoryName(poem.category)}</span>
                           {poem.averageRating > 0 && (
                             <div className="flex items-center">
                               <Star className="w-4 h-4 text-yellow-400 fill-current mr-1" />
                               <span>{poem.averageRating.toFixed(1)}</span>
                             </div>
                           )}
+                          <span className="flex items-center">
+                            <Heart className="w-4 h-4 mr-1" />
+                            {getLikeCount(poem.likes)}
+                          </span>
                         </div>
                       </div>
                       <div className="flex flex-col space-y-2">
@@ -923,8 +1156,9 @@ const ReaderDashboard = () => {
                           size="sm"
                           variant="outline"
                           onClick={() => handleBookmark(poem._id)}
+                          className={poem.isBookmarked ? "bg-yellow-100 text-yellow-600" : ""}
                         >
-                          <Bookmark className="w-4 h-4" />
+                          <Bookmark className={`w-4 h-4 ${poem.isBookmarked ? 'fill-current' : ''}`} />
                         </Button>
                         <Link to={`/poems/${poem._id}`}>
                           <Button size="sm">پڑھیں</Button>

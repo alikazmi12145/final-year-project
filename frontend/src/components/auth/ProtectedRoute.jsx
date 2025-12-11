@@ -27,6 +27,13 @@ const ProtectedRoute = ({
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
+  // Check if user account is pending approval (for non-admin users)
+  if (user?.role !== "admin" && (user?.status === "pending" || user?.isApproved === false)) {
+    // Clear token and redirect to pending approval page
+    localStorage.removeItem("token");
+    return <Navigate to="/pending-approval" state={{ role: user?.role }} replace />;
+  }
+
   // Check if user role is specifically excluded
   if (excludedRoles.length > 0 && excludedRoles.includes(user?.role)) {
     const defaultRedirect = getDefaultRedirectForRole(user.role);

@@ -40,7 +40,13 @@ axiosInstance.interceptors.response.use(
         window.location.href = "/auth";
       }
     } else if (error.response?.status === 403) {
-      // Don't redirect for 403 errors, let the component handle it
+      // Check for pending approval error
+      if (error.response?.data?.code === "PENDING_APPROVAL") {
+        localStorage.removeItem("token");
+        const role = error.response?.data?.role || "reader";
+        // Redirect to pending approval page
+        window.location.href = `/pending-approval?role=${role}`;
+      }
     } else if (error.code === "NETWORK_ERROR" || !error.response) {
       console.error("Network error - server may be down");
     }
@@ -339,6 +345,8 @@ export const poetryAPI = {
   likePoem: (id) => axiosInstance.post(`/poems/${id}/like`),
   addComment: (id, commentData) =>
     axiosInstance.post(`/poems/${id}/comments`, commentData),
+  deleteComment: (poemId, commentId) =>
+    axiosInstance.delete(`/poems/${poemId}/comments/${commentId}`),
 
   // Search and filters
   searchPoems: (query, filters = {}) =>
@@ -652,6 +660,9 @@ export const adminAPI = {
 // 🔹 Dashboard API
 //
 export const dashboardAPI = {
+  // Reader Dashboard
+  getReaderDashboard: () => axiosInstance.get("/dashboard/reader"),
+  
   // Poet Dashboard
   getPoetDashboard: () => axiosInstance.get("/dashboard/poet"),
   getFollowers: () => axiosInstance.get("/dashboard/followers"),

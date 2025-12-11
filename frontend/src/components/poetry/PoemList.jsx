@@ -116,7 +116,17 @@ const PoemList = ({
     try {
       // Dynamic import to avoid circular dependencies
       const { poetryAPI } = await import("../../services/api.jsx");
-      const response = await poetryAPI.toggleBookmark(poemId);
+      // Use new bookmark system
+      const BookmarkAPI = (await import('../../services/bookmarkAPI')).default;
+      const isBookmarked = poems.find(p => p._id === poemId)?.isBookmarked;
+      
+      if (isBookmarked) {
+        await BookmarkAPI.removeByPoemId(poemId);
+      } else {
+        await BookmarkAPI.addBookmark(poemId);
+      }
+      
+      const response = { data: { success: true, isBookmarked: !isBookmarked } };
 
       return response;
     } catch (error) {

@@ -205,7 +205,11 @@ const PersonalizedRecommendations = () => {
                     <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold">
                       {poem.poet.profileImage?.url ? (
                         <img
-                          src={poem.poet.profileImage.url}
+                          src={
+                            poem.poet.profileImage.url.startsWith('http')
+                              ? poem.poet.profileImage.url
+                              : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000'}${poem.poet.profileImage.url}`
+                          }
                           alt={poem.poet.name}
                           className="w-full h-full object-cover"
                           onError={(e) => {

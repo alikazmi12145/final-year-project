@@ -225,8 +225,8 @@ router.post(
           token: emailVerificationToken,
           expiresAt: emailVerificationExpiry,
         },
-        status: role === "reader" ? "active" : "pending", // Readers are auto-approved, poets need approval
-        isApproved: role === "reader", // Auto-approve readers
+        status: role === "admin" ? "active" : "pending", // Only admins are auto-approved
+        isApproved: role === "admin", // Only admins are auto-approved
       };
 
       const user = new User(userData);
@@ -275,19 +275,30 @@ router.post(
         // Continue with registration even if email fails
       }
 
-      // Optionally auto-login reader accounts (and poets pending) for improved UX
-      // Provide tokens so current frontend (expecting token) works.
-      const { accessToken, refreshToken } = generateTokens(user);
+      // Only generate tokens for auto-approved users (admins only)
+      // All other users (readers, poets, moderators) need admin approval first
+      const needsApproval = role !== "admin";
+      let accessToken = null;
+      let refreshToken = null;
+      
+      if (!needsApproval) {
+        const tokens = generateTokens(user);
+        accessToken = tokens.accessToken;
+        refreshToken = tokens.refreshToken;
+      }
+
+      // Set appropriate message based on role
+      const messages = {
+        reader: "قاری اکاؤنٹ بن گیا! ایڈمن کی منظوری کا انتظار کریں۔ منظوری کے بعد ڈیش بورڈ تک رسائی ملے گی",
+        poet: "شاعر اکاؤنٹ بن گیا! ایڈمن کی منظوری کا انتظار کریں۔ منظوری کے بعد ڈیش بورڈ تک رسائی ملے گی",
+        moderator: "موڈریٹر اکاؤنٹ بن گیا! ایڈمن کی منظوری کا انتظار کریں۔ منظوری کے بعد ڈیش بورڈ تک رسائی ملے گی",
+        admin: "ایڈمن اکاؤنٹ کامیابی سے بن گیا۔"
+      };
 
       res.status(201).json({
         success: true,
-        message:
-          role === "reader"
-            ? "Account created successfully. Please verify your email."
-            : role === "poet"
-            ? "Account created successfully. Please verify your email and wait for admin approval."
-            : "Account created successfully. Please verify your email.",
-        requiresApproval: role === "poet",
+        message: messages[role] || "اکاؤنٹ کامیابی سے بن گیا",
+        requiresApproval: needsApproval,
         accessToken,
         refreshToken,
         token: accessToken, // backward compatibility for frontend expecting 'token'
@@ -297,6 +308,7 @@ router.post(
           email: user.email,
           role: user.role,
           status: user.status,
+          isApproved: user.isApproved,
         },
       });
     } catch (error) {
@@ -332,59 +344,14 @@ router.post(
         select: "title poet",
       });
 
-      // Auto-create reader account for login attempts (simplified registration)
-      if (!user && email && password) {
-        console.log(`🔧 Auto-creating reader account for: ${email}`);
-        try {
-          const hashedPassword = await bcrypt.hash(password, 12);
-
-          // Create user with minimal required fields first
-          const userData = {
-            name:
-              email.split("@")[0].charAt(0).toUpperCase() +
-              email.split("@")[0].slice(1),
-            email: email,
-            password: hashedPassword,
-            role: "reader",
-            status: "active",
-            isApproved: true,
-            isVerified: true,
-            bio: "Poetry enthusiast and reader",
-          };
-
-          // Create user object and set nested fields properly
-          user = new User(userData);
-
-          // Set emailVerification object
-          user.emailVerification = {
-            isVerified: true,
-          };
-
-          // Set preferences object
-          user.preferences = {
-            language: "urdu",
-            theme: "cultural",
-            notifications: {
-              email: true,
-              push: false,
-              contests: true,
-              newPoetry: true,
-            },
-          };
-
-          await user.save();
-          console.log(`✅ Reader account auto-created for: ${email}`);
-        } catch (createError) {
-          console.error(
-            "❌ Failed to auto-create reader account:",
-            createError
-          );
-          console.error("❌ Error details:", createError.message);
-          return res.status(500).json({
-            success: false,
-            message: "Failed to create reader account. Please try again.",
-          });
-        }
+      // No auto-creation of accounts during login
+      // Users must register through the proper registration flow
+      if (!user) {
+        console.log(`❌ Login attempt for non-existent user: ${email}`);
+        return res.status(401).json({
+          success: false,
+          message: "غلط ای میل یا پاس ورڈ۔ اگر آپ کا اکاؤنٹ نہیں ہے تو براہ کرم رجسٹر کریں۔",
+        });
       }
 
       // Auto-create or fix admin account if trying to login with default admin credentials
@@ -482,24 +449,20 @@ router.post(
           });
         }
 
-        if (user.status === "pending") {
-          if (user.role === "poet") {
-            console.log("❌ Login denied - Poet account pending approval");
-            return res.status(403).json({
-              success: false,
-              message:
-                "Your poet account is pending admin approval. Please wait for approval.",
-              code: "POET_PENDING_APPROVAL",
-            });
-          } else if (user.role === "reader") {
-            console.log("❌ Login denied - Reader account pending approval");
-            return res.status(403).json({
-              success: false,
-              message:
-                "Your reader account is pending admin approval. Please wait for approval.",
-              code: "READER_PENDING_APPROVAL",
-            });
-          }
+        // Check for pending approval (both status and isApproved flag)
+        if (user.status === "pending" || !user.isApproved) {
+          const roleMessages = {
+            poet: "آپ کا شاعر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+            moderator: "آپ کا موڈریٹر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+            reader: "آپ کا قاری اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں"
+          };
+          console.log(`❌ Login denied - ${user.role} account pending approval`);
+          return res.status(403).json({
+            success: false,
+            message: roleMessages[user.role] || "آپ کا اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+            code: "PENDING_APPROVAL",
+            role: user.role,
+          });
         }
       }
 

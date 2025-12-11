@@ -93,8 +93,8 @@ class AuthController {
       const emailVerificationToken = crypto.randomBytes(32).toString("hex");
 
       // Determine approval status based on role
-      // Readers and admins are auto-approved, poets and moderators need admin approval
-      const needsApproval = role === "poet" || role === "moderator";
+      // Only admins are auto-approved, all other users need admin approval
+      const needsApproval = role !== "admin";
       const userStatus = needsApproval ? "pending" : "active";
       const isApproved = !needsApproval;
 
@@ -144,10 +144,12 @@ class AuthController {
       // Set appropriate message based on approval requirement
       let message = "اکاؤنٹ کامیابی سے بن گیا، ای میل کی تصدیق کریں";
       if (needsApproval) {
-        message =
-          role === "poet"
-            ? "شاعر اکاؤنٹ بن گیا! ایڈمن کی منظوری کا انتظار کریں۔ منظوری کے بعد ڈیش بورڈ تک رسائی ملے گی"
-            : "موڈریٹر اکاؤنٹ بن گیا! ایڈمن کی منظوری کا انتظار کریں۔ منظوری کے بعد ڈیش بورڈ تک رسائی ملے گی";
+        const approvalMessages = {
+          poet: "شاعر اکاؤنٹ بن گیا! ایڈمن کی منظوری کا انتظار کریں۔ منظوری کے بعد ڈیش بورڈ تک رسائی ملے گی",
+          moderator: "موڈریٹر اکاؤنٹ بن گیا! ایڈمن کی منظوری کا انتظار کریں۔ منظوری کے بعد ڈیش بورڈ تک رسائی ملے گی",
+          reader: "قاری اکاؤنٹ بن گیا! ایڈمن کی منظوری کا انتظار کریں۔ منظوری کے بعد ڈیش بورڈ تک رسائی ملے گی"
+        };
+        message = approvalMessages[role] || "اکاؤنٹ بن گیا! ایڈمن کی منظوری کا انتظار کریں۔ منظوری کے بعد ڈیش بورڈ تک رسائی ملے گی";
       }
 
       // Generate JWT token only for users who don't need approval
@@ -220,16 +222,18 @@ class AuthController {
         isApproved: user.isApproved,
       });
 
-      // CRITICAL: Check approval status FIRST for poets and moderators
-      if (user.role === "poet" || user.role === "moderator") {
+      // CRITICAL: Check approval status FIRST for all non-admin users
+      if (user.role !== "admin") {
         if (!user.isApproved || user.status !== "active") {
-          console.log("❌ Login blocked: Poet/Moderator not approved");
+          console.log(`❌ Login blocked: ${user.role} not approved`);
+          const messages = {
+            poet: "آپ کا شاعر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+            moderator: "آپ کا موڈریٹر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+            reader: "آپ کا قاری اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں"
+          };
           return res.status(403).json({
             success: false,
-            message:
-              user.role === "poet"
-                ? "آپ کا شاعر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں"
-                : "آپ کا موڈریٹر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+            message: messages[user.role] || "آپ کا اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
             code: "PENDING_APPROVAL",
             role: user.role,
           });
@@ -250,18 +254,20 @@ class AuthController {
           await user.save();
           console.log(`🔧 Auto-approved admin account: ${user.email}`);
         }
-        // Special message for pending approval for poets and moderators
+        // Special message for pending approval for all non-admin users
         else if (
           user.status === "pending" &&
           !user.isApproved &&
-          (user.role === "poet" || user.role === "moderator")
+          user.role !== "admin"
         ) {
+          const messages = {
+            poet: "آپ کا شاعر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+            moderator: "آپ کا موڈریٹر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+            reader: "آپ کا قاری اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں"
+          };
           return res.status(403).json({
             success: false,
-            message:
-              user.role === "poet"
-                ? "آپ کا شاعر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں"
-                : "آپ کا موڈریٹر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+            message: messages[user.role] || "آپ کا اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
             code: "PENDING_APPROVAL",
             role: user.role,
           });
@@ -275,17 +281,16 @@ class AuthController {
         }
       }
 
-      // Additional check for approval status for poets and moderators
-      if (
-        (user.role === "poet" || user.role === "moderator") &&
-        !user.isApproved
-      ) {
+      // Additional check for approval status for all non-admin users
+      if (user.role !== "admin" && !user.isApproved) {
+        const messages = {
+          poet: "آپ کا شاعر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+          moderator: "آپ کا موڈریٹر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+          reader: "آپ کا قاری اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں"
+        };
         return res.status(403).json({
           success: false,
-          message:
-            user.role === "poet"
-              ? "آپ کا شاعر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں"
-              : "آپ کا موڈریٹر اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
+          message: messages[user.role] || "آپ کا اکاؤنٹ ابھی منظور نہیں ہوا۔ ایڈمن کی منظوری کا انتظار کریں",
           code: "PENDING_APPROVAL",
           role: user.role,
         });

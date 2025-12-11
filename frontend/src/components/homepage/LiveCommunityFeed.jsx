@@ -180,7 +180,7 @@ const LiveCommunityFeed = () => {
       </div>
 
       {/* CSS Animation for Scrolling */}
-      <style jsx>{`
+      <style>{`
         @keyframes scroll {
           0% {
             transform: translateX(0);

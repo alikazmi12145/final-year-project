@@ -32,7 +32,17 @@ export const AuthProvider = ({ children }) => {
         const response = await authAPI.getMe();
 
         if (response.data.success) {
-          setUser(response.data.user);
+          // Check if user is approved (for non-admin users)
+          const userData = response.data.user;
+          if (userData.role !== "admin" && (!userData.isApproved || userData.status === "pending")) {
+            // User is not approved - clear token and redirect
+            localStorage.removeItem("token");
+            setUser(null);
+            // Navigate to pending approval page
+            navigate("/pending-approval", { state: { role: userData.role }, replace: true });
+            return;
+          }
+          setUser(userData);
         } else {
           localStorage.removeItem("token");
         }
@@ -40,6 +50,14 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Auth check error:", error);
       localStorage.removeItem("token");
+      
+      // Check if it's a pending approval error
+      if (error.response?.status === 403 && error.response?.data?.code === "PENDING_APPROVAL") {
+        navigate("/pending-approval", { 
+          state: { role: error.response?.data?.role }, 
+          replace: true 
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -118,21 +136,23 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.register(userData);
 
       if (response.data.success) {
-        // For poet accounts requiring approval, don't log them in yet
+        // For all accounts requiring approval (poet, moderator, reader), don't log them in
         if (response.data.requiresApproval) {
           return {
             success: true,
             requiresApproval: true,
             message: response.data.message,
+            role: userData.role,
           };
         }
 
-        // For readers or auto-approved accounts, proceed with login
+        // For auto-approved accounts (admin), proceed with login
         const token = response.data.accessToken || response.data.token;
-        localStorage.setItem("token", token);
-        setUser(response.data.user);
-
-        navigate(getDefaultRoute(response.data.user.role), { replace: true });
+        if (token) {
+          localStorage.setItem("token", token);
+          setUser(response.data.user);
+          navigate(getDefaultRoute(response.data.user.role), { replace: true });
+        }
         return { success: true };
       } else {
         setError(response.data.message || "Registration failed");

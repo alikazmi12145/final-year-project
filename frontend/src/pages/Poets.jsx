@@ -182,7 +182,7 @@ const Poets = () => {
                     src={
                       (poet.profileImage?.url || poet.avatar || poet.profilePicture).startsWith('http')
                         ? (poet.profileImage?.url || poet.avatar || poet.profilePicture)
-                        : `http://localhost:5000${poet.profileImage?.url || poet.avatar || poet.profilePicture}`
+                        : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000'}${poet.profileImage?.url || poet.avatar || poet.profilePicture}`
                     }
                     alt={poet.name}
                     className="w-40 h-40 rounded-full object-cover filter grayscale hover:filter-none transition-all duration-500"
@@ -492,12 +492,12 @@ const Poets = () => {
                   >
                     {/* Large Classical Image at Top */}
                     <div className="h-60 bg-gradient-to-br from-cultural-charcoal to-cultural-slate flex items-center justify-center relative overflow-hidden">
-                      {poet.profileImage?.url || poet.avatar || poet.image || poet.profilePicture ? (
-                        <img
-                          src={
+                        {poet.profileImage?.url || poet.avatar || poet.image || poet.profilePicture ? (
+                          <img
+                            src={
                             (poet.profileImage?.url || poet.avatar || poet.image || poet.profilePicture).startsWith('http')
                               ? (poet.profileImage?.url || poet.avatar || poet.image || poet.profilePicture)
-                              : `http://localhost:5000${poet.profileImage?.url || poet.avatar || poet.image || poet.profilePicture}`
+                              : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000'}${poet.profileImage?.url || poet.avatar || poet.image || poet.profilePicture}`
                           }
                           alt={poet.name}
                           className="w-full h-full object-cover bg-center filter grayscale hover:filter-none transition-all duration-500"

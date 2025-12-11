@@ -23,8 +23,11 @@ const PoemView = ({
   loading = false,
   onLike,
   onComment,
+  onDeleteComment,
   onEdit,
   onDelete,
+  onBookmark,
+  onDownload,
 }) => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -32,15 +35,21 @@ const PoemView = ({
 
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [showComments, setShowComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [deletingComment, setDeletingComment] = useState(null);
+  const [isLiking, setIsLiking] = useState(false);
+  const [isBookmarking, setIsBookmarking] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     if (poem) {
-      setIsLiked(poem.likes?.includes(user?.id) || false);
+      setIsLiked(poem.likes?.includes(user?.userId || user?.id) || false);
       setLikesCount(poem.likesCount || 0);
+      setIsBookmarked(poem.isBookmarked || false);
       setComments(poem.comments || []);
     }
   }, [poem, user]);
@@ -82,6 +91,9 @@ const PoemView = ({
       return;
     }
 
+    if (isLiking) return;
+    setIsLiking(true);
+
     try {
       const result = await onLike(id);
       if (result) {
@@ -90,12 +102,64 @@ const PoemView = ({
       }
     } catch (error) {
       console.error("Like error:", error);
+    } finally {
+      setIsLiking(false);
+    }
+  };
+
+  const handleBookmark = async () => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    if (isBookmarking) return;
+    setIsBookmarking(true);
+
+    try {
+      if (onBookmark) {
+        const result = await onBookmark(id);
+        if (result !== null) {
+          setIsBookmarked(!isBookmarked);
+        }
+      }
+    } catch (error) {
+      console.error("Bookmark error:", error);
+    } finally {
+      setIsBookmarking(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    if (isDownloading) return;
+    setIsDownloading(true);
+
+    try {
+      if (onDownload) {
+        await onDownload(id);
+      }
+    } catch (error) {
+      console.error("Download error:", error);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
-    if (!newComment.trim() || !user) return;
+    if (!newComment.trim()) {
+      alert("براہ کرم تبصرہ لکھیں");
+      return;
+    }
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
 
     setSubmittingComment(true);
     try {
@@ -106,8 +170,27 @@ const PoemView = ({
       }
     } catch (error) {
       console.error("Comment error:", error);
+      alert("تبصرہ بھیجنے میں خرابی ہوئی");
     } finally {
       setSubmittingComment(false);
+    }
+  };
+
+  const handleCommentDelete = async (commentId) => {
+    if (deletingComment === commentId) return;
+    
+    setDeletingComment(commentId);
+    try {
+      if (onDeleteComment) {
+        const result = await onDeleteComment(id, commentId);
+        if (result?.success) {
+          setComments((prev) => prev.filter(c => c._id !== commentId));
+        }
+      }
+    } catch (error) {
+      console.error("Delete comment error:", error);
+    } finally {
+      setDeletingComment(null);
     }
   };
 
@@ -268,14 +351,15 @@ const PoemView = ({
           <div className="flex flex-wrap justify-center gap-4">
             <button
               onClick={handleLike}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+              disabled={isLiking}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 isLiked
                   ? "bg-red-100 text-red-600"
                   : "bg-red-50 text-red-600 hover:bg-red-100"
               }`}
             >
               <Heart className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`} />
-              <span>پسند ({likesCount})</span>
+              <span>پسند ({isLiking ? "..." : likesCount})</span>
             </button>
 
             <button
@@ -286,9 +370,17 @@ const PoemView = ({
               <span>تبصرے ({comments.length})</span>
             </button>
 
-            <button className="flex items-center space-x-2 px-4 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
-              <Bookmark className="w-4 h-4" />
-              <span>محفوظ کریں</span>
+            <button
+              onClick={handleBookmark}
+              disabled={isBookmarking}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                isBookmarked
+                  ? "bg-green-100 text-green-600"
+                  : "bg-green-50 text-green-600 hover:bg-green-100"
+              }`}
+            >
+              <Bookmark className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} />
+              <span>{isBookmarking ? "..." : (isBookmarked ? "محفوظ شدہ" : "محفوظ کریں")}</span>
             </button>
 
             <button
@@ -299,9 +391,13 @@ const PoemView = ({
               <span>شیئر</span>
             </button>
 
-            <button className="flex items-center space-x-2 px-4 py-2 bg-urdu-gold/10 text-urdu-brown rounded-lg hover:bg-urdu-gold/20 transition-colors">
+            <button
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="flex items-center space-x-2 px-4 py-2 bg-urdu-gold/10 text-urdu-brown rounded-lg hover:bg-urdu-gold/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Download className="w-4 h-4" />
-              <span>ڈاؤن لوڈ</span>
+              <span>{isDownloading ? "..." : "ڈاؤن لوڈ"}</span>
             </button>
           </div>
 
@@ -367,22 +463,45 @@ const PoemView = ({
             {/* Comments List */}
             <div className="space-y-4">
               {comments.length > 0 ? (
-                comments.map((comment, index) => (
-                  <div key={index} className="border-l-4 border-urdu-gold pl-4">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <span className="font-medium text-urdu-brown">
-                        {comment.user?.name || "نامعلوم صارف"}
-                      </span>
-                      <span className="text-sm text-urdu-maroon">•</span>
-                      <span className="text-sm text-urdu-maroon">
-                        {formatDate(comment.createdAt)}
-                      </span>
+                comments.map((comment, index) => {
+                  const canDeleteComment = user && (
+                    comment.user?._id === user.userId || 
+                    comment.user?._id === user.id ||
+                    poem?.author === user.userId ||
+                    poem?.author === user.id ||
+                    user.role === 'admin' ||
+                    user.role === 'moderator'
+                  );
+
+                  return (
+                    <div key={comment._id || index} className="border-l-4 border-urdu-gold pl-4 relative group">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-urdu-brown">
+                            {comment.user?.name || "نامعلوم صارف"}
+                          </span>
+                          <span className="text-sm text-urdu-maroon">•</span>
+                          <span className="text-sm text-urdu-maroon">
+                            {formatDate(comment.commentedAt)}
+                          </span>
+                        </div>
+                        {canDeleteComment && (
+                          <button
+                            onClick={() => handleCommentDelete(comment._id)}
+                            disabled={deletingComment === comment._id}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-600 hover:bg-red-50 rounded disabled:opacity-50"
+                            title="تبصرہ حذف کریں / Delete comment"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-urdu-maroon urdu-text">
+                        {comment.comment}
+                      </p>
                     </div>
-                    <p className="text-urdu-maroon urdu-text">
-                      {comment.content}
-                    </p>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <p className="text-center text-urdu-maroon py-8">
                   ابھی تک کوئی تبصرہ نہیں ہے

@@ -302,6 +302,126 @@ router.get("/pending", auth, moderatorAuth, async (req, res) => {
   }
 });
 
+// Get personalized recommendations (MUST come before /:id route)
+router.get("/recommendations", auth, poemOperationLimit, async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+    console.log("Recommendations endpoint called, user:", req.user?.userId);
+
+    // Validate user
+    if (!req.user || !req.user.userId) {
+      console.log("No user or userId found in request");
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    console.log("Finding user by ID:", req.user.userId);
+    const user = await User.findById(req.user.userId);
+    console.log("User found:", user ? "yes" : "no");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Get bookmarked poems separately to avoid population issues
+    const bookmarkedPoems = user.bookmarkedPoems || [];
+    console.log("Bookmarked poems count:", bookmarkedPoems.length);
+
+    // Get categories from bookmarked poems if any
+    let preferredCategories = [];
+    if (bookmarkedPoems.length > 0) {
+      const bookmarkedPoemDocs = await Poem.find({
+        _id: { $in: bookmarkedPoems }
+      }).select('category').lean();
+      
+      preferredCategories = [...new Set(
+        bookmarkedPoemDocs
+          .filter(p => p && p.category)
+          .map(p => p.category)
+      )];
+    }
+    console.log("Preferred categories:", preferredCategories);
+
+    // If no preferences, return popular poems
+    if (preferredCategories.length === 0) {
+      console.log("No preferences, returning popular poems");
+      const popularPoems = await Poem.find({
+        status: "published",
+        author: { $ne: req.user.userId },
+      })
+        .populate("author", "name profileImage")
+        .populate("poet", "name bio")
+        .sort({ createdAt: -1 })
+        .limit(parseInt(limit))
+        .lean();
+
+      console.log("Popular poems found:", popularPoems.length);
+      return res.json({
+        success: true,
+        poems: popularPoems || [],
+        type: "popular",
+      });
+    }
+
+    // Find poems in preferred categories that user hasn't bookmarked
+    const recommendations = await Poem.find({
+      status: "published",
+      category: { $in: preferredCategories },
+      _id: { $nin: bookmarkedPoems },
+      author: { $ne: req.user.userId },
+    })
+      .populate("author", "name profileImage")
+      .populate("poet", "name bio")
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .lean();
+
+    console.log("Recommendations found:", recommendations.length);
+
+    // If no personalized recommendations found, return popular poems instead
+    if (recommendations.length === 0) {
+      const popularPoems = await Poem.find({
+        status: "published",
+        author: { $ne: req.user.userId },
+      })
+        .populate("author", "name profileImage")
+        .populate("poet", "name bio")
+        .sort({ createdAt: -1 })
+        .limit(parseInt(limit))
+        .lean();
+
+      return res.json({
+        success: true,
+        poems: popularPoems || [],
+        type: "popular",
+      });
+    }
+
+    res.json({
+      success: true,
+      poems: recommendations,
+      type: "personalized",
+      basedOn: preferredCategories,
+    });
+  } catch (error) {
+    console.error("Get recommendations error:", error.message);
+    console.error("Error stack:", error.stack);
+    
+    // Return empty poems array instead of error to prevent UI breaks
+    res.status(200).json({
+      success: true,
+      poems: [],
+      type: "fallback",
+      message: "Unable to generate recommendations at this time",
+    });
+  }
+});
+
 // Get poem by ID
 router.get("/:id", optionalAuth, poemOperationLimit, async (req, res) => {
   try {
@@ -757,17 +877,12 @@ router.post(
         });
       }
 
-      if (!poem.published || poem.status !== "approved") {
-        return res.status(403).json({
-          success: false,
-          message: "Cannot comment on unpublished poems",
-        });
-      }
+      // Allow comments on all poems (removed published/approved check)
 
       const comment = {
         user: req.user.userId,
-        content: req.body.content,
-        createdAt: new Date(),
+        comment: req.body.content,
+        commentedAt: new Date(),
       };
 
       poem.comments.push(comment);
@@ -792,6 +907,79 @@ router.post(
     }
   }
 );
+
+// Delete comment from poem
+router.delete("/:id/comments/:commentId", auth, poemOperationLimit, async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+    const poem = await Poem.findById(id);
+
+    if (!poem) {
+      return res.status(404).json({
+        success: false,
+        message: "Poem not found",
+      });
+    }
+
+    const comment = poem.comments.id(commentId);
+    
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: "Comment not found",
+      });
+    }
+
+    // Check if user is the comment author or poem author or admin
+    // Convert ObjectId to string for comparison
+    const commentUserId = comment.user ? comment.user.toString() : null;
+    const poemAuthorId = poem.author ? poem.author.toString() : null;
+    const requestUserId = req.user.userId.toString(); // Convert to string
+
+    const isCommentAuthor = commentUserId === requestUserId;
+    const isPoemAuthor = poemAuthorId === requestUserId;
+    const isAdmin = req.user.role === 'admin' || req.user.role === 'moderator';
+
+    console.log('Delete comment authorization check:', {
+      commentUserId,
+      poemAuthorId,
+      requestUserId,
+      userRole: req.user.role,
+      isCommentAuthor,
+      isPoemAuthor,
+      isAdmin,
+      authorized: isCommentAuthor || isPoemAuthor || isAdmin
+    });
+
+    if (!isCommentAuthor && !isPoemAuthor && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to delete this comment",
+        debug: {
+          commentUserId,
+          requestUserId,
+          poemAuthorId
+        }
+      });
+    }
+
+    poem.comments.pull(commentId);
+    poem.commentsCount = Math.max(0, poem.commentsCount - 1);
+    await poem.save();
+
+    res.json({
+      success: true,
+      message: "Comment deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete comment error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete comment",
+      error: error.message
+    });
+  }
+});
 
 // Admin approve poem
 router.put("/:id/approve", auth, moderatorAuth, async (req, res) => {
@@ -967,8 +1155,7 @@ router.post("/:id/bookmark", auth, poemOperationLimit, async (req, res) => {
     const isBookmarked = user.bookmarkedPoems.includes(id);
 
     if (isBookmarked) {
-      user.removeBookmark(id);
-      await user.save();
+      await user.removeBookmark(id);
 
       res.json({
         success: true,
@@ -976,8 +1163,7 @@ router.post("/:id/bookmark", auth, poemOperationLimit, async (req, res) => {
         isBookmarked: false,
       });
     } else {
-      user.addBookmark(id);
-      await user.save();
+      await user.addBookmark(id);
 
       res.json({
         success: true,
@@ -990,75 +1176,6 @@ router.post("/:id/bookmark", auth, poemOperationLimit, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to bookmark poem",
-    });
-  }
-});
-
-// Get personalized recommendations
-router.get("/recommendations", auth, poemOperationLimit, async (req, res) => {
-  try {
-    const { limit = 10 } = req.query;
-
-    const user = await User.findById(req.user.userId).populate(
-      "bookmarkedPoems"
-    );
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    // Get user's preferred categories from bookmarked poems
-    const bookmarkedCategories = user.bookmarkedPoems.map(
-      (poem) => poem.category
-    );
-    const preferredCategories = [...new Set(bookmarkedCategories)];
-
-    // If no preferences, return popular poems
-    if (preferredCategories.length === 0) {
-      const popularPoems = await Poem.find({
-        status: { $in: ["pending", "published"] },
-        author: { $ne: req.user.userId }, // Exclude user's own poems
-      })
-        .populate("author", "name")
-        .populate("poet", "name bio")
-        .sort({ averageRating: -1, likesCount: -1 })
-        .limit(parseInt(limit))
-        .lean();
-
-      return res.json({
-        success: true,
-        poems: popularPoems,
-        type: "popular",
-      });
-    }
-
-    // Find poems in preferred categories that user hasn't bookmarked
-    const recommendations = await Poem.find({
-      status: { $in: ["pending", "published"] },
-      category: { $in: preferredCategories },
-      _id: { $nin: user.bookmarkedPoems.map((p) => p._id) },
-      author: { $ne: req.user.userId }, // Exclude user's own poems
-    })
-      .populate("author", "name")
-      .populate("poet", "name bio")
-      .sort({ averageRating: -1, likesCount: -1, createdAt: -1 })
-      .limit(parseInt(limit))
-      .lean();
-
-    res.json({
-      success: true,
-      poems: recommendations,
-      type: "personalized",
-      basedOn: preferredCategories,
-    });
-  } catch (error) {
-    console.error("Get recommendations error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch recommendations",
     });
   }
 });
