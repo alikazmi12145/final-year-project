@@ -12,6 +12,8 @@ const Layout = ({ children }) => {
   // Check if current route should hide navbar
   const hideNavbarRoutes = [
     "/auth",
+    "/forgot-password",
+    "/reset-password",
     "/admin",
     "/poet",
     "/moderator",
