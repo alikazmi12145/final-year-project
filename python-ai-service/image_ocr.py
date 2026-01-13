@@ -111,16 +111,19 @@ class UrduOCR:
         if original_image.mode != "RGB":
             original_image = original_image.convert("RGB")
 
-        # Try multiple strategies and pick the best
+        # Try multiple strategies - including for artistic/calligraphic text
+        # Order matters: try adaptive binarization first (best for artistic text)
         strategies = [
+            ("adaptive_binary", self._binarize_adaptive(original_image.copy())),
+            ("inverted", self._invert_colors(original_image.copy())),
             ("preprocessed", self._preprocess_image(image)),
             ("light_preprocess", self._light_preprocess(original_image.copy())),
             ("original_grayscale", original_image.convert("L")),
         ]
         
         logger.info("=" * 60)
-        logger.info("🚀 STARTING 3-STRATEGY OCR APPROACH")
-        logger.info(f"📋 Strategies: preprocessed, light_preprocess, original_grayscale")
+        logger.info("🚀 STARTING 5-STRATEGY OCR APPROACH (includes artistic text)")
+        logger.info(f"📋 Strategies: adaptive_binary, inverted, preprocessed, light_preprocess, original_grayscale")
         logger.info(f"📝 Languages requested: {languages}")
         logger.info("=" * 60)
 
@@ -129,77 +132,91 @@ class UrduOCR:
         lang_str = "urd"  # ONLY URDU! This is critical!
         logger.info(f"🎯 Using language: {lang_str} (Urdu ONLY to avoid English interference)")
 
-        # PSM modes to try
-        psm_modes = [6, 3, 4, 11, 13]
+        # PSM modes to try - extended for artistic text
+        # PSM 6: Uniform block of text (most common)
+        # PSM 3: Fully automatic page segmentation
+        # PSM 4: Single column of text (variable sizes)
+        # PSM 11: Sparse text (find as much text as possible)
+        # PSM 13: Raw line (treat image as single text line)
+        # PSM 7: Treat image as single text line
+        # PSM 8: Treat image as single word
+        psm_modes = [6, 3, 4, 11, 13, 7, 8]
+        
+        # Also try Arabic language model (urd sometimes fails on Nastaliq)
+        lang_options = ["urd", "ara"]
 
         best_text = ""
         best_conf = -1.0
         best_psm = None
         best_strategy = None
+        best_lang = None
 
         # Try each strategy
         for strategy_name, processed_img in strategies:
             logger.info(f"🔄 Trying strategy: {strategy_name}")
             
-            for psm in psm_modes:
-                # Use Urdu language only, without character whitelist (too restrictive)
-                custom_config = f"--oem 3 --psm {psm}"
-                logger.info(f"  🔍 Trying PSM {psm}...")
-                try:
-                    # Get text using image_to_string (often more complete)
-                    text_string = pytesseract.image_to_string(
-                        processed_img, lang=lang_str, config=custom_config
-                    ).strip()
-                    
-                    # Get confidence data
-                    data = pytesseract.image_to_data(
-                        processed_img, lang=lang_str, config=custom_config, output_type=pytesseract.Output.DICT
-                    )
-                    
-                    # Calculate confidence
-                    confs = []
-                    for c in data.get("conf", []):
-                        try:
-                            fc = float(c)
-                            if fc >= 0:
-                                confs.append(fc)
-                        except Exception:
+            for lang in lang_options:
+                for psm in psm_modes:
+                    # Use Urdu language only, without character whitelist (too restrictive)
+                    custom_config = f"--oem 3 --psm {psm}"
+                    logger.debug(f"  🔍 Trying lang={lang}, PSM {psm}...")
+                    try:
+                        # Get text using image_to_string (often more complete)
+                        text_string = pytesseract.image_to_string(
+                            processed_img, lang=lang, config=custom_config
+                        ).strip()
+                        
+                        # Get confidence data
+                        data = pytesseract.image_to_data(
+                            processed_img, lang=lang, config=custom_config, output_type=pytesseract.Output.DICT
+                        )
+                        
+                        # Calculate confidence
+                        confs = []
+                        for c in data.get("conf", []):
+                            try:
+                                fc = float(c)
+                                if fc >= 0:
+                                    confs.append(fc)
+                            except Exception:
+                                continue
+                        
+                        avg_conf = sum(confs) / len(confs) if confs else 0.0
+                        
+                        # Clean the text
+                        cleaned_text = self._clean_extracted_text(text_string)
+                        
+                        if cleaned_text:
+                            logger.info(f"  {lang} PSM {psm}: '{cleaned_text[:50]}...' ({len(cleaned_text)} chars, {avg_conf:.1f}% conf)")
+                        
+                        if not cleaned_text:
                             continue
+                        
+                        # Score based on confidence and length
+                        # Also check text quality
+                        quality_score = self._calculate_text_quality(cleaned_text)
+                        score = avg_conf * (1 + min(1, len(cleaned_text) / 100)) * quality_score
+                        
+                        if score > best_conf or (score == best_conf and len(cleaned_text) > len(best_text)):
+                            best_text = cleaned_text
+                            best_conf = avg_conf
+                            best_psm = psm
+                            best_strategy = strategy_name
+                            best_lang = lang
+                            logger.debug(f"  ✅ New best: score={score:.2f}, quality={quality_score:.2f}")
                     
-                    avg_conf = sum(confs) / len(confs) if confs else 0.0
-                    
-                    # Clean the text
-                    cleaned_text = self._clean_extracted_text(text_string)
-                    
-                    logger.info(f"  PSM {psm}: '{cleaned_text[:50]}...' ({len(cleaned_text)} chars, {avg_conf:.1f}% conf)")
-                    
-                    if not cleaned_text:
+                    except Exception as e:
+                        logger.debug(f"  {lang} PSM {psm} failed: {e}")
                         continue
-                    
-                    # Score based on confidence and length
-                    # Also check text quality
-                    quality_score = self._calculate_text_quality(cleaned_text)
-                    score = avg_conf * (1 + min(1, len(cleaned_text) / 100)) * quality_score
-                    
-                    if score > best_conf or (score == best_conf and len(cleaned_text) > len(best_text)):
-                        best_text = cleaned_text
-                        best_conf = avg_conf
-                        best_psm = psm
-                        best_strategy = strategy_name
-                        logger.debug(f"  ✅ New best: score={score:.2f}, quality={quality_score:.2f}")
-                
-                except Exception as e:
-                    logger.debug(f"  PSM {psm} failed: {e}")
-                    continue
             
             # If we got good results, no need to try more strategies
             if best_text and best_conf > 70 and len(best_text) > 10:
-                logger.info(f"✅ Good result with {strategy_name}, skipping remaining strategies")
+                logger.info(f"✅ Good result with {best_strategy}, skipping remaining strategies")
                 break
 
         # Log final result
         if best_text:
-            logger.info(f"🎯 Final OCR result ({best_strategy}): '{best_text}' ({len(best_text)} chars, {best_conf:.1f}% confidence, PSM {best_psm})")
+            logger.info(f"🎯 Final OCR result ({best_strategy}, lang={best_lang}): '{best_text}' ({len(best_text)} chars, {best_conf:.1f}% confidence, PSM {best_psm})")
         else:
             logger.warning(f"⚠️ No text extracted after trying all strategies and PSM modes")
 
@@ -387,6 +404,99 @@ class UrduOCR:
         
         return max(0.0, min(1.0, quality))
     
+    def _binarize_adaptive(self, image):
+        """
+        Adaptive binarization for artistic/calligraphic text on complex backgrounds
+        Best for decorative Nastaliq fonts and images with gradients
+        """
+        logger.info("🖼️ ADAPTIVE BINARIZATION - for artistic text")
+        
+        try:
+            import numpy as np
+            import cv2
+            has_cv2 = True
+        except ImportError:
+            has_cv2 = False
+            logger.warning("OpenCV not available, falling back to PIL binarization")
+        
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+        
+        # Resize if needed
+        width, height = image.size
+        min_w = 1500
+        if width < min_w:
+            scale = min_w / width
+            new_size = (int(width * scale), int(height * scale))
+            image = image.resize(new_size, Image.Resampling.LANCZOS)
+            logger.info(f"📐 Resized to {new_size}")
+        
+        if has_cv2:
+            import numpy as np
+            import cv2
+            
+            # Convert to numpy array
+            img_array = np.array(image)
+            
+            # Convert to grayscale
+            gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+            
+            # Apply bilateral filter to reduce noise while keeping edges sharp
+            denoised = cv2.bilateralFilter(gray, 9, 75, 75)
+            
+            # Adaptive threshold - better for varying lighting/backgrounds
+            binary = cv2.adaptiveThreshold(
+                denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                cv2.THRESH_BINARY, 31, 10
+            )
+            
+            # Check if text is inverted (light text on dark background)
+            # Count black vs white pixels
+            white_pixels = np.sum(binary == 255)
+            black_pixels = np.sum(binary == 0)
+            
+            # If more black pixels, text is likely white - invert
+            if black_pixels > white_pixels:
+                binary = cv2.bitwise_not(binary)
+                logger.info("🔄 Detected inverted text - flipped image")
+            
+            # Convert back to PIL
+            result = Image.fromarray(binary)
+            logger.info("✅ Adaptive binarization complete")
+            return result
+        else:
+            # Fallback to PIL-based processing
+            gray = image.convert("L")
+            # Simple threshold
+            threshold = 128
+            binary = gray.point(lambda x: 255 if x > threshold else 0, '1')
+            return binary.convert("L")
+    
+    def _invert_colors(self, image):
+        """
+        Invert image colors - for light text on dark backgrounds
+        """
+        logger.info("🖼️ INVERTING colors - for light text on dark background")
+        
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+        
+        # Resize if needed
+        width, height = image.size
+        min_w = 1500
+        if width < min_w:
+            scale = min_w / width
+            new_size = (int(width * scale), int(height * scale))
+            image = image.resize(new_size, Image.Resampling.LANCZOS)
+        
+        # Convert to grayscale and invert
+        from PIL import ImageOps
+        gray = image.convert("L")
+        inverted = ImageOps.invert(gray)
+        
+        logger.info("✅ Color inversion complete")
+        return inverted
+
     def _light_preprocess(self, image):
         """
         MINIMAL preprocessing - just resize and grayscale
