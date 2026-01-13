@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import axios from 'axios';
+import AudioPlayer from '../components/common/AudioPlayer';
 import {
   BookOpen,
   Search,
@@ -9,12 +10,7 @@ import {
   Users,
   Award,
   FileText,
-  Headphones,
-  Pause,
-  Volume2,
-  VolumeX,
-  SkipForward,
-  SkipBack
+  Headphones
 } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -41,6 +37,8 @@ const Learning = () => {
   
   // Audio player state
   const [audioRecitations, setAudioRecitations] = useState([]);
+  const [filteredRecitations, setFilteredRecitations] = useState([]);
+  const [audioSearchQuery, setAudioSearchQuery] = useState('');
   const [playingId, setPlayingId] = useState(null);
   const [currentTime, setCurrentTime] = useState({});
   const [duration, setDuration] = useState({});
@@ -251,11 +249,42 @@ const Learning = () => {
   const fetchAudioRecitations = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/learning/audio`);
-      setAudioRecitations(response.data.audios || []);
+      const audios = response.data.audios || [];
+      setAudioRecitations(audios);
+      setFilteredRecitations(audios);
     } catch (error) {
       console.error('Error fetching audio recitations:', error);
       setAudioRecitations([]);
+      setFilteredRecitations([]);
     }
+  };
+
+  // Search/filter audio recitations
+  const handleAudioSearch = (query) => {
+    setAudioSearchQuery(query);
+    
+    if (!query.trim()) {
+      setFilteredRecitations(audioRecitations);
+      return;
+    }
+    
+    const searchLower = query.toLowerCase();
+    const filtered = audioRecitations.filter(audio => {
+      const title = (audio.title || '').toLowerCase();
+      const description = (audio.description || '').toLowerCase();
+      const authorName = (audio.author?.name || '').toLowerCase();
+      const tags = (audio.tags || []).join(' ').toLowerCase();
+      
+      return title.includes(searchLower) ||
+             description.includes(searchLower) ||
+             authorName.includes(searchLower) ||
+             tags.includes(searchLower) ||
+             title.includes(query) ||
+             description.includes(query) ||
+             authorName.includes(query);
+    });
+    
+    setFilteredRecitations(filtered);
   };
 
   const handleTutorialClick = (tutorial) => {
@@ -816,212 +845,105 @@ const Learning = () => {
           </p>
         </div>
 
-        {!audioRecitations || audioRecitations.length === 0 ? (
+        {/* Search Bar for Audio Recitations */}
+        <div className="mb-6">
+          <div className="relative max-w-xl mx-auto">
+            <input
+              type="text"
+              value={audioSearchQuery}
+              onChange={(e) => handleAudioSearch(e.target.value)}
+              placeholder="شاعری تلاش کریں... (شاعر، عنوان، یا موضوع)"
+              className="w-full px-5 py-4 pr-14 text-right text-lg rounded-xl border-2 border-urdu-gold/30 focus:border-urdu-gold focus:ring-2 focus:ring-urdu-gold/20 bg-white shadow-md transition-all placeholder:text-gray-400"
+              dir="rtl"
+            />
+            <div className="absolute left-4 top-1/2 -translate-y-1/2">
+              <Search className="w-6 h-6 text-urdu-gold" />
+            </div>
+            {audioSearchQuery && (
+              <button
+                onClick={() => handleAudioSearch('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-urdu-brown transition-colors"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {audioSearchQuery && (
+            <p className="text-center mt-3 text-urdu-maroon">
+              {filteredRecitations.length > 0 
+                ? `"${audioSearchQuery}" کے لیے ${filteredRecitations.length} نتائج ملے`
+                : `"${audioSearchQuery}" کے لیے کوئی نتیجہ نہیں ملا`
+              }
+            </p>
+          )}
+        </div>
+
+        {!filteredRecitations || filteredRecitations.length === 0 ? (
           <div className="text-center py-12">
             <div className="max-w-2xl mx-auto">
               <Headphones className="w-20 h-20 mx-auto mb-6 text-urdu-gold opacity-50" />
-              <h3 className="text-2xl font-bold text-urdu-brown mb-4">صوتی تلاوتیں جلد آ رہی ہیں</h3>
-              <p className="text-urdu-maroon text-lg mb-6 leading-relaxed">
-                ہم مشہور شعراء کی اعلیٰ معیار کی صوتی تلاوتیں شامل کرنے پر کام کر رہے ہیں
-              </p>
-              <div className="bg-urdu-cream/50 p-6 rounded-lg text-right" dir="rtl">
-                <h4 className="font-bold text-urdu-brown mb-3">آنے والی تلاوتیں:</h4>
-                <ul className="space-y-2 text-urdu-maroon">
-                  <li className="flex items-center justify-end gap-2">
-                    <span>میر تقی میر کی منتخب غزلیں</span>
-                    <span className="text-urdu-gold">✦</span>
-                  </li>
-                  <li className="flex items-center justify-end gap-2">
-                    <span>مرزا غالب کا کلام</span>
-                    <span className="text-urdu-gold">✦</span>
-                  </li>
-                  <li className="flex items-center justify-end gap-2">
-                    <span>علامہ اقبال کی نظمیں</span>
-                    <span className="text-urdu-gold">✦</span>
-                  </li>
-                  <li className="flex items-center justify-end gap-2">
-                    <span>فیض احمد فیض کا شاعری</span>
-                    <span className="text-urdu-gold">✦</span>
-                  </li>
-                </ul>
-              </div>
+              {audioSearchQuery ? (
+                // No search results
+                <>
+                  <h3 className="text-2xl font-bold text-urdu-brown mb-4">کوئی نتیجہ نہیں ملا</h3>
+                  <p className="text-urdu-maroon text-lg mb-6 leading-relaxed">
+                    "{audioSearchQuery}" کے لیے کوئی صوتی تلاوت نہیں ملی
+                  </p>
+                  <button
+                    onClick={() => handleAudioSearch('')}
+                    className="px-6 py-3 bg-gradient-to-r from-urdu-gold to-urdu-brown text-white rounded-lg hover:shadow-lg transition-all"
+                  >
+                    تمام تلاوتیں دیکھیں
+                  </button>
+                </>
+              ) : (
+                // No recitations available
+                <>
+                  <h3 className="text-2xl font-bold text-urdu-brown mb-4">صوتی تلاوتیں جلد آ رہی ہیں</h3>
+                  <p className="text-urdu-maroon text-lg mb-6 leading-relaxed">
+                    ہم مشہور شعراء کی اعلیٰ معیار کی صوتی تلاوتیں شامل کرنے پر کام کر رہے ہیں
+                  </p>
+                  <div className="bg-urdu-cream/50 p-6 rounded-lg text-right" dir="rtl">
+                    <h4 className="font-bold text-urdu-brown mb-3">آنے والی تلاوتیں:</h4>
+                    <ul className="space-y-2 text-urdu-maroon">
+                      <li className="flex items-center justify-end gap-2">
+                        <span>میر تقی میر کی منتخب غزلیں</span>
+                        <span className="text-urdu-gold">✦</span>
+                      </li>
+                      <li className="flex items-center justify-end gap-2">
+                        <span>مرزا غالب کا کلام</span>
+                        <span className="text-urdu-gold">✦</span>
+                      </li>
+                      <li className="flex items-center justify-end gap-2">
+                        <span>علامہ اقبال کی نظمیں</span>
+                        <span className="text-urdu-gold">✦</span>
+                      </li>
+                      <li className="flex items-center justify-end gap-2">
+                        <span>فیض احمد فیض کا شاعری</span>
+                        <span className="text-urdu-gold">✦</span>
+                      </li>
+                    </ul>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         ) : (
           <div className="space-y-6">
-            {audioRecitations.map((audio) => (
+            {filteredRecitations.map((audio) => (
               <div key={audio._id}>
                 {playingId === audio._id ? (
-                  // Full Display Expanded Audio Player
-                  <div className="bg-gradient-to-br from-urdu-cream via-white to-urdu-gold/10 rounded-2xl shadow-2xl overflow-hidden border-2 border-urdu-gold/30 animate-fade-in">
-                    {/* Header Section with Decorative Background */}
-                    <div className="relative bg-gradient-to-r from-urdu-gold to-urdu-brown p-8 text-white overflow-hidden">
-                      {/* Decorative Pattern Overlay */}
-                      <div className="absolute inset-0 opacity-10">
-                        <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full -translate-x-16 -translate-y-16"></div>
-                        <div className="absolute bottom-0 right-0 w-40 h-40 bg-white rounded-full translate-x-20 translate-y-20"></div>
-                        <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-white rounded-full -translate-x-12 -translate-y-12"></div>
-                      </div>
-                      
-                      <div className="relative z-10">
-                        <div className="flex items-start justify-between mb-4">
-                          <button 
-                            onClick={() => setPlayingId(null)} 
-                            className="p-2 hover:bg-white/20 rounded-full transition-all hover:scale-110"
-                            title="بند کریں"
-                          >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                          
-                          <div className="flex-1 text-center">
-                            <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full mb-4 animate-pulse">
-                              <Headphones className="w-10 h-10" />
-                            </div>
-                            <h3 className="text-3xl font-bold mb-2" dir="rtl">{audio.title}</h3>
-                            {audio.description && (
-                              <p className="text-white/90 text-lg mb-3" dir="rtl">{audio.description}</p>
-                            )}
-                            <div className="flex items-center justify-center gap-2 text-sm text-white/80">
-                              <span>🎙️</span>
-                              <span>{audio.author?.name || 'نامعلوم فنکار'}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="w-10"></div>
-                        </div>
-                        
-                        {audio.tags && audio.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-2 justify-center mt-4">
-                            {audio.tags.map((tag, idx) => (
-                              <span key={idx} className="px-4 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Main Player Controls */}
-                    <div className="p-8">
-                      <audio
-                        ref={el => audioRefs.current[audio._id] = el}
-                        src={audio.media?.audio?.url}
-                        onTimeUpdate={() => handleTimeUpdate(audio._id)}
-                        onLoadedMetadata={() => handleLoadedMetadata(audio._id)}
-                        onEnded={() => setPlayingId(null)}
-                        className="hidden"
-                      />
-                      
-                      <div className="space-y-8">
-                        {/* Waveform Progress Bar */}
-                        <div className="space-y-3">
-                          <div className="relative">
-                            <input
-                              type="range"
-                              min="0"
-                              max={duration[audio._id] || 0}
-                              value={currentTime[audio._id] || 0}
-                              onChange={(e) => handleSeek(audio._id, parseFloat(e.target.value))}
-                              className="w-full h-3 bg-gradient-to-r from-urdu-gold/20 to-urdu-brown/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-urdu-gold [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform"
-                              style={{
-                                background: `linear-gradient(to right, #D4AF37 0%, #D4AF37 ${((currentTime[audio._id] || 0) / (duration[audio._id] || 1)) * 100}%, #e5d5a8 ${((currentTime[audio._id] || 0) / (duration[audio._id] || 1)) * 100}%, #e5d5a8 100%)`
-                              }}
-                            />
-                          </div>
-                          
-                          <div className="flex justify-between items-center">
-                            <div className="text-sm font-bold text-urdu-brown bg-urdu-cream px-3 py-1 rounded-full">
-                              {formatTime(currentTime[audio._id] || 0)}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {Math.round(((currentTime[audio._id] || 0) / (duration[audio._id] || 1)) * 100)}%
-                            </div>
-                            <div className="text-sm font-bold text-urdu-brown bg-urdu-cream px-3 py-1 rounded-full">
-                              {formatTime(duration[audio._id] || 0)}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Main Control Buttons */}
-                        <div className="flex items-center justify-center gap-6">
-                          <button 
-                            onClick={() => handleSkip(audio._id, -10)} 
-                            className="group p-4 bg-white hover:bg-urdu-gold/10 rounded-2xl transition-all shadow-md hover:shadow-xl hover:scale-110 border-2 border-transparent hover:border-urdu-gold"
-                            title="10 سیکنڈ پیچھے"
-                          >
-                            <SkipBack className="w-7 h-7 text-urdu-brown group-hover:text-urdu-gold transition-colors" />
-                          </button>
-                          
-                          <button
-                            onClick={() => handlePlayPause(audio._id)}
-                            className="group p-8 bg-gradient-to-br from-urdu-gold to-urdu-brown hover:from-urdu-brown hover:to-urdu-gold text-white rounded-full transition-all shadow-2xl hover:shadow-3xl hover:scale-110 transform"
-                          >
-                            {playingId === audio._id ? 
-                              <Pause className="w-12 h-12 animate-pulse" /> : 
-                              <PlayCircle className="w-12 h-12" />
-                            }
-                          </button>
-                          
-                          <button 
-                            onClick={() => handleSkip(audio._id, 10)} 
-                            className="group p-4 bg-white hover:bg-urdu-gold/10 rounded-2xl transition-all shadow-md hover:shadow-xl hover:scale-110 border-2 border-transparent hover:border-urdu-gold"
-                            title="10 سیکنڈ آگے"
-                          >
-                            <SkipForward className="w-7 h-7 text-urdu-brown group-hover:text-urdu-gold transition-colors" />
-                          </button>
-                        </div>
-                        
-                        {/* Volume Control */}
-                        <div className="bg-white rounded-2xl p-6 shadow-inner border border-gray-100">
-                          <div className="flex items-center gap-4">
-                            <button 
-                              onClick={() => handleMuteToggle(audio._id)} 
-                              className="p-3 bg-urdu-cream hover:bg-urdu-gold/20 rounded-xl transition-all hover:scale-110"
-                            >
-                              {isMuted[audio._id] ? 
-                                <VolumeX className="w-6 h-6 text-urdu-brown" /> : 
-                                <Volume2 className="w-6 h-6 text-urdu-brown" />
-                              }
-                            </button>
-                            
-                            <div className="flex-1">
-                              <input
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.01"
-                                value={isMuted[audio._id] ? 0 : (volume[audio._id] || 1)}
-                                onChange={(e) => handleVolumeChange(audio._id, parseFloat(e.target.value))}
-                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-urdu-gold [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:scale-125 [&::-webkit-slider-thumb]:transition-transform"
-                              />
-                            </div>
-                            
-                            <div className="min-w-[60px] text-center">
-                              <div className="text-lg font-bold text-urdu-brown bg-urdu-cream px-3 py-1 rounded-lg">
-                                {Math.round((isMuted[audio._id] ? 0 : (volume[audio._id] || 1)) * 100)}%
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Transcript Section */}
-                        {audio.media?.audio?.transcript && (
-                          <div className="bg-gradient-to-br from-urdu-cream/50 to-white rounded-2xl p-6 border-2 border-urdu-gold/20">
-                            <div className="flex items-center gap-2 mb-3">
-                              <FileText className="w-5 h-5 text-urdu-gold" />
-                              <h5 className="font-bold text-urdu-brown text-lg">متن نقل:</h5>
-                            </div>
-                            <div className="text-right text-lg text-urdu-brown leading-relaxed" dir="rtl">
-                              {audio.media.audio.transcript}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  // Professional Audio Player - Expanded View
+                  <AudioPlayer
+                    src={audio.media?.audio?.url}
+                    title={audio.title}
+                    artist={audio.author?.name || 'نامعلوم فنکار'}
+                    description={audio.description}
+                    coverImage={audio.media?.image?.url}
+                    showExpanded={true}
+                    onClose={() => setPlayingId(null)}
+                    className="animate-fade-in"
+                  />
                 ) : (
                   // Collapsed Card View
                   <div className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:scale-[1.02] border-2 border-transparent hover:border-urdu-gold/50 overflow-hidden">

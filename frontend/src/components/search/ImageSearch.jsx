@@ -22,7 +22,7 @@ const ImageSearch = ({ onSearch, loading = false }) => {
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
-  // Enhanced OCR processing with Python backend (much better for Urdu!)
+  // Enhanced OCR processing with backend API (GPT-4o Vision + Python fallback)
   const processImageWithOCR = useCallback(async (imageFile) => {
     setIsProcessing(true);
     setOcrProgress(0);
@@ -30,73 +30,64 @@ const ImageSearch = ({ onSearch, loading = false }) => {
     setOcrConfidence(0);
 
     try {
-      // Always try Python service first (best for Urdu OCR)
-      console.log("📸 Sending image to Python AI service for OCR...");
+      // Try backend API first (uses GPT-4o Vision with Python fallback)
+      console.log("📸 Sending image to backend AI service for OCR...");
       setOcrProgress(10);
 
       try {
         const formData = new FormData();
         formData.append('file', imageFile);
+        formData.append('searchAfterOCR', 'true');
 
-        const pythonResponse = await fetch('http://localhost:5001/analyze/image', {
+        // Use backend API which has GPT-4o Vision OCR
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+        const backendResponse = await fetch(`${API_BASE_URL}/ai-search/image`, {
           method: 'POST',
           body: formData,
-          timeout: 30000, // 30 second timeout
         });
 
         setOcrProgress(50);
 
-        if (pythonResponse.ok) {
-          const ocrResult = await pythonResponse.json();
+        if (backendResponse.ok) {
+          const ocrResult = await backendResponse.json();
           setOcrProgress(80);
 
-          if (ocrResult.success && ocrResult.text) {
-            console.log("✅ Python OCR completed successfully!");
+          if (ocrResult.success && ocrResult.ocr?.extracted_text) {
+            console.log("✅ Backend OCR completed successfully!");
             console.log("📊 OCR Stats:");
-            console.log("   - Text length:", ocrResult.text.length);
-            console.log("   - Confidence:", (ocrResult.confidence * 100).toFixed(2) + "%");
-            console.log("   - Language:", ocrResult.language);
-            console.log("   - Quality:", ocrResult.quality);
-            console.log("   - Is garbled:", ocrResult.is_garbled);
-            console.log("   - Extracted text:", ocrResult.text);
+            console.log("   - Text length:", ocrResult.ocr.extracted_text.length);
+            console.log("   - Confidence:", (ocrResult.ocr.confidence * 100).toFixed(2) + "%");
+            console.log("   - Method:", ocrResult.ocr.method);
+            console.log("   - Extracted text:", ocrResult.ocr.extracted_text);
             
-            // Check if text is flagged as garbled
-            if (ocrResult.is_garbled || ocrResult.quality === 'poor') {
-              console.warn("⚠️ OCR flagged text as garbled or poor quality");
-              showError(
-                ocrResult.warning || 
-                "تصویر کا معیار خراب ہے۔ براہ کرم صاف اور واضح تصویر استعمال کریں۔"
-              );
-              
-              // Still show the extracted text so user can see what went wrong
-              setExtractedText(ocrResult.text);
-              setOcrConfidence(ocrResult.confidence * 100);
-              setOcrProgress(100);
-              return;
-            }
-            
-            setExtractedText(ocrResult.text);
-            setOcrConfidence(ocrResult.confidence * 100);
+            setExtractedText(ocrResult.ocr.extracted_text);
+            setOcrConfidence(ocrResult.ocr.confidence * 100);
             setOcrProgress(100);
 
-            // Perform search if text is meaningful
-            if (ocrResult.text.trim().length > 2) {
-              await performImageSearch(ocrResult.text, ocrResult.confidence * 100);
-            } else {
-              showError("تصویر سے کافی متن نہیں نکل سکا۔ واضح تصویر استعمال کریں۔");
+            // If backend already searched, use those results
+            if (ocrResult.search_results) {
+              const aiMatches = ocrResult.search_results.ai_matches || [];
+              const localMatches = ocrResult.search_results.local_matches || [];
+              setSearchResults([...localMatches, ...aiMatches]);
+              setRekhtaMatches(aiMatches);
+              if (aiMatches.length > 0) {
+                setBestRekhtaMatch(aiMatches[0]);
+              }
+            } else if (ocrResult.ocr.extracted_text.trim().length > 2) {
+              // Perform search if text is meaningful
+              await performImageSearch(ocrResult.ocr.extracted_text, ocrResult.ocr.confidence * 100);
             }
             return; // Success, exit early
           } else {
-            console.warn("⚠️ Python service returned no text");
-            showError("تصویر سے متن نہیں نکل سکا۔ براہ کرم واضح تصویر استعمال کریں۔");
+            console.warn("⚠️ Backend service returned no text");
           }
         } else {
-          const errorText = await pythonResponse.text();
-          console.error("⚠️ Python service returned error:", pythonResponse.status, errorText);
-          throw new Error(`HTTP ${pythonResponse.status}: ${errorText}`);
+          const errorText = await backendResponse.text();
+          console.error("⚠️ Backend service returned error:", backendResponse.status, errorText);
+          throw new Error(`HTTP ${backendResponse.status}: ${errorText}`);
         }
-      } catch (pythonError) {
-        console.warn("⚠️ Python service unavailable:", pythonError.message);
+      } catch (backendError) {
+        console.warn("⚠️ Backend OCR failed:", backendError.message);
         console.log("🔄 Falling back to browser OCR (Tesseract.js)...");
         
         // Fallback to browser OCR

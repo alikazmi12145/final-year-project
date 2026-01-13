@@ -10,11 +10,32 @@ import AIPoetryService from "../services/aiPoetryService.js";
 import { improveVoiceTranscription } from "../config/openai.js";
 import axios from "axios";
 import FormData from "form-data";
+// Import new AI Search Service (GPT-4o powered)
+import * as AISearchService from "../services/aiSearchService.js";
 
 const rekhtaService = new RekhtaService();
 
 // Python AI Service URL
 const PYTHON_AI_SERVICE_URL = process.env.PYTHON_AI_SERVICE_URL || "http://localhost:5001";
+
+// Helper: Call GPT-4o AI Semantic Search
+const callAISemanticSearch = async (query, maxResults = 20) => {
+  try {
+    console.log(`🤖 Calling GPT-4o AI Semantic Search: "${query}"`);
+    
+    const result = await AISearchService.semanticPoetrySearch(query, { maxResults });
+    
+    if (result && result.success) {
+      console.log(`✅ GPT-4o AI returned analysis and ${result.similar_poems?.length || 0} suggestions`);
+      return result;
+    }
+    
+    return null;
+  } catch (error) {
+    console.warn('⚠️  GPT-4o AI search failed:', error.message);
+    return null;
+  }
+};
 
 
 // Helper: Call Python ML service for semantic search
@@ -149,7 +170,13 @@ export const textSearch = async (req, res) => {
       });
     }
 
-    // ===== TRY PYTHON ML SEMANTIC SEARCH FIRST =====
+    // ===== TRY GPT-4o AI SEMANTIC SEARCH FIRST (NEW) =====
+    let aiAnalysis = null;
+    if (useAI !== false && useAI !== 'false') {
+      aiAnalysis = await callAISemanticSearch(query, limit);
+    }
+
+    // ===== TRY PYTHON ML SEMANTIC SEARCH =====
     let mlResults = await callSemanticSearch(query, limit);
     
     if (mlResults && mlResults.length > 0) {
@@ -176,6 +203,12 @@ export const textSearch = async (req, res) => {
         page: 1,
         totalPages: 1,
         searchMethod: "semantic_ml",
+        aiAnalysis: aiAnalysis ? {
+          interpretation: aiAnalysis.analysis,
+          keywords: aiAnalysis.keywords,
+          suggestions: aiAnalysis.similar_poems,
+          recommendations: aiAnalysis.recommendations
+        } : null,
         hasNext: false,
         hasPrev: false,
       });
@@ -436,7 +469,13 @@ export const textSearch = async (req, res) => {
         filters: { category, mood, theme, language, sortBy },
       },
       searchType: "text",
-      aiEnhanced: useAI === "true",
+      aiEnhanced: useAI === "true" || useAI === true,
+      aiAnalysis: aiAnalysis ? {
+        interpretation: aiAnalysis.analysis,
+        keywords: aiAnalysis.keywords,
+        suggestions: aiAnalysis.similar_poems,
+        recommendations: aiAnalysis.recommendations
+      } : null,
       sources: {
         database: finalResults.length,
         external: externalResults.length,
@@ -722,8 +761,27 @@ export const imageSearch = async (req, res) => {
     let rekhtaMatches = [];
     let bestRekhtaMatch = null;
 
-    // ===== TRY PYTHON AI OCR WITH REKHTA INTEGRATION =====
-    if (image && image.startsWith("data:") && useRekhta !== false) {
+    // ===== TRY GPT-4o VISION OCR FIRST (NEW - BEST QUALITY) =====
+    if (image && image.startsWith("data:") && !extractedText) {
+      try {
+        console.log("🤖 Trying GPT-4o Vision OCR...");
+        
+        const base64Data = image.split(',')[1];
+        const gpt4oResult = await AISearchService.extractTextFromImage(base64Data, 'poetry-image.jpg');
+        
+        if (gpt4oResult && gpt4oResult.success && gpt4oResult.text) {
+          extractedText = gpt4oResult.text;
+          ocrConfidence = gpt4oResult.confidence || 0.9;
+          ocrMethod = "gpt4o_vision";
+          console.log(`✅ GPT-4o Vision OCR extracted: "${extractedText.substring(0, 100)}..."`);
+        }
+      } catch (gpt4oError) {
+        console.warn("⚠️ GPT-4o Vision OCR failed, trying Python OCR:", gpt4oError.message);
+      }
+    }
+
+    // ===== FALLBACK: TRY PYTHON AI OCR WITH REKHTA INTEGRATION =====
+    if (!extractedText && image && image.startsWith("data:") && useRekhta !== false) {
       try {
         console.log("🐍 Trying Python AI OCR with Rekhta integration...");
         

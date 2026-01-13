@@ -158,7 +158,31 @@ const ChatWindow = ({
       }
     };
 
+    // Listen for call accepted
+    const handleCallAccepted = ({ userId }) => {
+      console.log("✅ Call accepted by:", userId);
+      // Call was accepted, connection will be established via WebRTC
+    };
+
+    // Listen for call rejected
+    const handleCallRejected = ({ userId }) => {
+      console.log("❌ Call rejected by:", userId);
+      setIsInCall(false);
+      setCurrentCall(null);
+      alert("کال مسترد کر دی گئی");
+    };
+
+    // Listen for call ended
+    const handleCallEnded = ({ userId }) => {
+      console.log("📴 Call ended by:", userId);
+      setIsInCall(false);
+      setCurrentCall(null);
+    };
+
     socketService.socket?.on("incoming_call", handleIncomingCall);
+    socketService.socket?.on("call_accepted", handleCallAccepted);
+    socketService.socket?.on("call_rejected", handleCallRejected);
+    socketService.socket?.on("call_ended", handleCallEnded);
 
     return () => {
       socketService.off("user_typing");
@@ -167,6 +191,9 @@ const ChatWindow = ({
       socketService.off("new_message", handleNewMessage);
       socketService.socket?.off("messages_read", handleMessagesRead);
       socketService.socket?.off("incoming_call", handleIncomingCall);
+      socketService.socket?.off("call_accepted", handleCallAccepted);
+      socketService.socket?.off("call_rejected", handleCallRejected);
+      socketService.socket?.off("call_ended", handleCallEnded);
     };
   }, [conversation?._id]);
 
