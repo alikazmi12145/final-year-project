@@ -10,6 +10,7 @@ import path from "path";
 import multer from "multer";
 import cloudinary from "../config/cloudinary.js";
 import axios from "axios";
+import * as AISearchService from '../services/aiSearchService.js';
 
 const router = express.Router();
 
@@ -937,10 +938,10 @@ router.delete("/audio/:id", adminAuth, async (req, res) => {
   }
 });
 
-// ============= AI-POWERED FEATURES (PROXY TO PYTHON SERVICE) =============
+// ============= AI-POWERED FEATURES (USING OPENAI GPT-4o SERVICE) =============
 
 /**
- * AI Qaafia Search (Proxy to Python AI service)
+ * AI Qaafia Search (Using new GPT-4o powered service)
  * POST /api/learning/ai/qaafia
  */
 router.post("/ai/qaafia", learningLimit, async (req, res) => {
@@ -954,26 +955,33 @@ router.post("/ai/qaafia", learningLimit, async (req, res) => {
       });
     }
 
-    // Call Python AI service
-    const response = await axios.post(`${PYTHON_AI_URL}/ai/qaafia-search`, {
-      word,
-      limit,
-      min_similarity
-    });
+    console.log(`🎵 AI Qaafia search for: "${word}"`);
 
-    res.json(response.data);
+    // Use new GPT-4o powered AI service
+    const result = await AISearchService.findRhymes(word, { limit, useAI: true });
+
+    if (result.success) {
+      // Transform to expected format for frontend
+      res.json({
+        success: true,
+        word: result.word,
+        rhymes: result.rhymes,
+        count: result.count,
+        pattern_analysis: {
+          phonetic_qaafia: result.rhyme_pattern || '',
+          harf_ravi: result.harf_ravi || word.slice(-1)
+        },
+        method: result.method
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result.error || 'Qaafia search failed'
+      });
+    }
   } catch (error) {
     console.error('AI Qaafia search error:', error);
     
-    // Fallback to basic search if Python service is down
-    if (error.code === 'ECONNREFUSED') {
-      return res.status(503).json({
-        success: false,
-        message: 'AI service unavailable. Please try again later.',
-        fallback: true
-      });
-    }
-
     res.status(500).json({
       success: false,
       message: 'AI Qaafia search failed',
@@ -983,7 +991,7 @@ router.post("/ai/qaafia", learningLimit, async (req, res) => {
 });
 
 /**
- * AI Harf-e-Ravi Extract (Proxy to Python AI service)
+ * AI Harf-e-Ravi Extract (Using new GPT-4o powered service)
  * POST /api/learning/ai/harf-ravi
  */
 router.post("/ai/harf-ravi", learningLimit, async (req, res) => {
@@ -997,25 +1005,40 @@ router.post("/ai/harf-ravi", learningLimit, async (req, res) => {
       });
     }
 
-    // Call Python AI service
-    const response = await axios.post(`${PYTHON_AI_URL}/ai/harf-ravi-extract`, {
-      text,
-      extract_all
-    });
+    console.log(`📝 AI Harf-e-Ravi extraction`);
 
-    res.json(response.data);
+    // Use new GPT-4o powered AI service
+    const result = await AISearchService.analyzeHarfRavi(text);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        harf_ravi: result.harf_ravi,
+        radif: result.radif || '',
+        qaafia: result.qaafia || '',
+        analysis: result.analysis || {},
+        line_analysis: result.line_analysis || [],
+        all_candidates: result.all_candidates || [
+          { letter: result.harf_ravi, frequency: result.analysis?.total_lines || 1, percentage: 100 }
+        ],
+        last_words_analyzed: result.last_words_analyzed || [],
+        method: result.method || 'fallback'
+      });
+    } else {
+      // Even if marked as not successful, return basic response
+      res.json({
+        success: true,
+        harf_ravi: '',
+        radif: '',
+        qaafia: '',
+        analysis: { error: result.error || 'Analysis incomplete' },
+        all_candidates: [],
+        method: 'fallback'
+      });
+    }
   } catch (error) {
     console.error('AI Harf-e-Ravi extraction error:', error);
     
-    // Fallback if Python service is down
-    if (error.code === 'ECONNREFUSED') {
-      return res.status(503).json({
-        success: false,
-        message: 'AI service unavailable. Please try again later.',
-        fallback: true
-      });
-    }
-
     res.status(500).json({
       success: false,
       message: 'AI Harf-e-Ravi extraction failed',

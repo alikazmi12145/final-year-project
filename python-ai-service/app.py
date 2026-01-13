@@ -323,10 +323,51 @@ def analyze_image():
             else:
                 return jsonify(result), 400
         
+        # Handle base64 image (from Node.js service)
+        elif request.is_json and 'image' in request.json:
+            import base64
+            base64_image = request.json['image']
+            filename = request.json.get('filename', 'upload.jpg')
+            
+            logger.info(f"Processing base64 image: {filename}")
+            
+            # Decode base64 to file
+            try:
+                # Remove data URL prefix if present
+                if ',' in base64_image:
+                    base64_image = base64_image.split(',')[1]
+                
+                image_data = base64.b64decode(base64_image)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(filename))
+                
+                with open(filepath, 'wb') as f:
+                    f.write(image_data)
+                
+                # Extract text using OCR
+                result = ocr_engine.extract_text(filepath)
+                
+                # Cleanup
+                try:
+                    os.remove(filepath)
+                except:
+                    pass
+                
+                if result['success']:
+                    return jsonify(result), 200
+                else:
+                    return jsonify(result), 400
+                    
+            except Exception as decode_err:
+                logger.error(f"Base64 decode error: {str(decode_err)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to decode base64 image: {str(decode_err)}'
+                }), 400
+        
         else:
             return jsonify({
                 'success': False,
-                'error': 'No image file or URL provided'
+                'error': 'No image file, URL, or base64 data provided'
             }), 400
             
     except Exception as e:

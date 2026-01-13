@@ -207,6 +207,7 @@ const Home = () => {
                 <p
                   className="nastaleeq-primary urdu-text text-2xl md:text-3xl leading-relaxed font-medium"
                   dir="rtl"
+                  style={{ color: 'white' }}
                 >
                   {poeticQuotes[currentQuoteIndex].text}
                 </p>
@@ -215,8 +216,9 @@ const Home = () => {
               <div className="flex justify-center items-center">
                 <div className="h-px w-12 bg-amber-300 opacity-60"></div>
                 <p
-                  className="nastaleeq-primary urdu-text mx-4 text-xl text-amber-200"
+                  className="nastaleeq-primary urdu-text mx-4 text-xl"
                   dir="rtl"
+                  style={{ color: 'white' }}
                 >
                   {poeticQuotes[currentQuoteIndex].poet}
                 </p>

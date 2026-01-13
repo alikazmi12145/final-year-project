@@ -308,6 +308,7 @@ const startServer = async () => {
     const bookmarkRoutes = await import("./routes/bookmarks.js");
     const historyRoutes = await import("./routes/history.js");
     const pdfExportRoutes = await import("./routes/pdfExport.js");
+    const aiSearchRoutes = await import("./routes/aiSearch.js");
 
     // Apply routes
     app.use("/api/auth", authRoutes.default);
@@ -328,8 +329,10 @@ const startServer = async () => {
     app.use("/api/bookmarks", bookmarkRoutes.default);
     app.use("/api/history", historyRoutes.default);
     app.use("/api/pdf", pdfExportRoutes.default);
+    app.use("/api/ai-search", aiSearchRoutes.default);
 
     console.log("✅ Routes loaded successfully");
+    console.log("🤖 AI Search routes available at /api/ai-search");
   } catch (error) {
     console.log("❌ Error loading routes:", error.message);
     console.log("❌ Stack trace:", error.stack);

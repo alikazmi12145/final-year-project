@@ -57,21 +57,32 @@ const VideoCallWindow = ({
 
   const initializeMedia = async () => {
     try {
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("آپ کا براؤزر آڈیو/ویڈیو کال کو سپورٹ نہیں کرتا");
+      }
+
       const constraints = {
         audio: true,
         video: isVideoCall
           ? {
               width: { ideal: 1280 },
               height: { ideal: 720 },
+              facingMode: "user",
             }
           : false,
       };
 
+      console.log("🎥 Requesting media with constraints:", constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log("✅ Media stream obtained:", stream.getTracks().map(t => t.kind));
+      
       localStreamRef.current = stream;
 
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
+        // Ensure video plays
+        localVideoRef.current.play().catch(e => console.log("Video play error:", e));
       }
 
       // Simulate connection (In production, use WebRTC with signaling server)
@@ -80,7 +91,22 @@ const VideoCallWindow = ({
       }, 2000);
     } catch (error) {
       console.error("Error accessing media devices:", error);
-      alert("کیمرا یا مائیکروفون تک رسائی نہیں مل سکی");
+      
+      let errorMessage = "کیمرا یا مائیکروفون تک رسائی نہیں مل سکی";
+      
+      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+        errorMessage = "براہ کرم کیمرا اور مائیکروفون کی اجازت دیں";
+      } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+        errorMessage = "کیمرا یا مائیکروفون نہیں ملا";
+      } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+        errorMessage = "کیمرا یا مائیکروفون پہلے سے استعمال میں ہے";
+      } else if (error.name === "OverconstrainedError") {
+        errorMessage = "مطلوبہ کیمرا سیٹنگز دستیاب نہیں";
+      }
+      
+      alert(errorMessage);
+      setCallStatus("ended");
+      if (onEndCall) onEndCall();
     }
   };
 
@@ -208,8 +234,8 @@ const VideoCallWindow = ({
         </div>
 
         {/* Local Video (Picture-in-Picture) */}
-        {isVideoEnabled && callStatus === "connected" && (
-          <div className="absolute top-4 right-4 w-32 h-24 bg-gray-800 rounded-lg overflow-hidden shadow-lg">
+        {isVideoEnabled && (callStatus === "connected" || callStatus === "connecting") && (
+          <div className="absolute top-4 right-4 w-32 h-24 bg-gray-800 rounded-lg overflow-hidden shadow-lg border-2 border-white/20">
             <video
               ref={localVideoRef}
               autoPlay
@@ -217,6 +243,11 @@ const VideoCallWindow = ({
               muted
               className="w-full h-full object-cover mirror"
             />
+            {callStatus === "connecting" && (
+              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -289,6 +320,13 @@ const VideoCallWindow = ({
           </div>
         )}
       </div>
+
+      {/* CSS for mirror effect */}
+      <style>{`
+        .mirror {
+          transform: scaleX(-1);
+        }
+      `}</style>
     </div>
   );
 };
