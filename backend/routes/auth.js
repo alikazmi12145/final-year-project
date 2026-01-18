@@ -6,6 +6,8 @@ import User from "../models/User.js";
 import Poet from "../models/poet.js";
 import Poem from "../models/Poem.js";
 import Collection from "../models/Collection.js";
+import ReadingHistory from "../models/ReadingHistory.js";
+import Bookmark from "../models/Bookmark.js";
 import { auth, adminAuth } from "../middleware/auth.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
@@ -1190,14 +1192,23 @@ router.post("/logout", auth, async (req, res) => {
 router.get("/user-stats", auth, async (req, res) => {
   try {
     const userId = req.user.userId;
+    const userObjectId = new mongoose.Types.ObjectId(userId);
 
     // Get user's poems and calculate stats
     const userPoems = await Poem.find({ author: userId });
-    const likedPoems = await Poem.find({ likes: userId });
-    const bookmarkedPoems = await Collection.findOne({
-      name: "Favorites",
-      createdBy: userId,
-    }).populate("poems");
+    
+    // Get poems liked by user - likes is an array of objects {user, likedAt}
+    const likedPoems = await Poem.find({ "likes.user": userObjectId });
+    
+    // Get bookmarks count from Bookmark collection
+    const bookmarksCount = await Bookmark.countDocuments({ user: userId });
+    
+    // Get actual reading history from ReadingHistory model
+    const readingStats = await ReadingHistory.getUserStats(userId);
+    const readingHistoryCount = await ReadingHistory.countDocuments({ user: userObjectId });
+    
+    // Use consistent logic: readingStats.totalPoems > readingHistoryCount > likedPoems (fallback)
+    const poemsRead = readingStats?.totalPoems || readingHistoryCount || likedPoems.length || 0;
 
     // Calculate total views from user's poems
     const totalViews = userPoems.reduce(
@@ -1208,9 +1219,9 @@ router.get("/user-stats", auth, async (req, res) => {
     res.json({
       success: true,
       stats: {
-        poemsRead: likedPoems.length, // Using liked poems as proxy for read poems
+        poemsRead: poemsRead,
         likedPoems: likedPoems.length,
-        bookmarks: bookmarkedPoems?.poems?.length || 0,
+        bookmarks: bookmarksCount,
         totalViews: totalViews,
         poemsCreated: userPoems.length,
         publishedPoems: userPoems.filter((poem) => poem.status === "published")

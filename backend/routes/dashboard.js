@@ -4,6 +4,8 @@ import { auth, moderatorAuth } from "../middleware/auth.js";
 import Poem from "../models/Poem.js";
 import User from "../models/User.js";
 import Contest from "../models/Contest.js";
+import ReadingHistory from "../models/ReadingHistory.js";
+import Bookmark from "../models/Bookmark.js";
 
 const router = express.Router();
 
@@ -569,7 +571,7 @@ router.get("/reader", auth, async (req, res) => {
     
     // Get user with their data
     const user = await User.findById(userId)
-      .select("bookmarkedPoems followedPoets readingHistory preferences createdAt")
+      .select("followedPoets readingHistory preferences createdAt")
       .lean();
 
     if (!user) {
@@ -579,20 +581,36 @@ router.get("/reader", auth, async (req, res) => {
       });
     }
 
-    // Get bookmarked poems
-    const bookmarkedPoems = user.bookmarkedPoems || [];
-    const bookmarks = await Poem.find({
-      _id: { $in: bookmarkedPoems },
-      status: "published"
-    })
-      .populate("author", "name profileImage")
-      .populate("poet", "name bio")
+    // Get bookmarked poems from Bookmark collection - fetch ALL bookmarks
+    const userBookmarks = await Bookmark.find({ user: userId })
+      .populate({
+        path: "poem",
+        match: { status: "published" },
+        populate: [
+          { path: "author", select: "name profileImage" },
+          { path: "poet", select: "name bio" }
+        ]
+      })
       .sort({ createdAt: -1 })
-      .limit(10)
       .lean();
+    
+    // Extract poem objects and filter out null poems
+    const bookmarks = userBookmarks
+      .map(b => b.poem)
+      .filter(poem => poem != null);
+    
+    // Get all bookmark poem IDs for other queries
+    const allUserBookmarks = await Bookmark.find({ user: userId }).select("poem").lean();
+    const bookmarkedPoemIds = allUserBookmarks.map(b => b.poem);
 
-    // Get reading history (poems the user has interacted with)
-    const readingHistory = user.readingHistory || [];
+    // Get reading history from ReadingHistory model (proper tracking)
+    const readingHistoryStats = await ReadingHistory.getUserStats(userId);
+    const readingHistoryEntries = await ReadingHistory.find({ user: userObjectId })
+      .populate('poem', 'title category')
+      .sort({ readAt: -1 })
+      .limit(50)
+      .lean();
+    const readingHistory = readingHistoryEntries || [];
     
     // Get poems liked by user
     const likedPoems = await Poem.find({
@@ -612,7 +630,7 @@ router.get("/reader", auth, async (req, res) => {
     // Calculate category preferences from liked and bookmarked poems
     const allInteractedPoems = await Poem.find({
       $or: [
-        { _id: { $in: bookmarkedPoems } },
+        { _id: { $in: bookmarkedPoemIds } },
         { "likes.user": userObjectId }
       ],
       status: "published"
@@ -655,7 +673,7 @@ router.get("/reader", auth, async (req, res) => {
     // Get latest poems for recommendations
     const recommendations = await Poem.find({
       status: "published",
-      _id: { $nin: bookmarkedPoems },
+      _id: { $nin: bookmarkedPoemIds },
       author: { $ne: userId }
     })
       .populate("author", "name profileImage")
@@ -716,24 +734,30 @@ router.get("/reader", auth, async (req, res) => {
     // Calculate achievements
     const achievements = calculateAchievements(
       likedPoems.length,
-      bookmarkedPoems.length,
+      bookmarkedPoemIds.length,
       commentsCount[0]?.total || 0,
       readingStreak
     );
 
-    // Prepare analytics
+    // Prepare analytics - use CONSISTENT logic with /auth/user-stats
+    // Use same fallback chain: readingHistoryStats.totalPoems > readingHistory.length > likedPoems.length
+    const readingHistoryCount = await ReadingHistory.countDocuments({ user: userObjectId });
+    const actualPoemsRead = readingHistoryStats?.totalPoems || readingHistoryCount || likedPoems.length || 0;
+    const actualBookmarksCount = bookmarkedPoemIds.length;
+    const actualLikesGiven = likedPoems.length;
+    
     const analytics = {
-      totalPoemsRead: readingHistory.length || likedPoems.length + bookmarkedPoems.length,
-      totalReadingTime: (readingHistory.length || likedPoems.length) * 3, // Estimate 3 mins per poem
+      totalPoemsRead: actualPoemsRead,
+      totalReadingTime: actualPoemsRead * 3, // Estimate 3 mins per poem
       favoriteCategory: topCategories[0]?.category || "غزل",
       favoritePoet: "", // Can be calculated from most liked poet's poems
       readingStreak,
-      bookmarksCount: bookmarkedPoems.length,
+      bookmarksCount: actualBookmarksCount,
       commentsCount: commentsCount[0]?.total || 0,
-      likesGiven: likedPoems.length,
+      likesGiven: actualLikesGiven,
       contestsParticipated: 0,
       monthlyActivity: {
-        poemsRead: Math.max(weeklyReadingData.reduce((a, b) => a + b, 0), likedPoems.length),
+        poemsRead: Math.max(weeklyReadingData.reduce((a, b) => a + b, 0), actualPoemsRead),
         timeSpent: Math.max(weeklyReadingData.reduce((a, b) => a + b, 0) * 3, 0),
         likes: monthlyLikes,
         comments: monthlyComments[0]?.total || 0,

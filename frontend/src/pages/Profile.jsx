@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useMessage } from "../context/MessageContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import api, {
   authAPI,
   poetryAPI,
@@ -52,6 +52,7 @@ const getImageUrl = (url) => {
 const Profile = () => {
   const { user, updateProfile, updateUser, logout } = useAuth();
   const { showSuccess, showError, showWarning, showConfirm } = useMessage();
+  const location = useLocation();
   
   // Helper function for showing messages
   const showMessage = (type, message) => {
@@ -71,6 +72,8 @@ const Profile = () => {
     joinedDate: null,
   });
   const [recentActivity, setRecentActivity] = useState([]);
+  const [profileBookmarkedPoems, setProfileBookmarkedPoems] = useState([]);
+  const [bookmarksLoading, setBookmarksLoading] = useState(false);
   const [settings, setSettings] = useState({
     privacy: {
       profileVisibility: "public",
@@ -117,12 +120,14 @@ const Profile = () => {
     }
   }, [user]);
 
+  // Fetch data when component mounts or when navigating back to this page
   useEffect(() => {
     if (user) {
       fetchUserData();
       fetchRecentActivity();
+      // Note: fetchBookmarkedPoems is called inside fetchUserData, no need to call separately
     }
-  }, [user]);
+  }, [user, location.key]); // location.key changes on each navigation
 
   const fetchUserData = async () => {
     try {
@@ -138,41 +143,105 @@ const Profile = () => {
           }));
         } catch (error) {
           // Poet stats API not available, using default values
+          console.log("Poet stats not available:", error.message);
         }
       }
 
-      // Fetch bookmarked poems - now handled gracefully at API level
-      const bookmarkedPoems = await poetryAPI.getBookmarkedPoems();
-      setStatistics((prev) => ({
-        ...prev,
-        bookmarks: bookmarkedPoems.data?.poems?.length || 0,
-      }));
+      // Fetch bookmarked poems (for statistics and list)
+      await fetchBookmarkedPoems();
 
-      // Fetch user statistics
-      const userStats = await dashboardAPI.getUserStats();
-      setStatistics((prev) => ({
-        ...prev,
-        joinedDate: user?.createdAt,
-        poemsRead: userStats.data?.stats?.poemsRead || 0,
-        likedPoems: userStats.data?.stats?.likedPoems || 0,
-        totalViews: userStats.data?.stats?.totalViews || 0,
-        poemsCreated: userStats.data?.stats?.poemsCreated || 0,
-        publishedPoems: userStats.data?.stats?.publishedPoems || 0,
-      }));
+      // Fetch user statistics from auth API
+      try {
+        const userStats = await dashboardAPI.getUserStats();
+        console.log("User stats response:", userStats);
+        if (userStats?.data?.success && userStats?.data?.stats) {
+          setStatistics((prev) => ({
+            ...prev,
+            joinedDate: user?.createdAt,
+            poemsRead: userStats.data.stats.poemsRead || 0,
+            likedPoems: userStats.data.stats.likedPoems || 0,
+            bookmarks: userStats.data.stats.bookmarks || prev.bookmarks || 0,
+            totalViews: userStats.data.stats.totalViews || 0,
+            poemsCreated: userStats.data.stats.poemsCreated || 0,
+            publishedPoems: userStats.data.stats.publishedPoems || 0,
+          }));
+        }
+      } catch (statsError) {
+        console.error("Failed to fetch user stats:", statsError);
+        // Don't reset all stats on error - keep previously fetched values
+      }
     } catch (error) {
       console.error("Failed to fetch user data:", error);
-      // Set default statistics if all API calls fail
-      setStatistics({
-        poemsRead: 0,
-        likedPoems: 0,
-        bookmarks: 0,
-        totalViews: 0,
+      // Only reset non-bookmark stats on complete failure
+      setStatistics((prev) => ({
+        ...prev,
+        poemsRead: prev.poemsRead || 0,
+        likedPoems: prev.likedPoems || 0,
+        totalViews: prev.totalViews || 0,
         joinedDate: user?.createdAt || null,
-      });
+      }));
     } finally {
       setLoading(false);
     }
   };
+
+  const fetchBookmarkedPoems = async () => {
+    try {
+      setBookmarksLoading(true);
+      const bookmarkedPoems = await poetryAPI.getBookmarkedPoems();
+      const poems =
+        bookmarkedPoems.data?.poems || bookmarkedPoems.data?.bookmarks || [];
+      const validBookmarks = Array.isArray(poems)
+        ? poems.filter((poem) => poem && poem._id)
+        : [];
+
+      setProfileBookmarkedPoems(validBookmarks);
+      setStatistics((prev) => ({
+        ...prev,
+        bookmarks: validBookmarks.length,
+      }));
+    } catch (error) {
+      console.error("Failed to fetch bookmarked poems:", error);
+      setProfileBookmarkedPoems([]);
+      setStatistics((prev) => ({
+        ...prev,
+        bookmarks: 0,
+      }));
+    } finally {
+      setBookmarksLoading(false);
+    }
+  };
+
+  const handleProfileBookmarkToggle = async (poemId) => {
+    if (!poemId) return;
+    try {
+      setBookmarksLoading(true);
+      const response = await poetryAPI.toggleBookmark(poemId);
+      if (response?.data?.success) {
+        const nextIsBookmarked = response.data.isBookmarked;
+        setProfileBookmarkedPoems((prev) =>
+          nextIsBookmarked
+            ? prev
+            : prev.filter((poem) => poem?._id !== poemId)
+        );
+        setStatistics((prev) => ({
+          ...prev,
+          bookmarks: Math.max(
+            0,
+            response.data.bookmarksCount ?? (prev.bookmarks || 0) + (nextIsBookmarked ? 1 : -1)
+          ),
+        }));
+        await fetchBookmarkedPoems();
+      }
+    } catch (error) {
+      showMessage("error", "بُک مارک اپڈیٹ نہیں ہو سکا / Failed to update bookmark");
+    } finally {
+      setBookmarksLoading(false);
+    }
+  };
+
+  const getPoemAuthorName = (poem) =>
+    poem?.poet?.name || poem?.author?.name || "نامعلوم";
 
   const fetchRecentActivity = async () => {
     try {
@@ -362,7 +431,7 @@ const Profile = () => {
     {
       icon: BookOpen,
       label: "Poems Read",
-      value: statistics.poemsRead || 0,
+      value: statistics.poemsRead || statistics.likedPoems || 0,
       color: "text-blue-600",
     },
     {
@@ -1238,6 +1307,74 @@ const Profile = () => {
                     <p className="text-urdu-maroon">
                       Your activity will appear here
                     </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Bookmarked Poems */}
+              <div className="card p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-urdu-brown flex items-center gap-2">
+                    <Bookmark size={20} />
+                    Bookmarked Poems
+                  </h2>
+                  <button
+                    onClick={fetchBookmarkedPoems}
+                    className="p-2 text-urdu-gold hover:bg-urdu-gold/10 rounded-lg transition-colors"
+                    disabled={bookmarksLoading}
+                  >
+                    <RefreshCw
+                      size={18}
+                      className={bookmarksLoading ? "animate-spin" : ""}
+                    />
+                  </button>
+                </div>
+
+                {bookmarksLoading ? (
+                  <div className="text-center py-8">
+                    <RefreshCw className="w-6 h-6 text-urdu-maroon animate-spin mx-auto mb-3" />
+                    <p className="text-urdu-maroon">Loading bookmarks...</p>
+                  </div>
+                ) : profileBookmarkedPoems.length > 0 ? (
+                  <div className="space-y-3">
+                    {profileBookmarkedPoems.slice(0, 5).map((poem) => (
+                      <div
+                        key={poem._id}
+                        className="flex items-center gap-3 p-3 border border-urdu-cream rounded-lg hover:bg-urdu-cream/20 transition-colors"
+                      >
+                        <div className="p-2 bg-urdu-gold/10 rounded-lg">
+                          <Bookmark className="w-4 h-4 text-urdu-gold" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-urdu-brown font-medium">
+                            {poem.title || "بے عنوان"}
+                          </p>
+                          <p className="text-xs text-urdu-maroon">
+                            {getPoemAuthorName(poem)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to={`/poems/${poem._id}`}
+                            className="px-3 py-1 text-xs rounded-lg border border-urdu-brown/20 text-urdu-brown hover:bg-urdu-cream/30"
+                          >
+                            Read
+                          </Link>
+                          <button
+                            onClick={() => handleProfileBookmarkToggle(poem._id)}
+                            className="p-2 text-yellow-600 hover:bg-yellow-100 rounded-lg transition-colors"
+                            title="Remove bookmark"
+                          >
+                            <Bookmark className="w-4 h-4 fill-current" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Bookmark className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-urdu-maroon">No bookmarks yet</p>
                   </div>
                 )}
               </div>
