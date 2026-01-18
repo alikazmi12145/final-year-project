@@ -125,6 +125,27 @@ const ReaderDashboard = () => {
     return typeof likes === 'number' ? likes : 0;
   };
 
+  const getUserId = () => user?._id || user?.id || user?.userId || null;
+
+  const hasUserLiked = (poem, userId) => {
+    if (!poem || !userId || !Array.isArray(poem.likes)) return false;
+    return poem.likes.some((like) => {
+      const likeUserId = like?.user?._id || like?.user || like;
+      return likeUserId?.toString() === userId.toString();
+    });
+  };
+
+  const applyInteractionFlags = (items, bookmarkIds, userId) => {
+    if (!Array.isArray(items)) return [];
+    return items
+      .filter((item) => item && item._id)
+      .map((item) => ({
+        ...item,
+        isBookmarked: bookmarkIds?.has(item._id) || item.isBookmarked || false,
+        isLiked: hasUserLiked(item, userId) || item.isLiked || false,
+      }));
+  };
+
   // Helper function to safely get poet/author name
   const getAuthorName = (poem) => {
     if (!poem) return 'نامعلوم';
@@ -159,6 +180,16 @@ const ReaderDashboard = () => {
     return categoryMap[category] || category;
   };
 
+  const findPoemById = (poemId) => {
+    if (!poemId) return null;
+    return (
+      poems.find((p) => p?._id === poemId) ||
+      recommendations.find((p) => p?._id === poemId) ||
+      bookmarkedPoems.find((p) => p?._id === poemId) ||
+      null
+    );
+  };
+
   const fetchReaderData = async () => {
     try {
       setLoading(true);
@@ -178,27 +209,56 @@ const ReaderDashboard = () => {
             achievements: userAchievements,
           } = response.data.data;
 
+          const userId = getUserId();
+          const bookmarkIds = new Set(
+            Array.isArray(bookmarks) ? bookmarks.filter(b => b && b._id).map(b => b._id) : []
+          );
+
           // Validate and set data with defaults
-          setPoems(Array.isArray(poems) ? poems.filter(p => p && p._id) : []);
-          setBookmarkedPoems(Array.isArray(bookmarks) ? bookmarks.filter(b => b && b._id) : []);
+          const safePoems = applyInteractionFlags(Array.isArray(poems) ? poems : [], bookmarkIds, userId);
+          const safeBookmarks = applyInteractionFlags(Array.isArray(bookmarks) ? bookmarks : [], bookmarkIds, userId)
+            .map((poem) => ({ ...poem, isBookmarked: true }));
+          const safeRecommendations = applyInteractionFlags(
+            Array.isArray(recommendations) ? recommendations : [],
+            bookmarkIds,
+            userId
+          );
+
+          setPoems(safePoems);
+          setBookmarkedPoems(safeBookmarks);
           setReadingHistory(Array.isArray(readingHistory) ? readingHistory : []);
-          setRecommendations(Array.isArray(recommendations) ? recommendations.filter(r => r && r._id) : []);
+          setRecommendations(safeRecommendations);
           setFollowedPoets(Array.isArray(followedPoets) ? followedPoets : []);
           setContests(Array.isArray(contests) ? contests : []);
           setAchievements(Array.isArray(userAchievements) ? userAchievements : []);
           
-          // Update analytics with validation
+          // Calculate bookmarks count from the actual bookmarks array
+          const actualBookmarksCount = safeBookmarks.length || analytics?.bookmarksCount || 0;
+          
+          // Fetch stats from the SAME endpoint as Profile to ensure consistency
+          let profileStats = null;
+          try {
+            const userStatsResponse = await dashboardAPI.getUserStats();
+            if (userStatsResponse?.data?.success && userStatsResponse?.data?.stats) {
+              profileStats = userStatsResponse.data.stats;
+            }
+          } catch (statsError) {
+            console.log("Could not fetch user stats for consistency:", statsError.message);
+          }
+          
+          // Update analytics with validation - USE PROFILE STATS for the 3 main metrics
           if (analytics && typeof analytics === 'object') {
             setReaderStats(prevStats => ({
               ...prevStats,
-              totalPoemsRead: analytics.totalPoemsRead || 0,
+              // Use profile stats for consistency with Profile page
+              totalPoemsRead: profileStats?.poemsRead ?? analytics.totalPoemsRead ?? analytics.likesGiven ?? 0,
               totalReadingTime: analytics.totalReadingTime || 0,
               favoriteCategory: analytics.favoriteCategory || "غزل",
               favoritePoet: analytics.favoritePoet || "",
               readingStreak: analytics.readingStreak || 0,
-              bookmarksCount: analytics.bookmarksCount || (Array.isArray(bookmarks) ? bookmarks.length : 0),
+              bookmarksCount: profileStats?.bookmarks ?? actualBookmarksCount,
               commentsCount: analytics.commentsCount || 0,
-              likesGiven: analytics.likesGiven || 0,
+              likesGiven: profileStats?.likedPoems ?? analytics.likesGiven ?? 0,
               contestsParticipated: analytics.contestsParticipated || 0,
               monthlyActivity: {
                 poemsRead: analytics.monthlyActivity?.poemsRead || 0,
@@ -245,20 +305,21 @@ const ReaderDashboard = () => {
   };
 
   const fetchFallbackData = async () => {
+    const userId = getUserId();
+    let fetchedPoems = [];
+    let fetchedBookmarks = [];
+    let fetchedRecommendations = [];
+
     try {
       // Fetch poems with validation
       const poemsRes = await poetryAPI.getAllPoems();
       if (poemsRes?.data?.poems && Array.isArray(poemsRes.data.poems)) {
-        const validPoems = poemsRes.data.poems.filter(poem => 
+        fetchedPoems = poemsRes.data.poems.filter(poem => 
           poem && poem._id && poem.title && poem.content
         );
-        setPoems(validPoems);
-      } else {
-        setPoems([]);
       }
     } catch (error) {
       console.error("Error fetching poems:", error);
-      setPoems([]);
     }
 
     // Fetch bookmarks with validation
@@ -267,37 +328,43 @@ const ReaderDashboard = () => {
       if (bookmarksRes?.data?.success) {
         const poems = bookmarksRes.data.poems || bookmarksRes.data.bookmarks || [];
         if (Array.isArray(poems)) {
-          const validBookmarks = poems.filter(bookmark =>
+          fetchedBookmarks = poems.filter(bookmark =>
             bookmark && bookmark._id
           );
-          setBookmarkedPoems(validBookmarks);
-        } else {
-          setBookmarkedPoems([]);
         }
-      } else {
-        setBookmarkedPoems([]);
       }
     } catch (error) {
       console.error("Error fetching bookmarks:", error.message);
-      setBookmarkedPoems([]);
     }
 
     // Fetch recommendations with validation
     try {
       const recommendationsRes = await poetryAPI.getRecommendations();
       if (recommendationsRes?.data?.success && Array.isArray(recommendationsRes.data.poems)) {
-        const validRecommendations = recommendationsRes.data.poems.filter(poem =>
+        fetchedRecommendations = recommendationsRes.data.poems.filter(poem =>
           poem && poem._id && poem.title
         );
-        setRecommendations(validRecommendations);
-      } else {
-        setRecommendations([]);
       }
     } catch (error) {
       // Silently handle recommendations error - feature may not be available yet
       console.log("Recommendations not available:", error.response?.status || error.message);
-      setRecommendations([]);
     }
+
+    const bookmarkIds = new Set(fetchedBookmarks.map((poem) => poem._id));
+
+    setPoems(applyInteractionFlags(fetchedPoems, bookmarkIds, userId));
+    setBookmarkedPoems(
+      applyInteractionFlags(fetchedBookmarks, bookmarkIds, userId).map((poem) => ({
+        ...poem,
+        isBookmarked: true,
+      }))
+    );
+    setRecommendations(applyInteractionFlags(fetchedRecommendations, bookmarkIds, userId));
+
+    setReaderStats((prevStats) => ({
+      ...prevStats,
+      bookmarksCount: bookmarkIds.size,
+    }));
   };
 
   const refreshData = async () => {
@@ -305,6 +372,40 @@ const ReaderDashboard = () => {
     await fetchReaderData();
     setRefreshing(false);
     showMessage("success", "ڈیٹا کامیابی سے اپڈیٹ ہو گیا");
+  };
+
+  const refreshBookmarks = async () => {
+    try {
+      const userId = getUserId();
+      const bookmarksRes = await poetryAPI.getBookmarkedPoems();
+      if (bookmarksRes?.data?.success) {
+        const poems = bookmarksRes.data.poems || bookmarksRes.data.bookmarks || [];
+        const fetchedBookmarks = Array.isArray(poems)
+          ? poems.filter((bookmark) => bookmark && bookmark._id)
+          : [];
+        const bookmarkIds = new Set(fetchedBookmarks.map((poem) => poem._id));
+
+        setBookmarkedPoems(
+          applyInteractionFlags(fetchedBookmarks, bookmarkIds, userId).map(
+            (poem) => ({ ...poem, isBookmarked: true })
+          )
+        );
+
+        setPoems((prevPoems) =>
+          applyInteractionFlags(prevPoems, bookmarkIds, userId)
+        );
+        setRecommendations((prevRecs) =>
+          applyInteractionFlags(prevRecs, bookmarkIds, userId)
+        );
+
+        setReaderStats((prevStats) => ({
+          ...prevStats,
+          bookmarksCount: bookmarkIds.size,
+        }));
+      }
+    } catch (error) {
+      console.error("Error refreshing bookmarks:", error);
+    }
   };
 
   const handleBookmark = async (poemId) => {
@@ -315,24 +416,19 @@ const ReaderDashboard = () => {
     }
 
     try {
-      // Use new bookmark system
-      const BookmarkAPI = (await import('../../services/bookmarkAPI')).default;
-      const poem = poems.find(p => p._id === poemId);
-      const isBookmarked = poem?.isBookmarked || false;
-      
-      if (isBookmarked) {
-        await BookmarkAPI.removeByPoemId(poemId);
-      } else {
-        await BookmarkAPI.addBookmark(poemId);
-      }
-      
-      const response = { data: { success: true, isBookmarked: !isBookmarked } };
-      if (response.data.success) {
+      const currentPoem = findPoemById(poemId);
+      const isBookmarked = currentPoem?.isBookmarked || false;
+
+      const response = await poetryAPI.toggleBookmark(poemId);
+      if (response?.data?.success) {
+        const nextIsBookmarked = response.data.isBookmarked ?? !isBookmarked;
+        const newBookmarksCount = response.data.bookmarksCount;
+        
         // Update poems list
         setPoems((prevPoems) =>
           prevPoems.map((poem) =>
             poem._id === poemId
-              ? { ...poem, isBookmarked: !poem.isBookmarked }
+              ? { ...poem, isBookmarked: nextIsBookmarked }
               : poem
           )
         );
@@ -341,12 +437,48 @@ const ReaderDashboard = () => {
         setRecommendations((prevRecs) =>
           prevRecs.map((poem) =>
             poem._id === poemId
-              ? { ...poem, isBookmarked: !poem.isBookmarked }
+              ? { ...poem, isBookmarked: nextIsBookmarked }
               : poem
           )
         );
-        
-        showMessage("success", "بُک مارک اپڈیٹ ہو گیا");
+
+        // Update bookmarked poems list immediately
+        setBookmarkedPoems((prevBookmarks) => {
+          if (nextIsBookmarked) {
+            const exists = prevBookmarks.some((poem) => poem?._id === poemId);
+            if (exists) return prevBookmarks;
+            if (currentPoem) {
+              return [
+                { ...currentPoem, isBookmarked: true },
+                ...prevBookmarks,
+              ];
+            }
+            // If currentPoem not found, create a minimal placeholder to update count
+            return [
+              { _id: poemId, isBookmarked: true, title: 'Loading...' },
+              ...prevBookmarks,
+            ];
+          }
+          return prevBookmarks.filter((poem) => poem?._id !== poemId);
+        });
+
+        // ALWAYS update stats with API response count as primary source
+        if (typeof newBookmarksCount === 'number') {
+          setReaderStats((prevStats) => ({
+            ...prevStats,
+            bookmarksCount: newBookmarksCount,
+          }));
+        } else {
+          // Fallback: calculate locally
+          setReaderStats((prevStats) => ({
+            ...prevStats,
+            bookmarksCount: nextIsBookmarked 
+              ? (prevStats.bookmarksCount || 0) + 1 
+              : Math.max(0, (prevStats.bookmarksCount || 0) - 1),
+          }));
+        }
+
+        showMessage("success", nextIsBookmarked ? "بُک مارک شامل ہو گیا" : "بُک مارک ہٹا دیا گیا");
       }
     } catch (error) {
       console.error("Bookmark error:", error);
@@ -362,16 +494,25 @@ const ReaderDashboard = () => {
     }
 
     try {
+      const currentPoem = findPoemById(poemId);
+      const wasLiked = currentPoem?.isLiked || false;
+      const currentLikesCount = getLikeCount(currentPoem?.likes);
+
       const response = await poetryAPI.likePoem(poemId);
       if (response?.data?.success) {
+        const nextIsLiked = response.data.isLiked ?? response.data.liked ?? !wasLiked;
+        const nextLikesCount = response.data.likesCount ?? (wasLiked ? currentLikesCount - 1 : currentLikesCount + 1);
+        const safeLikesCount = Math.max(0, nextLikesCount);
+        const delta = nextIsLiked && !wasLiked ? 1 : !nextIsLiked && wasLiked ? -1 : 0;
+
         // Update poems list
         setPoems((prevPoems) =>
           prevPoems.map((poem) =>
             poem._id === poemId
               ? {
                   ...poem,
-                  likes: response.data.likesCount || (poem.isLiked ? getLikeCount(poem.likes) - 1 : getLikeCount(poem.likes) + 1),
-                  isLiked: response.data.isLiked ?? !poem.isLiked,
+                  likes: safeLikesCount,
+                  isLiked: nextIsLiked,
                 }
               : poem
           )
@@ -383,12 +524,33 @@ const ReaderDashboard = () => {
             poem._id === poemId
               ? {
                   ...poem,
-                  likes: response.data.likesCount || (poem.isLiked ? getLikeCount(poem.likes) - 1 : getLikeCount(poem.likes) + 1),
-                  isLiked: response.data.isLiked ?? !poem.isLiked,
+                  likes: safeLikesCount,
+                  isLiked: nextIsLiked,
                 }
               : poem
           )
         );
+
+        setBookmarkedPoems((prevBookmarks) =>
+          prevBookmarks.map((poem) =>
+            poem._id === poemId
+              ? {
+                  ...poem,
+                  likes: safeLikesCount,
+                  isLiked: nextIsLiked,
+                }
+              : poem
+          )
+        );
+
+        setReaderStats((prevStats) => ({
+          ...prevStats,
+          likesGiven: Math.max(0, (prevStats.likesGiven || 0) + delta),
+          monthlyActivity: {
+            ...prevStats.monthlyActivity,
+            likes: Math.max(0, (prevStats.monthlyActivity?.likes || 0) + delta),
+          },
+        }));
         
         showMessage("success", "پسند اپڈیٹ ہو گیا");
       }
@@ -588,14 +750,14 @@ const ReaderDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
             title="پڑھی گئی شاعری"
-            value={readerStats?.totalPoemsRead || readingHistory?.length || 0}
+            value={readerStats?.totalPoemsRead || readerStats?.likesGiven || 0}
             subtitle={`+${readerStats?.monthlyActivity?.poemsRead || 0} اس ماہ`}
             icon={BookOpen}
             color="blue"
           />
           <StatCard
             title="بُک مارکس"
-            value={bookmarkedPoems?.length || readerStats?.bookmarksCount || 0}
+            value={readerStats?.bookmarksCount ?? bookmarkedPoems?.length ?? 0}
             subtitle="محفوظ شدہ شاعری"
             icon={Bookmark}
             color="purple"

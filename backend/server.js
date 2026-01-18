@@ -333,6 +333,61 @@ const startServer = async () => {
 
     console.log("✅ Routes loaded successfully");
     console.log("🤖 AI Search routes available at /api/ai-search");
+
+    // Catch-all POST handler for newsletter subscriptions sent to wrong path
+    // This handles cases where the form might submit to "/" instead of "/api/newsletter/subscribe"
+    app.post("/", async (req, res) => {
+      const { email } = req.body;
+      if (email) {
+        // Redirect/forward to newsletter subscribe
+        try {
+          const Newsletter = (await import("./models/Newsletter.js")).default;
+          
+          // Check if email already exists
+          const existingSubscriber = await Newsletter.findOne({ email });
+          
+          if (existingSubscriber) {
+            if (existingSubscriber.isActive) {
+              return res.status(400).json({
+                success: false,
+                message: "یہ ایمیل پہلے سے رجسٹرڈ ہے / This email is already subscribed",
+              });
+            } else {
+              // Reactivate subscription
+              existingSubscriber.isActive = true;
+              existingSubscriber.subscribedAt = new Date();
+              existingSubscriber.unsubscribedAt = null;
+              await existingSubscriber.save();
+              
+              return res.status(200).json({
+                success: true,
+                message: "آپ کی سبسکرپشن دوبارہ فعال ہو گئی / Your subscription has been reactivated",
+              });
+            }
+          }
+          
+          // Create new subscriber
+          const newSubscriber = new Newsletter({ email, source: "root-fallback" });
+          await newSubscriber.save();
+          
+          return res.status(201).json({
+            success: true,
+            message: "شکریہ! آپ نے کامیابی سے سبسکرائب کر لیا / Thank you for subscribing!",
+          });
+        } catch (error) {
+          console.error("Newsletter fallback error:", error);
+          return res.status(500).json({
+            success: false,
+            message: "کچھ غلط ہو گیا / Something went wrong",
+          });
+        }
+      }
+      
+      return res.status(404).json({
+        success: false,
+        message: "Route not found",
+      });
+    });
   } catch (error) {
     console.log("❌ Error loading routes:", error.message);
     console.log("❌ Stack trace:", error.stack);

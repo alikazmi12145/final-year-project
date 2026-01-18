@@ -3,6 +3,8 @@ import { body, validationResult } from "express-validator";
 import Poem from "../models/Poem.js";
 import Poet from "../models/poet.js";
 import User from "../models/User.js";
+import ReadingHistory from "../models/ReadingHistory.js";
+import Bookmark from "../models/Bookmark.js";
 import {
   auth,
   poetAuth,
@@ -194,19 +196,14 @@ router.get("/my-poems", auth, async (req, res) => {
 // Get user's bookmarked poems
 router.get("/bookmarks", auth, poemOperationLimit, async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 100 } = req.query; // Increased default limit to 100
+    const userId = req.user.userId;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const user = await User.findById(req.user.userId);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    // If no bookmarks, return empty array
-    if (!user.bookmarkedPoems || user.bookmarkedPoems.length === 0) {
+    // Query the Bookmark collection instead of user.bookmarkedPoems
+    const totalBookmarks = await Bookmark.countDocuments({ user: userId });
+    
+    if (totalBookmarks === 0) {
       return res.json({
         success: true,
         poems: [],
@@ -219,29 +216,32 @@ router.get("/bookmarks", auth, poemOperationLimit, async (req, res) => {
       });
     }
 
-    // Populate bookmarks with poem details
-    const populatedUser = await User.findById(req.user.userId).populate({
-      path: "bookmarkedPoems",
-      populate: [
-        { path: "author", select: "name email" },
-        { path: "poet", select: "name bio profileImage" },
-      ],
-    });
+    // Get bookmarks with populated poem details
+    const bookmarks = await Bookmark.find({ user: userId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate({
+        path: "poem",
+        populate: [
+          { path: "author", select: "name email" },
+          { path: "poet", select: "name bio profileImage" },
+        ],
+      });
 
-    const skip = (page - 1) * limit;
-    const paginatedPoems = populatedUser.bookmarkedPoems.slice(
-      skip,
-      skip + parseInt(limit)
-    );
+    // Extract poems from bookmarks, filter out any null poems
+    const poems = bookmarks
+      .map(bookmark => bookmark.poem)
+      .filter(poem => poem != null);
 
     res.json({
       success: true,
-      poems: paginatedPoems,
+      poems: poems,
       pagination: {
         current: parseInt(page),
-        total: Math.ceil(populatedUser.bookmarkedPoems.length / limit),
-        hasNext: page * limit < populatedUser.bookmarkedPoems.length,
-        hasPrev: page > 1,
+        total: Math.ceil(totalBookmarks / parseInt(limit)),
+        hasNext: skip + poems.length < totalBookmarks,
+        hasPrev: parseInt(page) > 1,
       },
     });
   } catch (error) {
@@ -306,10 +306,11 @@ router.get("/pending", auth, moderatorAuth, async (req, res) => {
 router.get("/recommendations", auth, poemOperationLimit, async (req, res) => {
   try {
     const { limit = 10 } = req.query;
-    console.log("Recommendations endpoint called, user:", req.user?.userId);
+    const userId = req.user?.userId;
+    console.log("Recommendations endpoint called, user:", userId);
 
     // Validate user
-    if (!req.user || !req.user.userId) {
+    if (!req.user || !userId) {
       console.log("No user or userId found in request");
       return res.status(401).json({
         success: false,
@@ -317,26 +318,16 @@ router.get("/recommendations", auth, poemOperationLimit, async (req, res) => {
       });
     }
 
-    console.log("Finding user by ID:", req.user.userId);
-    const user = await User.findById(req.user.userId);
-    console.log("User found:", user ? "yes" : "no");
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    // Get bookmarked poems separately to avoid population issues
-    const bookmarkedPoems = user.bookmarkedPoems || [];
-    console.log("Bookmarked poems count:", bookmarkedPoems.length);
+    // Get bookmarked poems from Bookmark collection
+    const userBookmarks = await Bookmark.find({ user: userId }).select("poem").lean();
+    const bookmarkedPoemIds = userBookmarks.map(b => b.poem);
+    console.log("Bookmarked poems count:", bookmarkedPoemIds.length);
 
     // Get categories from bookmarked poems if any
     let preferredCategories = [];
-    if (bookmarkedPoems.length > 0) {
+    if (bookmarkedPoemIds.length > 0) {
       const bookmarkedPoemDocs = await Poem.find({
-        _id: { $in: bookmarkedPoems }
+        _id: { $in: bookmarkedPoemIds }
       }).select('category').lean();
       
       preferredCategories = [...new Set(
@@ -352,7 +343,7 @@ router.get("/recommendations", auth, poemOperationLimit, async (req, res) => {
       console.log("No preferences, returning popular poems");
       const popularPoems = await Poem.find({
         status: "published",
-        author: { $ne: req.user.userId },
+        author: { $ne: userId },
       })
         .populate("author", "name profileImage")
         .populate("poet", "name bio")
@@ -372,8 +363,8 @@ router.get("/recommendations", auth, poemOperationLimit, async (req, res) => {
     const recommendations = await Poem.find({
       status: "published",
       category: { $in: preferredCategories },
-      _id: { $nin: bookmarkedPoems },
-      author: { $ne: req.user.userId },
+      _id: { $nin: bookmarkedPoemIds },
+      author: { $ne: userId },
     })
       .populate("author", "name profileImage")
       .populate("poet", "name bio")
@@ -387,7 +378,7 @@ router.get("/recommendations", auth, poemOperationLimit, async (req, res) => {
     if (recommendations.length === 0) {
       const popularPoems = await Poem.find({
         status: "published",
-        author: { $ne: req.user.userId },
+        author: { $ne: userId },
       })
         .populate("author", "name profileImage")
         .populate("poet", "name bio")
@@ -823,17 +814,21 @@ router.post("/:id/like", auth, poemOperationLimit, async (req, res) => {
     }
 
     const userId = req.user.userId;
-    const isLiked = poem.likes.includes(userId);
+    const isLiked = poem.likes.some(
+      (like) => like?.user?.toString() === userId
+    );
 
     if (isLiked) {
       // Unlike
-      poem.likes.pull(userId);
-      poem.likesCount = Math.max(0, poem.likesCount - 1);
+      poem.likes = poem.likes.filter(
+        (like) => like?.user?.toString() !== userId
+      );
     } else {
       // Like
-      poem.likes.push(userId);
-      poem.likesCount += 1;
+      poem.likes.push({ user: userId });
     }
+
+    poem.likesCount = poem.likes.length;
 
     await poem.save();
 
@@ -1142,6 +1137,7 @@ router.get("/:id/ratings", poemOperationLimit, async (req, res) => {
 router.post("/:id/bookmark", auth, poemOperationLimit, async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.userId;
 
     const poem = await Poem.findById(id);
     if (!poem) {
@@ -1151,24 +1147,48 @@ router.post("/:id/bookmark", auth, poemOperationLimit, async (req, res) => {
       });
     }
 
-    const user = await User.findById(req.user.userId);
-    const isBookmarked = user.bookmarkedPoems.includes(id);
+    // Check if bookmark exists in Bookmark collection
+    const existingBookmark = await Bookmark.findOne({ user: userId, poem: id });
 
-    if (isBookmarked) {
-      await user.removeBookmark(id);
+    if (existingBookmark) {
+      // Remove bookmark
+      await Bookmark.deleteOne({ user: userId, poem: id });
+      
+      // Also update poem.bookmarks array for backward compatibility
+      poem.bookmarks = poem.bookmarks.filter(
+        (bookmark) => bookmark?.user?.toString() !== userId
+      );
+      await poem.save();
+
+      // Get updated count
+      const bookmarksCount = await Bookmark.countDocuments({ user: userId });
 
       res.json({
         success: true,
         message: "Poem removed from bookmarks",
         isBookmarked: false,
+        bookmarksCount: bookmarksCount,
+        poemBookmarksCount: poem.bookmarks.length,
       });
     } else {
-      await user.addBookmark(id);
+      // Add bookmark
+      await Bookmark.create({ user: userId, poem: id });
+      
+      // Also update poem.bookmarks array for backward compatibility
+      if (!poem.bookmarks.some((bookmark) => bookmark?.user?.toString() === userId)) {
+        poem.bookmarks.push({ user: userId });
+        await poem.save();
+      }
+
+      // Get updated count
+      const bookmarksCount = await Bookmark.countDocuments({ user: userId });
 
       res.json({
         success: true,
         message: "Poem bookmarked successfully",
         isBookmarked: true,
+        bookmarksCount: bookmarksCount,
+        poemBookmarksCount: poem.bookmarks.length,
       });
     }
   } catch (error) {
@@ -1195,6 +1215,16 @@ router.post("/:id/view", optionalAuth, poemOperationLimit, async (req, res) => {
     // Increment view count
     poem.viewsCount = (poem.viewsCount || 0) + 1;
     await poem.save();
+
+    // Track reading history if user is authenticated
+    if (req.user && req.user.userId) {
+      try {
+        await ReadingHistory.addOrUpdate(req.user.userId, req.params.id);
+      } catch (historyError) {
+        // Don't fail the request if history tracking fails
+        console.error("Failed to track reading history:", historyError.message);
+      }
+    }
 
     res.json({
       success: true,
@@ -1501,6 +1531,7 @@ router.post("/rate", auth, poemOperationLimit, async (req, res) => {
 router.post("/favorite", auth, poemOperationLimit, async (req, res) => {
   try {
     const { poemId } = req.body;
+    const userId = req.user.userId;
 
     if (!poemId) {
       return res.status(400).json({
@@ -1517,41 +1548,46 @@ router.post("/favorite", auth, poemOperationLimit, async (req, res) => {
       });
     }
 
-    const user = await User.findById(req.user.userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "صارف موجود نہیں", // User not found
-      });
-    }
-
-    // Toggle bookmark
-    const existingBookmark = user.bookmarkedPoems?.includes(poemId);
+    // Check if bookmark exists in Bookmark collection
+    const existingBookmark = await Bookmark.findOne({ user: userId, poem: poemId });
 
     if (existingBookmark) {
-      // Remove from bookmarks
-      user.bookmarkedPoems = user.bookmarkedPoems.filter(
-        (id) => id.toString() !== poemId.toString()
-      );
-      await user.save();
+      // Remove bookmark from Bookmark collection
+      await Bookmark.deleteOne({ user: userId, poem: poemId });
+
+      // Also update Poem's bookmarks array for backward compatibility
+      await Poem.findByIdAndUpdate(poemId, {
+        $pull: { bookmarks: { user: userId } }
+      });
+
+      // Get updated bookmarks count
+      const bookmarksCount = await Bookmark.countDocuments({ user: userId });
 
       res.json({
         success: true,
         action: "removed",
         message: "شاعری پسندیدہ فہرست سے ہٹائی گئی", // Poem removed from favorites
         isBookmarked: false,
+        bookmarksCount,
       });
     } else {
-      // Add to bookmarks
-      user.bookmarkedPoems = user.bookmarkedPoems || [];
-      user.bookmarkedPoems.push(poemId);
-      await user.save();
+      // Add bookmark to Bookmark collection
+      await Bookmark.create({ user: userId, poem: poemId });
+
+      // Also update Poem's bookmarks array for backward compatibility
+      await Poem.findByIdAndUpdate(poemId, {
+        $addToSet: { bookmarks: { user: userId, bookmarkedAt: new Date() } }
+      });
+
+      // Get updated bookmarks count
+      const bookmarksCount = await Bookmark.countDocuments({ user: userId });
 
       res.json({
         success: true,
         action: "added",
         message: "شاعری پسندیدہ فہرست میں شامل ہوئی", // Poem added to favorites
         isBookmarked: true,
+        bookmarksCount,
       });
     }
   } catch (error) {
