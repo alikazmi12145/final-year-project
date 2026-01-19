@@ -18,7 +18,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 const Learning = () => {
   // Tab and navigation state
   const [activeTab, setActiveTab] = useState('tutorials');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // Learning resources state
   const [resources, setResources] = useState([]);
@@ -167,6 +167,7 @@ const Learning = () => {
     try {
       setLoading(true);
       const response = await axios.get(`${API_BASE_URL}/learning/resources`);
+      console.log('Learning resources response:', response.data);
       setResources(response.data.resources || []);
     } catch (error) {
       console.error('Error fetching learning resources:', error);
