@@ -268,7 +268,7 @@ router.get("/resources", learningLimit, async (req, res) => {
       tutorials: [
         {
           _id: "tutorial_1",
-          title: "Basic Ghazal Concepts",
+          title: "غزل کے بنیادی تصورات",
           description: "غزل کی ردیف، قافیہ، اور بحر کو سمجھیں",
           category: "tutorial",
           level: "beginner",
