@@ -1,41 +1,62 @@
-# Ignore node modules
+# -----------------------------------------------------------------------------
+# Bazm-e-Sukhan .gitignore
+# Web-based poetry platform: React frontend + Node.js/Express backend
+# -----------------------------------------------------------------------------
+
+# Dependency directories
+# These are installed from package.json and should be regenerated locally.
 node_modules/
 **/node_modules/
 
-# Ignore local environment files
-*.env
-.env*
-*.env.local
+# Environment and secret files
+# Keep API keys, database credentials, and private config local only.
+.env
 .env.*
+config.env
 
-# Python cache and compiled files
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
+# Build and production output
+# Ignore frontend and backend compiled artifact folders.
+build/
+dist/
+.next/
+coverage/
 
-# Python virtual environments
-venv/
-.envvenv/
-ENV/
-.envrc
-.python-version
+# Uploaded user content
+# Do not commit user uploads or media files.
+uploads/
+media/
+public/uploads/
+public/media/
 
-# VS Code workspace settings
-.vscode/
-
-# Log files
+# Logs and temporary files
+# Local runtime logs and temporary files should not be tracked.
+*.log
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
-*.log
+*.tmp
+*.temp
 
-# OS files
+# IDE and editor settings
+# Ignore local workspace/editor config files.
+.vscode/
+.idea/
+
+# System files
+# Operating system metadata should not be committed.
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Other local files
-.idea/
-.DS_Store
+# Optional local files
+# Include any custom local runtime files here.
+*.env.local
+.envrc
+.python-version
+
+# Ignore package manager lock files only if you do not wish to track them.
+# Uncomment the appropriate line if needed.
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
 
