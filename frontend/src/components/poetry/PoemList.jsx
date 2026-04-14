@@ -176,6 +176,7 @@ const PoemList = ({
     { value: "author", label: "شاعر" },
     { value: "likesCount", label: "پسندیدگی" },
     { value: "viewsCount", label: "نظارے" },
+    { value: "averageRating", label: "اعلیٰ ریٹنگ" },
   ];
 
   // Search handler with debouncing - enhanced with dynamic API

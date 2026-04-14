@@ -1,4 +1,4 @@
-import Poem from "../models/Poem.js";
+﻿import Poem from "../models/Poem.js";
 import Review from "../models/Review.js";
 import Collection from "../models/Collection.js";
 import User from "../models/User.js";
@@ -43,7 +43,7 @@ class PoetryCollectionController {
         allowDownload = false,
       } = req.body;
 
-      const authorId = req.user.id;
+      const authorId = req.user.userId;
 
       // Create new poem
       const newPoem = new Poem({
@@ -80,7 +80,7 @@ class PoetryCollectionController {
           newPoem.audio = {
             url: req.files.audio[0].path,
             publicId: req.files.audio[0].filename,
-            recitedBy: req.body.recitedBy || "خود مصنف", // "Author themselves"
+            recitedBy: req.body.recitedBy || "Ø®ÙˆØ¯ Ù…ØµÙ†Ù", // "Author themselves"
           };
         }
       }
@@ -95,14 +95,14 @@ class PoetryCollectionController {
 
       res.status(201).json({
         success: true,
-        message: "شاعری کامیابی سے بنائی گئی", // "Poem created successfully"
+        message: "Ø´Ø§Ø¹Ø±ÛŒ Ú©Ø§Ù…ÛŒØ§Ø¨ÛŒ Ø³Û’ Ø¨Ù†Ø§Ø¦ÛŒ Ú¯Ø¦ÛŒ", // "Poem created successfully"
         poem: newPoem,
       });
     } catch (error) {
       console.error("Error creating poem:", error);
       res.status(500).json({
         success: false,
-        message: "شاعری بناتے وقت خرابی ہوئی", // "Error occurred while creating poem"
+        message: "Ø´Ø§Ø¹Ø±ÛŒ Ø¨Ù†Ø§ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ", // "Error occurred while creating poem"
         error: error.message,
       });
     }
@@ -190,7 +190,7 @@ class PoetryCollectionController {
       console.error("Error fetching poems:", error);
       res.status(500).json({
         success: false,
-        message: "شاعری حاصل کرتے وقت خرابی ہوئی", // "Error occurred while fetching poems"
+        message: "Ø´Ø§Ø¹Ø±ÛŒ Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ", // "Error occurred while fetching poems"
         error: error.message,
       });
     }
@@ -207,7 +207,7 @@ class PoetryCollectionController {
       if (!mongoose.Types.ObjectId.isValid(id)) {
         return res.status(400).json({
           success: false,
-          message: "غلط شاعری ID", // "Invalid poem ID"
+          message: "ØºÙ„Ø· Ø´Ø§Ø¹Ø±ÛŒ ID", // "Invalid poem ID"
         });
       }
 
@@ -221,7 +221,7 @@ class PoetryCollectionController {
       if (!poem) {
         return res.status(404).json({
           success: false,
-          message: "شاعری موجود نہیں", // "Poem not found"
+          message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº", // "Poem not found"
         });
       }
 
@@ -260,7 +260,7 @@ class PoetryCollectionController {
       console.error("Error fetching poem:", error);
       res.status(500).json({
         success: false,
-        message: "شاعری حاصل کرتے وقت خرابی ہوئی",
+        message: "Ø´Ø§Ø¹Ø±ÛŒ Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -272,13 +272,13 @@ class PoetryCollectionController {
   static async updatePoem(req, res) {
     try {
       const { id } = req.params;
-      const userId = req.user.id;
+      const userId = req.user.userId;
       const updateData = req.body;
 
       if (!mongoose.Types.ObjectId.isValid(id)) {
         return res.status(400).json({
           success: false,
-          message: "غلط شاعری ID",
+          message: "ØºÙ„Ø· Ø´Ø§Ø¹Ø±ÛŒ ID",
         });
       }
 
@@ -287,7 +287,7 @@ class PoetryCollectionController {
       if (!poem) {
         return res.status(404).json({
           success: false,
-          message: "شاعری موجود نہیں",
+          message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
         });
       }
 
@@ -295,7 +295,7 @@ class PoetryCollectionController {
       if (poem.author.toString() !== userId && req.user.role !== "admin") {
         return res.status(403).json({
           success: false,
-          message: "آپ کو اس شاعری میں تبدیلی کی اجازت نہیں", // "You don't have permission to modify this poem"
+          message: "Ø¢Ù¾ Ú©Ùˆ Ø§Ø³ Ø´Ø§Ø¹Ø±ÛŒ Ù…ÛŒÚº ØªØ¨Ø¯ÛŒÙ„ÛŒ Ú©ÛŒ Ø§Ø¬Ø§Ø²Øª Ù†ÛÛŒÚº", // "You don't have permission to modify this poem"
         });
       }
 
@@ -335,14 +335,14 @@ class PoetryCollectionController {
 
       res.json({
         success: true,
-        message: "شاعری کامیابی سے اپ ڈیٹ ہوئی", // "Poem updated successfully"
+        message: "Ø´Ø§Ø¹Ø±ÛŒ Ú©Ø§Ù…ÛŒØ§Ø¨ÛŒ Ø³Û’ Ø§Ù¾ ÚˆÛŒÙ¹ ÛÙˆØ¦ÛŒ", // "Poem updated successfully"
         poem,
       });
     } catch (error) {
       console.error("Error updating poem:", error);
       res.status(500).json({
         success: false,
-        message: "شاعری اپ ڈیٹ کرتے وقت خرابی ہوئی",
+        message: "Ø´Ø§Ø¹Ø±ÛŒ Ø§Ù¾ ÚˆÛŒÙ¹ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -354,12 +354,12 @@ class PoetryCollectionController {
   static async deletePoem(req, res) {
     try {
       const { id } = req.params;
-      const userId = req.user.id;
+      const userId = req.user.userId;
 
       if (!mongoose.Types.ObjectId.isValid(id)) {
         return res.status(400).json({
           success: false,
-          message: "غلط شاعری ID",
+          message: "ØºÙ„Ø· Ø´Ø§Ø¹Ø±ÛŒ ID",
         });
       }
 
@@ -368,7 +368,7 @@ class PoetryCollectionController {
       if (!poem) {
         return res.status(404).json({
           success: false,
-          message: "شاعری موجود نہیں",
+          message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
         });
       }
 
@@ -376,7 +376,7 @@ class PoetryCollectionController {
       if (poem.author.toString() !== userId && req.user.role !== "admin") {
         return res.status(403).json({
           success: false,
-          message: "آپ کو اس شاعری کو ڈیلیٹ کرنے کی اجازت نہیں",
+          message: "Ø¢Ù¾ Ú©Ùˆ Ø§Ø³ Ø´Ø§Ø¹Ø±ÛŒ Ú©Ùˆ ÚˆÛŒÙ„ÛŒÙ¹ Ú©Ø±Ù†Û’ Ú©ÛŒ Ø§Ø¬Ø§Ø²Øª Ù†ÛÛŒÚº",
         });
       }
 
@@ -392,13 +392,13 @@ class PoetryCollectionController {
 
       res.json({
         success: true,
-        message: "شاعری کامیابی سے ڈیلیٹ ہوئی", // "Poem deleted successfully"
+        message: "Ø´Ø§Ø¹Ø±ÛŒ Ú©Ø§Ù…ÛŒØ§Ø¨ÛŒ Ø³Û’ ÚˆÛŒÙ„ÛŒÙ¹ ÛÙˆØ¦ÛŒ", // "Poem deleted successfully"
       });
     } catch (error) {
       console.error("Error deleting poem:", error);
       res.status(500).json({
         success: false,
-        message: "شاعری ڈیلیٹ کرتے وقت خرابی ہوئی",
+        message: "Ø´Ø§Ø¹Ø±ÛŒ ÚˆÛŒÙ„ÛŒÙ¹ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -412,13 +412,13 @@ class PoetryCollectionController {
   static async addReview(req, res) {
     try {
       const { poemId } = req.params;
-      const userId = req.user.id;
+      const userId = req.user.userId;
       const { rating, title, content, categories } = req.body;
 
       if (!mongoose.Types.ObjectId.isValid(poemId)) {
         return res.status(400).json({
           success: false,
-          message: "غلط شاعری ID",
+          message: "ØºÙ„Ø· Ø´Ø§Ø¹Ø±ÛŒ ID",
         });
       }
 
@@ -426,7 +426,7 @@ class PoetryCollectionController {
       if (!rating || rating < 1 || rating > 5) {
         return res.status(400).json({
           success: false,
-          message: "ریٹنگ 1 سے 5 کے درمیان ہونی چاہیے",
+          message: "Ø±ÛŒÙ¹Ù†Ú¯ 1 Ø³Û’ 5 Ú©Û’ Ø¯Ø±Ù…ÛŒØ§Ù† ÛÙˆÙ†ÛŒ Ú†Ø§ÛÛŒÛ’",
         });
       }
 
@@ -435,7 +435,7 @@ class PoetryCollectionController {
       if (!poem) {
         return res.status(404).json({
           success: false,
-          message: "شاعری موجود نہیں",
+          message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
         });
       }
 
@@ -454,7 +454,7 @@ class PoetryCollectionController {
 
         res.json({
           success: true,
-          message: "جائزہ کامیابی سے اپ ڈیٹ ہوا", // "Review updated successfully"
+          message: "Ø¬Ø§Ø¦Ø²Û Ú©Ø§Ù…ÛŒØ§Ø¨ÛŒ Ø³Û’ Ø§Ù¾ ÚˆÛŒÙ¹ ÛÙˆØ§", // "Review updated successfully"
           review: existingReview,
         });
       } else {
@@ -473,7 +473,7 @@ class PoetryCollectionController {
 
         res.status(201).json({
           success: true,
-          message: "جائزہ کامیابی سے شامل ہوا", // "Review added successfully"
+          message: "Ø¬Ø§Ø¦Ø²Û Ú©Ø§Ù…ÛŒØ§Ø¨ÛŒ Ø³Û’ Ø´Ø§Ù…Ù„ ÛÙˆØ§", // "Review added successfully"
           review: newReview,
         });
       }
@@ -484,7 +484,7 @@ class PoetryCollectionController {
       console.error("Error adding review:", error);
       res.status(500).json({
         success: false,
-        message: "جائزہ شامل کرتے وقت خرابی ہوئی",
+        message: "Ø¬Ø§Ø¦Ø²Û Ø´Ø§Ù…Ù„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -501,7 +501,7 @@ class PoetryCollectionController {
       if (!mongoose.Types.ObjectId.isValid(poemId)) {
         return res.status(400).json({
           success: false,
-          message: "غلط شاعری ID",
+          message: "ØºÙ„Ø· Ø´Ø§Ø¹Ø±ÛŒ ID",
         });
       }
 
@@ -581,7 +581,7 @@ class PoetryCollectionController {
       console.error("Error fetching reviews:", error);
       res.status(500).json({
         success: false,
-        message: "جائزے حاصل کرتے وقت خرابی ہوئی",
+        message: "Ø¬Ø§Ø¦Ø²Û’ Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -628,12 +628,12 @@ class PoetryCollectionController {
   static async addToFavorites(req, res) {
     try {
       const { poemId } = req.params;
-      const userId = req.user.id;
+      const userId = req.user.userId;
 
       if (!mongoose.Types.ObjectId.isValid(poemId)) {
         return res.status(400).json({
           success: false,
-          message: "غلط شاعری ID",
+          message: "ØºÙ„Ø· Ø´Ø§Ø¹Ø±ÛŒ ID",
         });
       }
 
@@ -642,7 +642,7 @@ class PoetryCollectionController {
       if (!poem) {
         return res.status(404).json({
           success: false,
-          message: "شاعری موجود نہیں",
+          message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
         });
       }
 
@@ -655,7 +655,7 @@ class PoetryCollectionController {
 
       if (!favorites) {
         favorites = new Collection({
-          name: "پسندیدہ شاعری", // "Favorite Poetry"
+          name: "Ù¾Ø³Ù†Ø¯ÛŒØ¯Û Ø´Ø§Ø¹Ø±ÛŒ", // "Favorite Poetry"
           user: userId,
           type: "favorites",
           isSystemGenerated: true,
@@ -671,7 +671,7 @@ class PoetryCollectionController {
       if (existingPoem) {
         return res.status(400).json({
           success: false,
-          message: "یہ شاعری پہلے سے پسندیدہ فہرست میں موجود ہے", // "This poem is already in favorites"
+          message: "ÛŒÛ Ø´Ø§Ø¹Ø±ÛŒ Ù¾ÛÙ„Û’ Ø³Û’ Ù¾Ø³Ù†Ø¯ÛŒØ¯Û ÙÛØ±Ø³Øª Ù…ÛŒÚº Ù…ÙˆØ¬ÙˆØ¯ ÛÛ’", // "This poem is already in favorites"
         });
       }
 
@@ -680,13 +680,13 @@ class PoetryCollectionController {
 
       res.json({
         success: true,
-        message: "شاعری پسندیدہ فہرست میں شامل ہوئی", // "Poem added to favorites"
+        message: "Ø´Ø§Ø¹Ø±ÛŒ Ù¾Ø³Ù†Ø¯ÛŒØ¯Û ÙÛØ±Ø³Øª Ù…ÛŒÚº Ø´Ø§Ù…Ù„ ÛÙˆØ¦ÛŒ", // "Poem added to favorites"
       });
     } catch (error) {
       console.error("Error adding to favorites:", error);
       res.status(500).json({
         success: false,
-        message: "پسندیدہ فہرست میں شامل کرتے وقت خرابی ہوئی",
+        message: "Ù¾Ø³Ù†Ø¯ÛŒØ¯Û ÙÛØ±Ø³Øª Ù…ÛŒÚº Ø´Ø§Ù…Ù„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -698,12 +698,12 @@ class PoetryCollectionController {
   static async removeFromFavorites(req, res) {
     try {
       const { poemId } = req.params;
-      const userId = req.user.id;
+      const userId = req.user.userId;
 
       if (!mongoose.Types.ObjectId.isValid(poemId)) {
         return res.status(400).json({
           success: false,
-          message: "غلط شاعری ID",
+          message: "ØºÙ„Ø· Ø´Ø§Ø¹Ø±ÛŒ ID",
         });
       }
 
@@ -717,7 +717,7 @@ class PoetryCollectionController {
       if (!favorites) {
         return res.status(404).json({
           success: false,
-          message: "پسندیدہ فہرست موجود نہیں", // "Favorites list not found"
+          message: "Ù¾Ø³Ù†Ø¯ÛŒØ¯Û ÙÛØ±Ø³Øª Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº", // "Favorites list not found"
         });
       }
 
@@ -726,13 +726,13 @@ class PoetryCollectionController {
 
       res.json({
         success: true,
-        message: "شاعری پسندیدہ فہرست سے ہٹائی گئی", // "Poem removed from favorites"
+        message: "Ø´Ø§Ø¹Ø±ÛŒ Ù¾Ø³Ù†Ø¯ÛŒØ¯Û ÙÛØ±Ø³Øª Ø³Û’ ÛÙ¹Ø§Ø¦ÛŒ Ú¯Ø¦ÛŒ", // "Poem removed from favorites"
       });
     } catch (error) {
       console.error("Error removing from favorites:", error);
       res.status(500).json({
         success: false,
-        message: "پسندیدہ فہرست سے ہٹاتے وقت خرابی ہوئی",
+        message: "Ù¾Ø³Ù†Ø¯ÛŒØ¯Û ÙÛØ±Ø³Øª Ø³Û’ ÛÙ¹Ø§ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -743,7 +743,7 @@ class PoetryCollectionController {
    */
   static async getFavorites(req, res) {
     try {
-      const userId = req.user.id;
+      const userId = req.user.userId;
       const { page = 1, limit = 12 } = req.query;
 
       const pageNum = parseInt(page);
@@ -798,7 +798,7 @@ class PoetryCollectionController {
       console.error("Error fetching favorites:", error);
       res.status(500).json({
         success: false,
-        message: "پسندیدہ فہرست حاصل کرتے وقت خرابی ہوئی",
+        message: "Ù¾Ø³Ù†Ø¯ÛŒØ¯Û ÙÛØ±Ø³Øª Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -851,7 +851,7 @@ class PoetryCollectionController {
       console.error("Error getting recommendations:", error);
       res.status(500).json({
         success: false,
-        message: "تجاویز حاصل کرتے وقت خرابی ہوئی", // "Error occurred while getting recommendations"
+        message: "ØªØ¬Ø§ÙˆÛŒØ² Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ", // "Error occurred while getting recommendations"
         error: error.message,
       });
     }
@@ -1095,12 +1095,12 @@ class PoetryCollectionController {
         category,
         tags,
       } = req.body;
-      const userId = req.user.id;
+      const userId = req.user.userId;
 
       if (!name || name.trim().length === 0) {
         return res.status(400).json({
           success: false,
-          message: "مجموعہ کا نام ضروری ہے", // "Collection name is required"
+          message: "Ù…Ø¬Ù…ÙˆØ¹Û Ú©Ø§ Ù†Ø§Ù… Ø¶Ø±ÙˆØ±ÛŒ ÛÛ’", // "Collection name is required"
         });
       }
 
@@ -1119,14 +1119,14 @@ class PoetryCollectionController {
 
       res.status(201).json({
         success: true,
-        message: "مجموعہ کامیابی سے بنایا گیا", // "Collection created successfully"
+        message: "Ù…Ø¬Ù…ÙˆØ¹Û Ú©Ø§Ù…ÛŒØ§Ø¨ÛŒ Ø³Û’ Ø¨Ù†Ø§ÛŒØ§ Ú¯ÛŒØ§", // "Collection created successfully"
         collection: newCollection,
       });
     } catch (error) {
       console.error("Error creating collection:", error);
       res.status(500).json({
         success: false,
-        message: "مجموعہ بناتے وقت خرابی ہوئی",
+        message: "Ù…Ø¬Ù…ÙˆØ¹Û Ø¨Ù†Ø§ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -1137,7 +1137,7 @@ class PoetryCollectionController {
    */
   static async getUserCollections(req, res) {
     try {
-      const userId = req.user.id;
+      const userId = req.user.userId;
       const { page = 1, limit = 12, type } = req.query;
 
       const pageNum = parseInt(page);
@@ -1176,7 +1176,7 @@ class PoetryCollectionController {
       console.error("Error fetching user collections:", error);
       res.status(500).json({
         success: false,
-        message: "مجموعے حاصل کرتے وقت خرابی ہوئی",
+        message: "Ù…Ø¬Ù…ÙˆØ¹Û’ Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -1189,7 +1189,7 @@ class PoetryCollectionController {
     try {
       const { collectionId, poemId } = req.params;
       const { notes } = req.body;
-      const userId = req.user.id;
+      const userId = req.user.userId;
 
       if (
         !mongoose.Types.ObjectId.isValid(collectionId) ||
@@ -1197,7 +1197,7 @@ class PoetryCollectionController {
       ) {
         return res.status(400).json({
           success: false,
-          message: "غلط ID",
+          message: "ØºÙ„Ø· ID",
         });
       }
 
@@ -1205,7 +1205,7 @@ class PoetryCollectionController {
       if (!collection) {
         return res.status(404).json({
           success: false,
-          message: "مجموعہ موجود نہیں",
+          message: "Ù…Ø¬Ù…ÙˆØ¹Û Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
         });
       }
 
@@ -1213,7 +1213,7 @@ class PoetryCollectionController {
       if (collection.user.toString() !== userId) {
         return res.status(403).json({
           success: false,
-          message: "آپ کو اس مجموعہ میں تبدیلی کی اجازت نہیں",
+          message: "Ø¢Ù¾ Ú©Ùˆ Ø§Ø³ Ù…Ø¬Ù…ÙˆØ¹Û Ù…ÛŒÚº ØªØ¨Ø¯ÛŒÙ„ÛŒ Ú©ÛŒ Ø§Ø¬Ø§Ø²Øª Ù†ÛÛŒÚº",
         });
       }
 
@@ -1222,7 +1222,7 @@ class PoetryCollectionController {
       if (!poem) {
         return res.status(404).json({
           success: false,
-          message: "شاعری موجود نہیں",
+          message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
         });
       }
 
@@ -1230,12 +1230,12 @@ class PoetryCollectionController {
 
       res.json({
         success: true,
-        message: "شاعری مجموعہ میں شامل ہوئی", // "Poem added to collection"
+        message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…Ø¬Ù…ÙˆØ¹Û Ù…ÛŒÚº Ø´Ø§Ù…Ù„ ÛÙˆØ¦ÛŒ", // "Poem added to collection"
       });
     } catch (error) {
       console.error("Error adding to collection:", error);
 
-      if (error.message.includes("موجود ہے")) {
+      if (error.message.includes("Ù…ÙˆØ¬ÙˆØ¯ ÛÛ’")) {
         return res.status(400).json({
           success: false,
           message: error.message,
@@ -1244,7 +1244,7 @@ class PoetryCollectionController {
 
       res.status(500).json({
         success: false,
-        message: "مجموعہ میں شامل کرتے وقت خرابی ہوئی",
+        message: "Ù…Ø¬Ù…ÙˆØ¹Û Ù…ÛŒÚº Ø´Ø§Ù…Ù„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -1265,7 +1265,7 @@ class PoetryCollectionController {
 
       if (!favorites) {
         favorites = new Collection({
-          name: "پسندیدہ شاعری",
+          name: "Ù¾Ø³Ù†Ø¯ÛŒØ¯Û Ø´Ø§Ø¹Ø±ÛŒ",
           user: userId,
           type: "favorites",
           isSystemGenerated: true,
@@ -1305,7 +1305,7 @@ class PoetryCollectionController {
    */
   static async getAnalytics(req, res) {
     try {
-      const userId = req.user.id;
+      const userId = req.user.userId;
 
       // Get user's poems analytics
       const userPoems = await Poem.find({ author: userId });
@@ -1355,7 +1355,7 @@ class PoetryCollectionController {
       console.error("Error fetching analytics:", error);
       res.status(500).json({
         success: false,
-        message: "تجزیات حاصل کرتے وقت خرابی ہوئی",
+        message: "ØªØ¬Ø²ÛŒØ§Øª Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -1373,7 +1373,7 @@ class PoetryCollectionController {
       if (!mongoose.Types.ObjectId.isValid(poemId)) {
         return res.status(400).json({
           success: false,
-          message: "غلط شاعری ID",
+          message: "ØºÙ„Ø· Ø´Ø§Ø¹Ø±ÛŒ ID",
         });
       }
 
@@ -1384,7 +1384,7 @@ class PoetryCollectionController {
       if (!poem) {
         return res.status(404).json({
           success: false,
-          message: "شاعری موجود نہیں",
+          message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
         });
       }
 
@@ -1405,7 +1405,7 @@ class PoetryCollectionController {
       } else {
         res.status(500).json({
           success: false,
-          message: "AI تجزیہ دستیاب نہیں", // "AI analysis not available"
+          message: "AI ØªØ¬Ø²ÛŒÛ Ø¯Ø³ØªÛŒØ§Ø¨ Ù†ÛÛŒÚº", // "AI analysis not available"
           reason: analysis.reason,
         });
       }
@@ -1413,7 +1413,7 @@ class PoetryCollectionController {
       console.error("Error getting AI analysis:", error);
       res.status(500).json({
         success: false,
-        message: "AI تجزیہ حاصل کرتے وقت خرابی ہوئی",
+        message: "AI ØªØ¬Ø²ÛŒÛ Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -1429,7 +1429,7 @@ class PoetryCollectionController {
       if (!theme) {
         return res.status(400).json({
           success: false,
-          message: "موضوع ضروری ہے", // "Theme is required"
+          message: "Ù…ÙˆØ¶ÙˆØ¹ Ø¶Ø±ÙˆØ±ÛŒ ÛÛ’", // "Theme is required"
         });
       }
 
@@ -1448,7 +1448,7 @@ class PoetryCollectionController {
       } else {
         res.status(500).json({
           success: false,
-          message: "تجاویز دستیاب نہیں", // "Suggestions not available"
+          message: "ØªØ¬Ø§ÙˆÛŒØ² Ø¯Ø³ØªÛŒØ§Ø¨ Ù†ÛÛŒÚº", // "Suggestions not available"
           reason: suggestions.reason,
         });
       }
@@ -1456,7 +1456,7 @@ class PoetryCollectionController {
       console.error("Error getting writing suggestions:", error);
       res.status(500).json({
         success: false,
-        message: "تجاویز حاصل کرتے وقت خرابی ہوئی",
+        message: "ØªØ¬Ø§ÙˆÛŒØ² Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -1472,7 +1472,7 @@ class PoetryCollectionController {
       if (!mongoose.Types.ObjectId.isValid(poemId)) {
         return res.status(400).json({
           success: false,
-          message: "غلط شاعری ID",
+          message: "ØºÙ„Ø· Ø´Ø§Ø¹Ø±ÛŒ ID",
         });
       }
 
@@ -1480,7 +1480,7 @@ class PoetryCollectionController {
       if (!poem) {
         return res.status(404).json({
           success: false,
-          message: "شاعری موجود نہیں",
+          message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
         });
       }
 
@@ -1498,7 +1498,7 @@ class PoetryCollectionController {
       } else {
         res.status(500).json({
           success: false,
-          message: "تشخیص دستیاب نہیں", // "Evaluation not available"
+          message: "ØªØ´Ø®ÛŒØµ Ø¯Ø³ØªÛŒØ§Ø¨ Ù†ÛÛŒÚº", // "Evaluation not available"
           reason: evaluation.reason,
         });
       }
@@ -1506,7 +1506,7 @@ class PoetryCollectionController {
       console.error("Error evaluating poem:", error);
       res.status(500).json({
         success: false,
-        message: "تشخیص کرتے وقت خرابی ہوئی",
+        message: "ØªØ´Ø®ÛŒØµ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -1523,7 +1523,7 @@ class PoetryCollectionController {
       if (!userId) {
         return res.status(401).json({
           success: false,
-          message: "لاگ ان کریں", // "Please login"
+          message: "Ù„Ø§Ú¯ Ø§Ù† Ú©Ø±ÛŒÚº", // "Please login"
         });
       }
 
@@ -1591,7 +1591,7 @@ class PoetryCollectionController {
         res.json({
           success: true,
           recommendations: fallbackRecommendations,
-          reasoning: "بنیادی الگورتھم کی بنیاد پر تجاویز", // "Recommendations based on basic algorithm"
+          reasoning: "Ø¨Ù†ÛŒØ§Ø¯ÛŒ Ø§Ù„Ú¯ÙˆØ±ØªÚ¾Ù… Ú©ÛŒ Ø¨Ù†ÛŒØ§Ø¯ Ù¾Ø± ØªØ¬Ø§ÙˆÛŒØ²", // "Recommendations based on basic algorithm"
           fallback: true,
         });
       }
@@ -1599,7 +1599,7 @@ class PoetryCollectionController {
       console.error("Error getting AI recommendations:", error);
       res.status(500).json({
         success: false,
-        message: "AI تجاویز حاصل کرتے وقت خرابی ہوئی",
+        message: "AI ØªØ¬Ø§ÙˆÛŒØ² Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -1618,7 +1618,7 @@ class PoetryCollectionController {
       if (!poet) {
         return res.status(400).json({
           success: false,
-          message: "شاعر کا نام ضروری ہے", // "Poet name is required"
+          message: "Ø´Ø§Ø¹Ø± Ú©Ø§ Ù†Ø§Ù… Ø¶Ø±ÙˆØ±ÛŒ ÛÛ’", // "Poet name is required"
         });
       }
 
@@ -1640,7 +1640,7 @@ class PoetryCollectionController {
       } else {
         res.status(404).json({
           success: false,
-          message: "شاعر کی شاعری نہیں ملی", // "Poet's poetry not found"
+          message: "Ø´Ø§Ø¹Ø± Ú©ÛŒ Ø´Ø§Ø¹Ø±ÛŒ Ù†ÛÛŒÚº Ù…Ù„ÛŒ", // "Poet's poetry not found"
           error: poetData.error,
           availablePoets: poetData.availablePoets,
         });
@@ -1649,7 +1649,7 @@ class PoetryCollectionController {
       console.error("Error fetching Rekhta poems:", error);
       res.status(500).json({
         success: false,
-        message: "ریختہ سے شاعری حاصل کرتے وقت خرابی ہوئی",
+        message: "Ø±ÛŒØ®ØªÛ Ø³Û’ Ø´Ø§Ø¹Ø±ÛŒ Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -1665,7 +1665,7 @@ class PoetryCollectionController {
       if (!query) {
         return res.status(400).json({
           success: false,
-          message: "تلاش کی عبارت ضروری ہے", // "Search query is required"
+          message: "ØªÙ„Ø§Ø´ Ú©ÛŒ Ø¹Ø¨Ø§Ø±Øª Ø¶Ø±ÙˆØ±ÛŒ ÛÛ’", // "Search query is required"
         });
       }
 
@@ -1683,7 +1683,7 @@ class PoetryCollectionController {
       } else {
         res.status(404).json({
           success: false,
-          message: "کوئی نتیجہ نہیں ملا", // "No results found"
+          message: "Ú©ÙˆØ¦ÛŒ Ù†ØªÛŒØ¬Û Ù†ÛÛŒÚº Ù…Ù„Ø§", // "No results found"
           query: searchResults.query,
           error: searchResults.error,
         });
@@ -1692,7 +1692,7 @@ class PoetryCollectionController {
       console.error("Error searching Rekhta:", error);
       res.status(500).json({
         success: false,
-        message: "ریختہ میں تلاش کرتے وقت خرابی ہوئی",
+        message: "Ø±ÛŒØ®ØªÛ Ù…ÛŒÚº ØªÙ„Ø§Ø´ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -1715,14 +1715,14 @@ class PoetryCollectionController {
       } else {
         res.status(500).json({
           success: false,
-          message: "نمایاں شاعری حاصل نہیں ہوسکی", // "Could not get featured poetry"
+          message: "Ù†Ù…Ø§ÛŒØ§Úº Ø´Ø§Ø¹Ø±ÛŒ Ø­Ø§ØµÙ„ Ù†ÛÛŒÚº ÛÙˆØ³Ú©ÛŒ", // "Could not get featured poetry"
         });
       }
     } catch (error) {
       console.error("Error fetching featured Rekhta poems:", error);
       res.status(500).json({
         success: false,
-        message: "نمایاں شاعری حاصل کرتے وقت خرابی ہوئی",
+        message: "Ù†Ù…Ø§ÛŒØ§Úº Ø´Ø§Ø¹Ø±ÛŒ Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -1745,7 +1745,7 @@ class PoetryCollectionController {
       console.error("Error getting supported poets:", error);
       res.status(500).json({
         success: false,
-        message: "شعراء کی فہرست حاصل کرتے وقت خرابی ہوئی",
+        message: "Ø´Ø¹Ø±Ø§Ø¡ Ú©ÛŒ ÙÛØ±Ø³Øª Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -1760,19 +1760,19 @@ class PoetryCollectionController {
     try {
       const { poemId } = req.params;
       const { rating, review } = req.body;
-      const userId = req.user.id;
+      const userId = req.user.userId;
 
       if (!mongoose.Types.ObjectId.isValid(poemId)) {
         return res.status(400).json({
           success: false,
-          message: "غلط شاعری ID",
+          message: "ØºÙ„Ø· Ø´Ø§Ø¹Ø±ÛŒ ID",
         });
       }
 
       if (!rating || rating < 1 || rating > 5) {
         return res.status(400).json({
           success: false,
-          message: "ریٹنگ 1 سے 5 کے درمیان ہونی چاہیے",
+          message: "Ø±ÛŒÙ¹Ù†Ú¯ 1 Ø³Û’ 5 Ú©Û’ Ø¯Ø±Ù…ÛŒØ§Ù† ÛÙˆÙ†ÛŒ Ú†Ø§ÛÛŒÛ’",
         });
       }
 
@@ -1780,7 +1780,7 @@ class PoetryCollectionController {
       if (!poem) {
         return res.status(404).json({
           success: false,
-          message: "شاعری موجود نہیں",
+          message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
         });
       }
 
@@ -1789,7 +1789,7 @@ class PoetryCollectionController {
 
       res.json({
         success: true,
-        message: "ریٹنگ کامیابی سے شامل ہوئی", // "Rating added successfully"
+        message: "Ø±ÛŒÙ¹Ù†Ú¯ Ú©Ø§Ù…ÛŒØ§Ø¨ÛŒ Ø³Û’ Ø´Ø§Ù…Ù„ ÛÙˆØ¦ÛŒ", // "Rating added successfully"
         rating: {
           user: userId,
           rating,
@@ -1801,7 +1801,7 @@ class PoetryCollectionController {
       console.error("Error rating poem:", error);
       res.status(500).json({
         success: false,
-        message: "ریٹنگ دیتے وقت خرابی ہوئی",
+        message: "Ø±ÛŒÙ¹Ù†Ú¯ Ø¯ÛŒØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -1813,12 +1813,12 @@ class PoetryCollectionController {
   static async toggleFavorite(req, res) {
     try {
       const { poemId } = req.params;
-      const userId = req.user.id;
+      const userId = req.user.userId;
 
       if (!mongoose.Types.ObjectId.isValid(poemId)) {
         return res.status(400).json({
           success: false,
-          message: "غلط شاعری ID",
+          message: "ØºÙ„Ø· Ø´Ø§Ø¹Ø±ÛŒ ID",
         });
       }
 
@@ -1827,7 +1827,7 @@ class PoetryCollectionController {
       if (!poem) {
         return res.status(404).json({
           success: false,
-          message: "شاعری موجود نہیں",
+          message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
         });
       }
 
@@ -1840,7 +1840,7 @@ class PoetryCollectionController {
 
       if (!favorites) {
         favorites = new Collection({
-          name: "پسندیدہ شاعری",
+          name: "Ù¾Ø³Ù†Ø¯ÛŒØ¯Û Ø´Ø§Ø¹Ø±ÛŒ",
           user: userId,
           type: "favorites",
           isSystemGenerated: true,
@@ -1859,12 +1859,12 @@ class PoetryCollectionController {
       if (existingPoem) {
         // Remove from favorites
         await favorites.removePoem(poemId);
-        message = "پسندیدہ فہرست سے ہٹایا گیا"; // "Removed from favorites"
+        message = "Ù¾Ø³Ù†Ø¯ÛŒØ¯Û ÙÛØ±Ø³Øª Ø³Û’ ÛÙ¹Ø§ÛŒØ§ Ú¯ÛŒØ§"; // "Removed from favorites"
         isFavorited = false;
       } else {
         // Add to favorites
         await favorites.addPoem(poemId, userId);
-        message = "پسندیدہ فہرست میں شامل ہوا"; // "Added to favorites"
+        message = "Ù¾Ø³Ù†Ø¯ÛŒØ¯Û ÙÛØ±Ø³Øª Ù…ÛŒÚº Ø´Ø§Ù…Ù„ ÛÙˆØ§"; // "Added to favorites"
         isFavorited = true;
       }
 
@@ -1877,7 +1877,7 @@ class PoetryCollectionController {
       console.error("Error toggling favorite:", error);
       res.status(500).json({
         success: false,
-        message: "پسندیدہ فہرست اپ ڈیٹ کرتے وقت خرابی ہوئی",
+        message: "Ù¾Ø³Ù†Ø¯ÛŒØ¯Û ÙÛØ±Ø³Øª Ø§Ù¾ ÚˆÛŒÙ¹ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -1889,12 +1889,12 @@ class PoetryCollectionController {
   static async toggleBookmark(req, res) {
     try {
       const { poemId } = req.params;
-      const userId = req.user.id;
+      const userId = req.user.userId;
 
       if (!mongoose.Types.ObjectId.isValid(poemId)) {
         return res.status(400).json({
           success: false,
-          message: "غلط شاعری ID",
+          message: "ØºÙ„Ø· Ø´Ø§Ø¹Ø±ÛŒ ID",
         });
       }
 
@@ -1902,7 +1902,7 @@ class PoetryCollectionController {
       if (!poem) {
         return res.status(404).json({
           success: false,
-          message: "شاعری موجود نہیں",
+          message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
         });
       }
 
@@ -1918,12 +1918,12 @@ class PoetryCollectionController {
         poem.bookmarks = poem.bookmarks.filter(
           (bookmark) => bookmark.user.toString() !== userId
         );
-        message = "بک مارک ہٹایا گیا"; // "Bookmark removed"
+        message = "Ø¨Ú© Ù…Ø§Ø±Ú© ÛÙ¹Ø§ÛŒØ§ Ú¯ÛŒØ§"; // "Bookmark removed"
         bookmarked = false;
       } else {
         // Add bookmark
         poem.bookmarks.push({ user: userId });
-        message = "بک مارک شامل ہوا"; // "Bookmark added"
+        message = "Ø¨Ú© Ù…Ø§Ø±Ú© Ø´Ø§Ù…Ù„ ÛÙˆØ§"; // "Bookmark added"
         bookmarked = true;
       }
 
@@ -1938,7 +1938,7 @@ class PoetryCollectionController {
       console.error("Error toggling bookmark:", error);
       res.status(500).json({
         success: false,
-        message: "بک مارک اپ ڈیٹ کرتے وقت خرابی ہوئی",
+        message: "Ø¨Ú© Ù…Ø§Ø±Ú© Ø§Ù¾ ÚˆÛŒÙ¹ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -1950,12 +1950,12 @@ class PoetryCollectionController {
   static async toggleLike(req, res) {
     try {
       const { poemId } = req.params;
-      const userId = req.user.id;
+      const userId = req.user.userId;
 
       if (!mongoose.Types.ObjectId.isValid(poemId)) {
         return res.status(400).json({
           success: false,
-          message: "غلط شاعری ID",
+          message: "ØºÙ„Ø· Ø´Ø§Ø¹Ø±ÛŒ ID",
         });
       }
 
@@ -1963,7 +1963,7 @@ class PoetryCollectionController {
       if (!poem) {
         return res.status(404).json({
           success: false,
-          message: "شاعری موجود نہیں",
+          message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
         });
       }
 
@@ -1979,7 +1979,7 @@ class PoetryCollectionController {
         poem.likes = poem.likes.filter(
           (like) => like.user.toString() !== userId
         );
-        message = "لائک ہٹایا گیا"; // "Like removed"
+        message = "Ù„Ø§Ø¦Ú© ÛÙ¹Ø§ÛŒØ§ Ú¯ÛŒØ§"; // "Like removed"
         liked = false;
       } else {
         // Add like (and remove dislike if exists)
@@ -1987,7 +1987,7 @@ class PoetryCollectionController {
           (dislike) => dislike.user.toString() !== userId
         );
         poem.likes.push({ user: userId });
-        message = "لائک شامل ہوا"; // "Like added"
+        message = "Ù„Ø§Ø¦Ú© Ø´Ø§Ù…Ù„ ÛÙˆØ§"; // "Like added"
         liked = true;
       }
 
@@ -2003,7 +2003,7 @@ class PoetryCollectionController {
       console.error("Error toggling like:", error);
       res.status(500).json({
         success: false,
-        message: "لائک اپ ڈیٹ کرتے وقت خرابی ہوئی",
+        message: "Ù„Ø§Ø¦Ú© Ø§Ù¾ ÚˆÛŒÙ¹ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
