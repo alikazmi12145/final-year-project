@@ -381,6 +381,30 @@ export const poetryAPI = {
   getRatings: (id, params = {}) =>
     axiosInstance.get(`/poems/${id}/ratings`, { params }),
 
+  // Reviews (poetry collection endpoints)
+  addReview: (poemId, reviewData) =>
+    axiosInstance.post(`/poetry/${poemId}/reviews`, reviewData),
+  getReviews: (poemId, params = {}) =>
+    axiosInstance.get(`/poetry/${poemId}/reviews`, { params }),
+  markReviewHelpful: (reviewId, isHelpful) =>
+    axiosInstance.put(`/poetry/reviews/${reviewId}/helpful`, { isHelpful }),
+  addReviewReply: (reviewId, content) =>
+    axiosInstance.post(`/poetry/reviews/${reviewId}/reply`, { content }),
+  likeReview: (reviewId) =>
+    axiosInstance.post(`/poetry/reviews/${reviewId}/like`),
+
+  // Similar / Related poems
+  getSimilarPoems: (poemId, params = {}) =>
+    axiosInstance.get(`/poetry/${poemId}/similar`, { params }),
+
+  // Favorites (poetry collection endpoints)
+  addToFavorites: (poemId) =>
+    axiosInstance.post(`/poetry/${poemId}/favorites`),
+  removeFromFavorites: (poemId) =>
+    axiosInstance.delete(`/poetry/${poemId}/favorites`),
+  getFavorites: (params = {}) =>
+    axiosInstance.get("/poetry/favorites", { params }),
+
   // Bookmark/Favorites functions
   toggleBookmark: (id) => axiosInstance.post(`/poems/${id}/bookmark`),
   getBookmarkedPoems: async (params = {}) => {

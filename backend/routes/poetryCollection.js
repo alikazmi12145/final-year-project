@@ -1,9 +1,12 @@
-import express from "express";
+﻿import express from "express";
 import PoetryCollectionController from "../controllers/poetryCollectionController.js";
 import { auth } from "../middleware/auth.js";
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinary from "../config/cloudinary.js";
+import Poem from "../models/Poem.js";
+import Review from "../models/Review.js";
+import Collection from "../models/Collection.js";
 
 const router = express.Router();
 
@@ -84,13 +87,13 @@ router.delete("/:id", auth, PoetryCollectionController.deletePoem);
 router.post("/:id/like", auth, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     const poem = await Poem.findById(id);
     if (!poem) {
       return res.status(404).json({
         success: false,
-        message: "شاعری موجود نہیں",
+        message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
       });
     }
 
@@ -98,13 +101,13 @@ router.post("/:id/like", auth, async (req, res) => {
 
     res.json({
       success: true,
-      message: "پسند کی حالت تبدیل ہوئی", // "Like status changed"
+      message: "Ù¾Ø³Ù†Ø¯ Ú©ÛŒ Ø­Ø§Ù„Øª ØªØ¨Ø¯ÛŒÙ„ ÛÙˆØ¦ÛŒ", // "Like status changed"
       likesCount: poem.likes.length,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "پسند کرتے وقت خرابی ہوئی",
+      message: "Ù¾Ø³Ù†Ø¯ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
       error: error.message,
     });
   }
@@ -118,13 +121,13 @@ router.post("/:id/like", auth, async (req, res) => {
 router.post("/:id/dislike", auth, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     const poem = await Poem.findById(id);
     if (!poem) {
       return res.status(404).json({
         success: false,
-        message: "شاعری موجود نہیں",
+        message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
       });
     }
 
@@ -132,13 +135,13 @@ router.post("/:id/dislike", auth, async (req, res) => {
 
     res.json({
       success: true,
-      message: "ناپسند کی حالت تبدیل ہوئی", // "Dislike status changed"
+      message: "Ù†Ø§Ù¾Ø³Ù†Ø¯ Ú©ÛŒ Ø­Ø§Ù„Øª ØªØ¨Ø¯ÛŒÙ„ ÛÙˆØ¦ÛŒ", // "Dislike status changed"
       dislikesCount: poem.dislikes.length,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "ناپسند کرتے وقت خرابی ہوئی",
+      message: "Ù†Ø§Ù¾Ø³Ù†Ø¯ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
       error: error.message,
     });
   }
@@ -152,13 +155,13 @@ router.post("/:id/dislike", auth, async (req, res) => {
 router.post("/:id/bookmark", auth, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     const poem = await Poem.findById(id);
     if (!poem) {
       return res.status(404).json({
         success: false,
-        message: "شاعری موجود نہیں",
+        message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
       });
     }
 
@@ -177,14 +180,14 @@ router.post("/:id/bookmark", auth, async (req, res) => {
 
     res.json({
       success: true,
-      message: existingBookmark ? "بک مارک ہٹایا گیا" : "بک مارک شامل ہوا", // "Bookmark removed" : "Bookmark added"
+      message: existingBookmark ? "Ø¨Ú© Ù…Ø§Ø±Ú© ÛÙ¹Ø§ÛŒØ§ Ú¯ÛŒØ§" : "Ø¨Ú© Ù…Ø§Ø±Ú© Ø´Ø§Ù…Ù„ ÛÙˆØ§", // "Bookmark removed" : "Bookmark added"
       bookmarksCount: poem.bookmarks.length,
       isBookmarked: !existingBookmark,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "بک مارک کرتے وقت خرابی ہوئی",
+      message: "Ø¨Ú© Ù…Ø§Ø±Ú© Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
       error: error.message,
     });
   }
@@ -216,13 +219,13 @@ router.put("/reviews/:reviewId/helpful", auth, async (req, res) => {
   try {
     const { reviewId } = req.params;
     const { isHelpful } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     const review = await Review.findById(reviewId);
     if (!review) {
       return res.status(404).json({
         success: false,
-        message: "جائزہ موجود نہیں", // "Review not found"
+        message: "Ø¬Ø§Ø¦Ø²Û Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº", // "Review not found"
       });
     }
 
@@ -230,14 +233,14 @@ router.put("/reviews/:reviewId/helpful", auth, async (req, res) => {
 
     res.json({
       success: true,
-      message: "مددگار ووٹ ریکارڈ ہوا", // "Helpful vote recorded"
+      message: "Ù…Ø¯Ø¯Ú¯Ø§Ø± ÙˆÙˆÙ¹ Ø±ÛŒÚ©Ø§Ø±Úˆ ÛÙˆØ§", // "Helpful vote recorded"
       helpfulCount: review.helpfulCount,
       notHelpfulCount: review.notHelpfulCount,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "ووٹ دیتے وقت خرابی ہوئی",
+      message: "ÙˆÙˆÙ¹ Ø¯ÛŒØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
       error: error.message,
     });
   }
@@ -252,12 +255,12 @@ router.post("/reviews/:reviewId/reply", auth, async (req, res) => {
   try {
     const { reviewId } = req.params;
     const { content } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     if (!content || content.trim().length === 0) {
       return res.status(400).json({
         success: false,
-        message: "جواب کا متن ضروری ہے", // "Reply content is required"
+        message: "Ø¬ÙˆØ§Ø¨ Ú©Ø§ Ù…ØªÙ† Ø¶Ø±ÙˆØ±ÛŒ ÛÛ’", // "Reply content is required"
       });
     }
 
@@ -265,7 +268,7 @@ router.post("/reviews/:reviewId/reply", auth, async (req, res) => {
     if (!review) {
       return res.status(404).json({
         success: false,
-        message: "جائزہ موجود نہیں",
+        message: "Ø¬Ø§Ø¦Ø²Û Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
       });
     }
 
@@ -274,13 +277,13 @@ router.post("/reviews/:reviewId/reply", auth, async (req, res) => {
 
     res.json({
       success: true,
-      message: "جواب شامل ہوا", // "Reply added"
+      message: "Ø¬ÙˆØ§Ø¨ Ø´Ø§Ù…Ù„ ÛÙˆØ§", // "Reply added"
       replies: review.replies,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "جواب شامل کرتے وقت خرابی ہوئی",
+      message: "Ø¬ÙˆØ§Ø¨ Ø´Ø§Ù…Ù„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
       error: error.message,
     });
   }
@@ -294,13 +297,13 @@ router.post("/reviews/:reviewId/reply", auth, async (req, res) => {
 router.post("/reviews/:reviewId/like", auth, async (req, res) => {
   try {
     const { reviewId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     const review = await Review.findById(reviewId);
     if (!review) {
       return res.status(404).json({
         success: false,
-        message: "جائزہ موجود نہیں",
+        message: "Ø¬Ø§Ø¦Ø²Û Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
       });
     }
 
@@ -308,13 +311,13 @@ router.post("/reviews/:reviewId/like", auth, async (req, res) => {
 
     res.json({
       success: true,
-      message: "پسند کی حالت تبدیل ہوئی",
+      message: "Ù¾Ø³Ù†Ø¯ Ú©ÛŒ Ø­Ø§Ù„Øª ØªØ¨Ø¯ÛŒÙ„ ÛÙˆØ¦ÛŒ",
       likesCount: review.likesCount,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "پسند کرتے وقت خرابی ہوئی",
+      message: "Ù¾Ø³Ù†Ø¯ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
       error: error.message,
     });
   }
@@ -365,7 +368,7 @@ router.get("/:poemId/ai-analysis", PoetryCollectionController.getAIAnalysis);
  * @route   POST /api/poetry/ai/writing-suggestions
  * @desc    Get AI writing suggestions based on theme and style
  * @access  Private
- * @body    { theme: "محبت", style: "ghazal" }
+ * @body    { theme: "Ù…Ø­Ø¨Øª", style: "ghazal" }
  */
 router.post(
   "/ai/writing-suggestions",
@@ -409,7 +412,7 @@ router.get(
  * @route   POST /api/poetry/rekhta/search
  * @desc    Search poems on Rekhta
  * @access  Public
- * @body    { query: "غالب", type: "poem" }
+ * @body    { query: "ØºØ§Ù„Ø¨", type: "poem" }
  */
 router.post("/rekhta/search", PoetryCollectionController.searchRekhtaPoems);
 
@@ -436,7 +439,7 @@ router.get("/rekhta/poets", PoetryCollectionController.getSupportedPoets);
  * @route   POST /api/poetry/:poemId/rate
  * @desc    Rate or review a poem
  * @access  Private
- * @body    { rating: 5, review: "بہترین شاعری" }
+ * @body    { rating: 5, review: "Ø¨ÛØªØ±ÛŒÙ† Ø´Ø§Ø¹Ø±ÛŒ" }
  */
 router.post("/:poemId/rate", auth, PoetryCollectionController.ratePoem);
 
@@ -490,7 +493,7 @@ router.get("/recommendations", PoetryCollectionController.getRecommendations);
  */
 router.get("/recommendations/personalized", auth, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const { limit = 10 } = req.query;
 
     const recommendations =
@@ -507,7 +510,7 @@ router.get("/recommendations/personalized", auth, async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "ذاتی تجاویز حاصل کرتے وقت خرابی ہوئی", // "Error getting personalized recommendations"
+      message: "Ø°Ø§ØªÛŒ ØªØ¬Ø§ÙˆÛŒØ² Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ", // "Error getting personalized recommendations"
       error: error.message,
     });
   }
@@ -536,7 +539,7 @@ router.get("/:poemId/similar", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "ملتی جلتی شاعری حاصل کرتے وقت خرابی ہوئی", // "Error getting similar poems"
+      message: "Ù…Ù„ØªÛŒ Ø¬Ù„ØªÛŒ Ø´Ø§Ø¹Ø±ÛŒ Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ", // "Error getting similar poems"
       error: error.message,
     });
   }
@@ -563,7 +566,7 @@ router.get("/trending", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "مقبول شاعری حاصل کرتے وقت خرابی ہوئی", // "Error getting trending poems"
+      message: "Ù…Ù‚Ø¨ÙˆÙ„ Ø´Ø§Ø¹Ø±ÛŒ Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ", // "Error getting trending poems"
       error: error.message,
     });
   }
@@ -622,7 +625,7 @@ router.get("/collections/public", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "عوامی مجموعے حاصل کرتے وقت خرابی ہوئی",
+      message: "Ø¹ÙˆØ§Ù…ÛŒ Ù…Ø¬Ù…ÙˆØ¹Û’ Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
       error: error.message,
     });
   }
@@ -649,7 +652,7 @@ router.get("/collections/featured", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "نمایاں مجموعے حاصل کرتے وقت خرابی ہوئی",
+      message: "Ù†Ù…Ø§ÛŒØ§Úº Ù…Ø¬Ù…ÙˆØ¹Û’ Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
       error: error.message,
     });
   }
@@ -680,7 +683,7 @@ router.get("/collections/:id", async (req, res) => {
     if (!collection) {
       return res.status(404).json({
         success: false,
-        message: "مجموعہ موجود نہیں",
+        message: "Ù…Ø¬Ù…ÙˆØ¹Û Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
       });
     }
 
@@ -694,7 +697,7 @@ router.get("/collections/:id", async (req, res) => {
     if (!isPublic && !isOwner && !isCollaborator) {
       return res.status(403).json({
         success: false,
-        message: "آپ کو اس مجموعہ تک رسائی کی اجازت نہیں", // "You don't have access to this collection"
+        message: "Ø¢Ù¾ Ú©Ùˆ Ø§Ø³ Ù…Ø¬Ù…ÙˆØ¹Û ØªÚ© Ø±Ø³Ø§Ø¦ÛŒ Ú©ÛŒ Ø§Ø¬Ø§Ø²Øª Ù†ÛÛŒÚº", // "You don't have access to this collection"
       });
     }
 
@@ -723,7 +726,7 @@ router.get("/collections/:id", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "مجموعہ حاصل کرتے وقت خرابی ہوئی",
+      message: "Ù…Ø¬Ù…ÙˆØ¹Û Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
       error: error.message,
     });
   }
@@ -751,13 +754,13 @@ router.delete(
   async (req, res) => {
     try {
       const { collectionId, poemId } = req.params;
-      const userId = req.user.id;
+      const userId = req.user.userId;
 
       const collection = await Collection.findById(collectionId);
       if (!collection) {
         return res.status(404).json({
           success: false,
-          message: "مجموعہ موجود نہیں",
+          message: "Ù…Ø¬Ù…ÙˆØ¹Û Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
         });
       }
 
@@ -770,7 +773,7 @@ router.delete(
       if (!isOwner && !canEdit) {
         return res.status(403).json({
           success: false,
-          message: "آپ کو اس مجموعہ میں تبدیلی کی اجازت نہیں",
+          message: "Ø¢Ù¾ Ú©Ùˆ Ø§Ø³ Ù…Ø¬Ù…ÙˆØ¹Û Ù…ÛŒÚº ØªØ¨Ø¯ÛŒÙ„ÛŒ Ú©ÛŒ Ø§Ø¬Ø§Ø²Øª Ù†ÛÛŒÚº",
         });
       }
 
@@ -778,12 +781,12 @@ router.delete(
 
       res.json({
         success: true,
-        message: "شاعری مجموعہ سے ہٹائی گئی", // "Poem removed from collection"
+        message: "Ø´Ø§Ø¹Ø±ÛŒ Ù…Ø¬Ù…ÙˆØ¹Û Ø³Û’ ÛÙ¹Ø§Ø¦ÛŒ Ú¯Ø¦ÛŒ", // "Poem removed from collection"
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: "مجموعہ سے ہٹاتے وقت خرابی ہوئی",
+        message: "Ù…Ø¬Ù…ÙˆØ¹Û Ø³Û’ ÛÙ¹Ø§ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
         error: error.message,
       });
     }
@@ -798,20 +801,20 @@ router.delete(
 router.post("/collections/:id/follow", auth, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     const collection = await Collection.findById(id);
     if (!collection) {
       return res.status(404).json({
         success: false,
-        message: "مجموعہ موجود نہیں",
+        message: "Ù…Ø¬Ù…ÙˆØ¹Û Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛÛŒÚº",
       });
     }
 
     if (collection.visibility !== "public") {
       return res.status(403).json({
         success: false,
-        message: "صرف عوامی مجموعوں کو فالو کیا جا سکتا ہے", // "Only public collections can be followed"
+        message: "ØµØ±Ù Ø¹ÙˆØ§Ù…ÛŒ Ù…Ø¬Ù…ÙˆØ¹ÙˆÚº Ú©Ùˆ ÙØ§Ù„Ùˆ Ú©ÛŒØ§ Ø¬Ø§ Ø³Ú©ØªØ§ ÛÛ’", // "Only public collections can be followed"
       });
     }
 
@@ -827,14 +830,14 @@ router.post("/collections/:id/follow", auth, async (req, res) => {
 
     res.json({
       success: true,
-      message: isFollowing ? "فالو ہٹایا گیا" : "فالو کیا گیا", // "Unfollowed" : "Followed"
+      message: isFollowing ? "ÙØ§Ù„Ùˆ ÛÙ¹Ø§ÛŒØ§ Ú¯ÛŒØ§" : "ÙØ§Ù„Ùˆ Ú©ÛŒØ§ Ú¯ÛŒØ§", // "Unfollowed" : "Followed"
       isFollowing: !isFollowing,
       followerCount: collection.followerCount,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "فالو کرتے وقت خرابی ہوئی",
+      message: "ÙØ§Ù„Ùˆ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ",
       error: error.message,
     });
   }
@@ -894,7 +897,7 @@ router.get("/statistics", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "شماریات حاصل کرتے وقت خرابی ہوئی", // "Error getting statistics"
+      message: "Ø´Ù…Ø§Ø±ÛŒØ§Øª Ø­Ø§ØµÙ„ Ú©Ø±ØªÛ’ ÙˆÙ‚Øª Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ", // "Error getting statistics"
       error: error.message,
     });
   }
@@ -1025,15 +1028,10 @@ router.get("/search/advanced", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "تفصیلی تلاش میں خرابی ہوئی", // "Error in advanced search"
+      message: "ØªÙØµÛŒÙ„ÛŒ ØªÙ„Ø§Ø´ Ù…ÛŒÚº Ø®Ø±Ø§Ø¨ÛŒ ÛÙˆØ¦ÛŒ", // "Error in advanced search"
       error: error.message,
     });
   }
 });
-
-// Import necessary models at the top
-import Poem from "../models/Poem.js";
-import Review from "../models/Review.js";
-import Collection from "../models/Collection.js";
 
 export default router;

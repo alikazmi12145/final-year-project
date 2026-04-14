@@ -1,7 +1,8 @@
 import React from "react";
-import { BookmarkCheck, Clock } from "lucide-react";
-import BookmarksList from "../../components/bookmarks/BookmarksList";
-import HistoryList from "../../components/history/HistoryList";
+import { BookmarkCheck, Clock, Heart } from "lucide-react";
+import BookmarksList from "../components/bookmarks/BookmarksList";
+import HistoryList from "../components/history/HistoryList";
+import FavoritesList from "../components/poetry/FavoritesList";
 
 /**
  * My Library Page
@@ -53,12 +54,28 @@ const MyLibrary = () => {
             <Clock size={20} />
             Reading History
           </button>
+          <button
+            onClick={() => setActiveTab("favorites")}
+            className={`
+              px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2
+              ${
+                activeTab === "favorites"
+                  ? "bg-urdu-gold text-white shadow-lg"
+                  : "bg-white text-urdu-brown hover:bg-urdu-cream"
+              }
+            `}
+          >
+            <Heart size={20} />
+            Favorites
+          </button>
         </div>
 
         {/* Tab Content */}
         <div className="card p-6">
           {activeTab === "bookmarks" ? (
             <BookmarksList />
+          ) : activeTab === "favorites" ? (
+            <FavoritesList />
           ) : (
             <HistoryList showStats={true} />
           )}

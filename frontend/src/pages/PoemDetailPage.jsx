@@ -18,7 +18,21 @@ const PoemDetailPage = () => {
   useEffect(() => {
     console.log('PoemDetailPage useEffect triggered for id:', id);
     fetchPoem();
+    fetchRelatedPoems();
   }, [id]);
+
+  const fetchRelatedPoems = async () => {
+    try {
+      const { poetryAPI } = await import("../services/api.jsx");
+      const response = await poetryAPI.getSimilarPoems(id, { limit: 6 });
+      if (response.data.success) {
+        setRelatedPoems(response.data.recommendations || []);
+      }
+    } catch (error) {
+      // Non-critical – silently ignore
+      console.error("Error fetching related poems:", error);
+    }
+  };
 
   const fetchPoem = async () => {
     try {

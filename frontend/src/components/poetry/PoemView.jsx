@@ -14,9 +14,11 @@ import {
   Trash2,
   Clock,
   Tag,
+  Star,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
+import ReviewsSection from "./ReviewsSection";
 
 const PoemView = ({
   poem,
@@ -415,6 +417,12 @@ const PoemView = ({
               <MessageCircle className="w-4 h-4" />
               <span>{comments.length} تبصرے</span>
             </div>
+            {poem.averageRating > 0 && (
+              <div className="flex items-center space-x-1">
+                <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                <span>{poem.averageRating.toFixed(1)} ریٹنگ</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -508,6 +516,13 @@ const PoemView = ({
                 </p>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Reviews & Ratings Section */}
+        {poem._id && (
+          <div className="card p-6">
+            <ReviewsSection poemId={poem._id} />
           </div>
         )}
       </div>
