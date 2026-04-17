@@ -298,6 +298,7 @@ const startServer = async () => {
     const poemRoutes = await import("./routes/poems.js");
     const poetryCollectionRoutes = await import("./routes/poetryCollection.js");
     const contestRoutes = await import("./routes/contests.js");
+    const quizRoutes = await import("./routes/quizzes.js");
     const learningRoutes = await import("./routes/learning.js");
     const searchRoutes = await import("./routes/search.js");
     const dashboardRoutes = await import("./routes/dashboard.js");
@@ -319,6 +320,7 @@ const startServer = async () => {
     app.use("/api/poems", poemRoutes.default);
     app.use("/api/poetry", poetryCollectionRoutes.default);
     app.use("/api/contests", contestRoutes.default);
+    app.use("/api/quizzes", quizRoutes.default);
     app.use("/api/learning", learningRoutes.default);
     app.use("/api/search", searchRoutes.default);
     app.use("/api/dashboard", dashboardRoutes.default);

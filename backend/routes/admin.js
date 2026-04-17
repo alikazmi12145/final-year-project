@@ -256,6 +256,40 @@ router.get("/users", adminAuth, async (req, res) => {
   }
 });
 
+// Get pending users (must be before /users/:id to avoid route conflict)
+router.get("/users/pending", adminAuth, async (req, res) => {
+  try {
+    const { role } = req.query;
+
+    // Find users with pending status OR users who are not approved (for all roles needing approval)
+    const query = {
+      $or: [
+        { status: "pending" },
+        { isApproved: { $ne: true }, role: { $ne: "admin" } }
+      ]
+    };
+    if (role && role !== "all") {
+      query.$or = query.$or.map(condition => ({ ...condition, role }));
+    }
+
+    const pendingUsers = await User.find(query)
+      .select("-password -passwordReset -emailVerification")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      users: pendingUsers,
+      count: pendingUsers.length,
+    });
+  } catch (error) {
+    console.error("Get pending users error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch pending users",
+    });
+  }
+});
+
 router.get("/users/:id", adminAuth, async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
@@ -900,40 +934,6 @@ router.put("/users/bulk-approve", adminAuth, [
   }
 });
 
-// Get pending users
-router.get("/users/pending", adminAuth, async (req, res) => {
-  try {
-    const { role } = req.query;
-
-    // Find users with pending status OR users who are not approved (for all roles needing approval)
-    const query = {
-      $or: [
-        { status: "pending" },
-        { isApproved: { $ne: true }, role: { $ne: "admin" } }
-      ]
-    };
-    if (role && role !== "all") {
-      query.$or = query.$or.map(condition => ({ ...condition, role }));
-    }
-
-    const pendingUsers = await User.find(query)
-      .select("-password -passwordReset -emailVerification")
-      .sort({ createdAt: -1 });
-
-    res.json({
-      success: true,
-      users: pendingUsers,
-      count: pendingUsers.length,
-    });
-  } catch (error) {
-    console.error("Get pending users error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch pending users",
-    });
-  }
-});
-
 // Bulk user operations
 router.put("/users/bulk", adminAuth, [
   body("userIds")
@@ -1557,6 +1557,36 @@ router.get("/contests", adminAuth, async (req, res) => {
     const sort = {};
     sort[sortBy] = sortOrder === "desc" ? -1 : 1;
 
+    // Auto-update expired contests before fetching
+    const now = new Date();
+    await Contest.updateMany(
+      {
+        status: { $in: ['active', 'submission_open', 'registration_open', 'upcoming'] },
+        submissionEnd: { $lt: now },
+        votingStart: { $exists: true, $lte: now }
+      },
+      { $set: { status: 'voting' } }
+    );
+    await Contest.updateMany(
+      {
+        status: { $in: ['active', 'submission_open', 'registration_open', 'upcoming'] },
+        submissionEnd: { $lt: now },
+        $or: [
+          { votingStart: { $exists: false } },
+          { votingStart: null },
+          { votingEnd: { $lt: now } }
+        ]
+      },
+      { $set: { status: 'completed' } }
+    );
+    await Contest.updateMany(
+      {
+        status: 'voting',
+        votingEnd: { $lt: now }
+      },
+      { $set: { status: 'completed' } }
+    );
+
     const contests = await Contest.find(query)
       .populate("organizer", "name email")
       .populate("judges", "name")
@@ -1613,6 +1643,10 @@ router.post("/contests", adminAuth, async (req, res) => {
       judges
     } = req.body;
 
+    const subDeadline = new Date(submissionDeadline);
+    const voteDeadline = votingDeadline ? new Date(votingDeadline) : null;
+    const now = new Date();
+
     const contest = new Contest({
       title,
       description,
@@ -1620,14 +1654,18 @@ router.post("/contests", adminAuth, async (req, res) => {
       theme,
       rules,
       prizes,
-      submissionDeadline: new Date(submissionDeadline),
-      votingDeadline: votingDeadline ? new Date(votingDeadline) : null,
+      registrationStart: now,
+      registrationEnd: subDeadline,
+      submissionStart: now,
+      submissionEnd: subDeadline,
+      votingStart: voteDeadline ? subDeadline : undefined,
+      votingEnd: voteDeadline || undefined,
       maxParticipants,
-      entryFee: entryFee || 0,
+      entryFee: entryFee ? { amount: Number(entryFee), currency: "PKR" } : undefined,
       language,
       organizer: req.user.userId,
       judges: judges || [],
-      status: "upcoming"
+      status: "submission_open"
     });
 
     await contest.save();

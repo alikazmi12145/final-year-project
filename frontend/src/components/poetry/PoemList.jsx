@@ -773,7 +773,7 @@ const EnhancedPoemCard = ({
 
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-500 urdu-body">
-                <span>شاعر: {typeof poem.poet === 'object' ? poem.poet?.name : poem.poet || poem.author || "نامعلوم"}</span>
+                <span>شاعر: {typeof poem.poet === 'object' ? poem.poet?.name : typeof poem.author === 'object' ? poem.author?.name : poem.poet || poem.author || "نامعلوم"}</span>
                 {poem.metadata?.era && (
                   <span className="mr-4">دور: {poem.metadata.era}</span>
                 )}
@@ -858,7 +858,7 @@ const EnhancedPoemCard = ({
           </span>
         </div>
         <p className="text-sm text-gray-600 urdu-body">
-          {typeof poem.poet === 'object' ? poem.poet?.name : poem.poet || poem.author || "نامعلوم"}
+          {typeof poem.poet === 'object' ? poem.poet?.name : typeof poem.author === 'object' ? poem.author?.name : poem.poet || poem.author || "نامعلوم"}
         </p>
       </div>
 

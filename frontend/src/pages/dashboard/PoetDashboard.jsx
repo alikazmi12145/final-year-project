@@ -32,6 +32,7 @@ import {
   Activity,
   MessagesSquare,
   Feather,
+  Trophy,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useMessage } from "../../context/MessageContext";
@@ -372,6 +373,7 @@ const PoetDashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [analytics, setAnalytics] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [contestGrades, setContestGrades] = useState([]);
   const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
@@ -547,6 +549,19 @@ const PoetDashboard = () => {
       console.log("Profile avatar:", profileData.profileImage?.url);
       setProfile(profileData);
 
+      // Fetch contest grades
+      try {
+        const gradesRes = await axios.get(
+          `${API_BASE_URL}/dashboard/my-contest-grades`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (gradesRes?.data?.success) {
+          setContestGrades(gradesRes.data.data || []);
+        }
+      } catch (gradesErr) {
+        console.log("Could not fetch contest grades:", gradesErr.message);
+      }
+
     } catch (error) {
       console.error("Error loading dashboard:", error);
 
@@ -575,6 +590,23 @@ const PoetDashboard = () => {
           avatar: "",
         },
       });
+
+      // Still try to fetch contest grades even if main dashboard fails
+      try {
+        const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+        const token = localStorage.getItem("token");
+        if (token) {
+          const gradesRes = await axios.get(
+            `${API_BASE_URL}/dashboard/my-contest-grades`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (gradesRes?.data?.success) {
+            setContestGrades(gradesRes.data.data || []);
+          }
+        }
+      } catch (gradesErr) {
+        console.log("Could not fetch contest grades:", gradesErr.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -932,6 +964,12 @@ const PoetDashboard = () => {
                 label: "منتخبات",
                 icon: Award,
                 color: "from-yellow-500 to-orange-600",
+              },
+              {
+                id: "contests",
+                label: "مقابلے کے نتائج",
+                icon: Trophy,
+                color: "from-amber-500 to-yellow-600",
               },
               {
                 id: "settings",
@@ -1983,6 +2021,110 @@ const PoetDashboard = () => {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === "contests" && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-800 urdu-text flex items-center">
+              <Trophy className="w-7 h-7 ml-3 text-yellow-600" />
+              مقابلے کے نتائج اور نمبرات
+            </h2>
+
+            {contestGrades.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-md p-8 text-center border border-gray-100">
+                <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h4 className="text-lg font-semibold text-gray-500 mb-2 urdu-text">
+                  ابھی تک کوئی مقابلے کے نتائج نہیں
+                </h4>
+                <p className="text-gray-400 urdu-text">
+                  جب آپ کسی مقابلے میں حصہ لیں گے اور نمبرات دیے جائیں گے تو یہاں نظر آئیں گے
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {contestGrades.map((entry, index) => (
+                  <div key={index} className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      {/* Contest Info */}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="text-lg font-bold text-gray-800 urdu-text">
+                            {entry.contestTitle}
+                          </h4>
+                          {entry.isWinner && (
+                            <span className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-bold">
+                              <Trophy className="w-3 h-3 mr-1" /> فاتح
+                            </span>
+                          )}
+                          {entry.position && entry.position <= 3 && !entry.isWinner && (
+                            <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">
+                              <Award className="w-3 h-3 mr-1" /> پوزیشن #{entry.position}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500 mb-1 urdu-text">
+                          شاعری: <span className="font-medium text-gray-700">{entry.poemTitle}</span>
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {entry.submittedAt && new Date(entry.submittedAt).toLocaleDateString("ur-PK")}
+                          {" · "}
+                          {entry.contestStatus === "completed" ? "مکمل" : 
+                           entry.contestStatus === "active" ? "فعال" : 
+                           entry.contestStatus === "judging" ? "فیصلے کا مرحلہ" : entry.contestStatus}
+                        </p>
+                      </div>
+
+                      {/* Grade Info */}
+                      {entry.grade && entry.grade.score != null ? (
+                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 min-w-[280px]">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm font-semibold text-green-800 urdu-text">کل نمبرات</span>
+                            <span className="text-2xl font-bold text-green-700">
+                              {entry.grade.score}<span className="text-sm text-green-500">/100</span>
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-5 gap-2 mb-3">
+                            {[
+                              { label: "تخلیقیت", value: entry.grade.creativity },
+                              { label: "زبان", value: entry.grade.language },
+                              { label: "موضوع", value: entry.grade.theme },
+                              { label: "ساخت", value: entry.grade.structure },
+                              { label: "اثر", value: entry.grade.impact },
+                            ].map((criterion) => (
+                              <div key={criterion.label} className="text-center">
+                                <div className="text-lg font-bold text-green-700">
+                                  {criterion.value ?? "-"}
+                                </div>
+                                <div className="text-[10px] text-green-600 urdu-text">{criterion.label}</div>
+                                <div className="text-[9px] text-green-400">/10</div>
+                              </div>
+                            ))}
+                          </div>
+                          {entry.grade.feedback && (
+                            <div className="bg-white rounded-lg p-3 border border-green-100">
+                              <p className="text-xs text-gray-500 mb-1 urdu-text">جج کی رائے:</p>
+                              <p className="text-sm text-gray-700 urdu-text">{entry.grade.feedback}</p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center min-w-[200px]">
+                          <Clock className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                          <p className="text-sm text-gray-500 urdu-text">نمبرات ابھی نہیں دیے گئے</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {entry.prize && (
+                      <div className="mt-3 inline-flex items-center px-3 py-1 bg-yellow-50 text-yellow-700 rounded-full text-sm border border-yellow-200">
+                        <Star className="w-4 h-4 mr-1" /> انعام: {entry.prize}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

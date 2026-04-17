@@ -26,17 +26,44 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Response interceptor
+// Response interceptor with auto-refresh
 axiosInstance.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+    
     // Handle different error scenarios
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      // Try refreshing the token
+      const refreshToken = localStorage.getItem("refreshToken");
+      if (refreshToken) {
+        try {
+          const refreshResponse = await axios.post(
+            `${API_BASE_URL}/auth/refresh`,
+            { refreshToken }
+          );
+          if (refreshResponse.data?.accessToken) {
+            const newToken = refreshResponse.data.accessToken;
+            localStorage.setItem("token", newToken);
+            if (refreshResponse.data.refreshToken) {
+              localStorage.setItem("refreshToken", refreshResponse.data.refreshToken);
+            }
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            return axiosInstance(originalRequest);
+          }
+        } catch (refreshError) {
+          // Refresh failed, fall through to clear and redirect
+        }
+      }
+      
       localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
       // Don't redirect automatically for login endpoints
-      if (!error.config?.url?.includes("/auth/login")) {
+      if (!originalRequest?.url?.includes("/auth/login")) {
         window.location.href = "/auth";
       }
     } else if (error.response?.status === 403) {
@@ -546,8 +573,8 @@ export const contestAPI = {
   deleteContest: (id) => axiosInstance.delete(`/contests/${id}`),
 
   // Contest Management
-  participateInContest: (id, poemId) =>
-    axiosInstance.post(`/contests/${id}/participate`, { poemId }),
+  participateInContest: (id, data) =>
+    axiosInstance.post(`/contests/${id}/participate`, data),
   voteForSubmission: (id, participantId, rating) =>
     axiosInstance.post(`/contests/${id}/vote`, { participantId, rating }),
   getContestLeaderboard: (id) =>
@@ -555,12 +582,50 @@ export const contestAPI = {
   getContestParticipants: (id) =>
     axiosInstance.get(`/contests/${id}/participants`),
 
+  // Contest Feedback
+  submitFeedback: (id, data) =>
+    axiosInstance.post(`/contests/${id}/feedback`, data),
+  getFeedback: (id, params = {}) =>
+    axiosInstance.get(`/contests/${id}/feedback`, { params }),
+
   // Contest Status Management (Admin)
   activateContest: (id) => axiosInstance.put(`/contests/${id}/activate`),
   completeContest: (id) => axiosInstance.put(`/contests/${id}/complete`),
   cancelContest: (id) => axiosInstance.put(`/contests/${id}/cancel`),
   announceWinners: (id, winners) =>
     axiosInstance.put(`/contests/${id}/winners`, { winners }),
+
+  // Admin Grading
+  gradeSubmission: (contestId, submissionIndex, gradeData) =>
+    axiosInstance.put(`/contests/${contestId}/submissions/${submissionIndex}/grade`, gradeData),
+  updateSubmissionStatus: (contestId, submissionIndex, status) =>
+    axiosInstance.put(`/contests/${contestId}/submissions/${submissionIndex}/status`, { status }),
+  finalizeResults: (contestId) =>
+    axiosInstance.put(`/contests/${contestId}/finalize-results`),
+};
+
+//
+// 🔹 Quiz API
+//
+export const quizAPI = {
+  // Quiz CRUD
+  getAllQuizzes: (params = {}) => axiosInstance.get("/quizzes", { params }),
+  getQuizById: (id) => axiosInstance.get(`/quizzes/${id}`),
+  createQuiz: (quizData) => axiosInstance.post("/quizzes", quizData),
+
+  // Quiz Attempt
+  startAttempt: (id) => axiosInstance.post(`/quizzes/${id}/start`),
+  submitAttempt: (id, data) => axiosInstance.post(`/quizzes/${id}/attempt`, data),
+
+  // Leaderboard
+  getLeaderboard: (id, params = {}) =>
+    axiosInstance.get(`/quizzes/${id}/leaderboard`, { params }),
+
+  // Feedback
+  submitFeedback: (id, data) =>
+    axiosInstance.post(`/quizzes/${id}/feedback`, data),
+  getFeedback: (id, params = {}) =>
+    axiosInstance.get(`/quizzes/${id}/feedback`, { params }),
 };
 
 //
@@ -686,6 +751,12 @@ export const adminAPI = {
 export const dashboardAPI = {
   // Reader Dashboard
   getReaderDashboard: () => axiosInstance.get("/dashboard/reader"),
+  
+  // Contest Grades (for reader/poet)
+  getMyContestGrades: () => axiosInstance.get("/dashboard/my-contest-grades"),
+  
+  // Quiz & Contest Achievements
+  getMyAchievements: () => axiosInstance.get("/dashboard/my-achievements"),
   
   // Poet Dashboard
   getPoetDashboard: () => axiosInstance.get("/dashboard/poet"),

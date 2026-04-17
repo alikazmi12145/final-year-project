@@ -45,6 +45,7 @@ import {
   Bookmark,
   MessagesSquare,
   Upload,
+  ChevronLeft,
 } from "lucide-react";
 import LearningResourcesUpload from "../../components/admin/LearningResourcesUpload";
 import UserApprovalPanel from "../../components/admin/UserApprovalPanel";
@@ -62,6 +63,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useMessage } from "../../context/MessageContext";
+import { contestAPI, quizAPI } from "../../services/api";
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -822,6 +824,12 @@ const AdminDashboard = () => {
       color: "text-indigo-600",
     },
     {
+      id: "quiz-management",
+      label: "کوئز کا انتظام",
+      icon: Brain,
+      color: "text-pink-600",
+    },
+    {
       id: "user-approval",
       label: "صارفین کی منظوری",
       icon: UserCheck,
@@ -1057,8 +1065,9 @@ const AdminDashboard = () => {
               />
             )}
             {activeTab === "contest-management" && (
-              <ContestManagementTab contests={contests} />
+              <ContestManagementTab contests={contests} onContestCreated={loadContests} />
             )}
+            {activeTab === "quiz-management" && <QuizManagementTab />}
             {activeTab === "user-approval" && <UserApprovalPanel />}
             {activeTab === "learning-resources" && <LearningResourcesUpload />}
             {activeTab === "analytics" && (
@@ -2986,72 +2995,1368 @@ const ContentModerationTab = ({
   );
 };
 
+// Quiz Management Tab Component
+const QuizManagementTab = () => {
+  const [quizzes, setQuizzes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedQuiz, setSelectedQuiz] = useState(null);
+  const [quizDetail, setQuizDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  const categoryOptions = [
+    { value: "poetry_knowledge", label: "شاعری کا علم" },
+    { value: "poet_biography", label: "شاعر کی سوانح حیات" },
+    { value: "literary_terms", label: "ادبی اصطلاحات" },
+    { value: "classical_poetry", label: "کلاسیکی شاعری" },
+    { value: "modern_poetry", label: "جدید شاعری" },
+    { value: "general", label: "عمومی" },
+  ];
+
+  const difficultyOptions = [
+    { value: "beginner", label: "آسان" },
+    { value: "intermediate", label: "درمیانہ" },
+    { value: "advanced", label: "مشکل" },
+  ];
+
+  const [quizForm, setQuizForm] = useState({
+    title: "",
+    description: "",
+    category: "general",
+    difficulty: "beginner",
+    timeLimit: 15,
+    passingScore: 60,
+    questions: [
+      { question: "", type: "multiple_choice", options: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }], explanation: "", points: 1 }
+    ],
+  });
+
+  const resetQuizForm = () => {
+    setQuizForm({
+      title: "",
+      description: "",
+      category: "general",
+      difficulty: "beginner",
+      timeLimit: 15,
+      passingScore: 60,
+      questions: [
+        { question: "", type: "multiple_choice", options: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }], explanation: "", points: 1 }
+      ],
+    });
+  };
+
+  useEffect(() => {
+    loadQuizzes();
+  }, []);
+
+  const loadQuizzes = async () => {
+    try {
+      setLoading(true);
+      const { data } = await quizAPI.getAllQuizzes({ admin: true });
+      if (data.success) {
+        setQuizzes(data.quizzes || data.data || []);
+      }
+    } catch (err) {
+      console.error("Error loading quizzes:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewQuiz = async (quiz) => {
+    try {
+      setDetailLoading(true);
+      setSelectedQuiz(quiz._id);
+      const { data } = await quizAPI.getQuizById(quiz._id);
+      if (data.success) {
+        setQuizDetail(data.quiz || data.data);
+      }
+    } catch (err) {
+      console.error("Error loading quiz details:", err);
+      alert("تفصیلات لوڈ کرنے میں خرابی");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleCloseDetail = () => {
+    setSelectedQuiz(null);
+    setQuizDetail(null);
+  };
+
+  // ===== Question helpers =====
+  const addQuestion = () => {
+    setQuizForm((f) => ({
+      ...f,
+      questions: [...f.questions, { question: "", type: "multiple_choice", options: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }], explanation: "", points: 1 }],
+    }));
+  };
+
+  const removeQuestion = (qi) => {
+    setQuizForm((f) => ({ ...f, questions: f.questions.filter((_, i) => i !== qi) }));
+  };
+
+  const updateQuestion = (qi, field, val) => {
+    setQuizForm((f) => {
+      const questions = [...f.questions];
+      questions[qi] = { ...questions[qi], [field]: val };
+      return { ...f, questions };
+    });
+  };
+
+  const updateOption = (qi, oi, field, val) => {
+    setQuizForm((f) => {
+      const questions = [...f.questions];
+      const options = [...questions[qi].options];
+      if (field === "isCorrect" && val === true) {
+        // Only one correct answer per question
+        options.forEach((opt, idx) => { options[idx] = { ...opt, isCorrect: idx === oi }; });
+      } else {
+        options[oi] = { ...options[oi], [field]: val };
+      }
+      questions[qi] = { ...questions[qi], options };
+      return { ...f, questions };
+    });
+  };
+
+  const addOption = (qi) => {
+    setQuizForm((f) => {
+      const questions = [...f.questions];
+      questions[qi] = { ...questions[qi], options: [...questions[qi].options, { text: "", isCorrect: false }] };
+      return { ...f, questions };
+    });
+  };
+
+  const removeOption = (qi, oi) => {
+    setQuizForm((f) => {
+      const questions = [...f.questions];
+      questions[qi] = { ...questions[qi], options: questions[qi].options.filter((_, i) => i !== oi) };
+      return { ...f, questions };
+    });
+  };
+
+  const handleCreateQuiz = async (e) => {
+    e.preventDefault();
+    if (!quizForm.title || quizForm.title.length < 3) {
+      alert("عنوان کم از کم 3 حروف کا ہونا چاہیے"); return;
+    }
+    for (let i = 0; i < quizForm.questions.length; i++) {
+      const q = quizForm.questions[i];
+      if (!q.question.trim()) { alert(`سوال ${i + 1} کا متن خالی ہے`); return; }
+      if (q.options.filter(o => o.text.trim()).length < 2) { alert(`سوال ${i + 1} میں کم از کم 2 آپشنز ضروری ہیں`); return; }
+      if (!q.options.some(o => o.isCorrect)) { alert(`سوال ${i + 1} کا ایک صحیح جواب منتخب کریں`); return; }
+    }
+    try {
+      setCreating(true);
+      const payload = {
+        title: quizForm.title.trim(),
+        description: quizForm.description.trim(),
+        category: quizForm.category,
+        difficulty: quizForm.difficulty,
+        timeLimit: parseInt(quizForm.timeLimit) || 15,
+        passingScore: parseInt(quizForm.passingScore) || 60,
+        questions: quizForm.questions.map(q => ({
+          question: q.question.trim(),
+          type: q.type,
+          options: q.options.filter(o => o.text.trim()),
+          explanation: q.explanation?.trim() || "",
+          points: parseInt(q.points) || 1,
+        })),
+      };
+      const { data } = await quizAPI.createQuiz(payload);
+      if (data.success) {
+        alert("کوئز کامیابی سے بنایا گیا! ✅");
+        setShowCreateForm(false);
+        resetQuizForm();
+        loadQuizzes();
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || "کوئز بنانے میں خرابی ہوئی";
+      alert("خرابی: " + msg);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <RefreshCw className="w-8 h-8 animate-spin text-pink-600 mx-auto mb-3" />
+        <p className="text-gray-500">کوئز لوڈ ہو رہے ہیں...</p>
+      </div>
+    );
+  }
+
+  // ====== QUIZ DETAIL VIEW ======
+  if (selectedQuiz) {
+    if (detailLoading) {
+      return (
+        <div className="text-center py-12">
+          <RefreshCw className="w-8 h-8 animate-spin text-pink-600 mx-auto mb-3" />
+          <p className="text-gray-500">تفصیلات لوڈ ہو رہی ہیں...</p>
+        </div>
+      );
+    }
+
+    if (!quizDetail) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-gray-500">تفصیلات لوڈ نہیں ہو سکیں</p>
+          <button onClick={handleCloseDetail} className="mt-4 text-pink-600 hover:underline">واپس جائیں</button>
+        </div>
+      );
+    }
+
+    const q = quizDetail;
+    const attempts = q.attempts || [];
+    const leaderboard = q.leaderboard || [];
+    const questions = q.questions || [];
+
+    return (
+      <div className="space-y-6 urdu-text-local">
+        <div className="flex items-center justify-between">
+          <button onClick={handleCloseDetail} className="flex items-center text-pink-600 hover:text-pink-800 font-medium transition-colors">
+            <ChevronLeft className="w-5 h-5 ml-1" />
+            واپس کوئز فہرست پر جائیں
+          </button>
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+            q.status === "active" ? "bg-green-100 text-green-800"
+            : q.status === "draft" ? "bg-yellow-100 text-yellow-800"
+            : "bg-gray-100 text-gray-800"
+          }`}>{q.status || "فعال"}</span>
+        </div>
+
+        {/* Quiz Info Card */}
+        <div className="bg-white p-6 rounded-xl shadow-lg">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{q.title}</h2>
+          <p className="text-gray-600 mb-4">{q.description}</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="bg-pink-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-pink-700">{questions.length}</div>
+              <div className="text-gray-500 text-xs">سوالات</div>
+            </div>
+            <div className="bg-blue-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-blue-700">{attempts.length}</div>
+              <div className="text-gray-500 text-xs">کوششیں</div>
+            </div>
+            <div className="bg-green-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-green-700">{leaderboard.length}</div>
+              <div className="text-gray-500 text-xs">لیڈربورڈ</div>
+            </div>
+            <div className="bg-purple-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-purple-700 capitalize">{q.difficulty || q.category || "—"}</div>
+              <div className="text-gray-500 text-xs">درجہ / قسم</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Questions Section */}
+        <div className="bg-white p-6 rounded-xl shadow-lg">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+            <Brain className="w-5 h-5 ml-2 text-pink-600" />
+            سوالات / Questions ({questions.length})
+          </h3>
+          {questions.length > 0 ? (
+            <div className="space-y-3">
+              {questions.map((question, i) => (
+                <div key={i} className="border border-gray-100 rounded-lg p-4 hover:border-pink-200 transition-colors">
+                  <p className="font-medium text-gray-800 mb-2">
+                    <span className="text-pink-600 font-bold ml-2">س{i + 1}:</span>
+                    {question.questionText || question.question}
+                  </p>
+                  {question.options && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {question.options.map((opt, j) => (
+                        <span key={j} className={`px-3 py-1 rounded-full text-xs ${
+                          opt.isCorrect ? "bg-green-100 text-green-800 font-bold border border-green-300" : "bg-gray-100 text-gray-600"
+                        }`}>
+                          {opt.text || opt}
+                          {opt.isCorrect && " ✓"}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-400 text-center py-6">ابھی کوئی سوال نہیں</p>
+          )}
+        </div>
+
+        {/* Attempts / Participants Section */}
+        <div className="bg-white p-6 rounded-xl shadow-lg">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+            <Users className="w-5 h-5 ml-2 text-blue-600" />
+            شرکاء / کوششیں ({attempts.length})
+          </h3>
+          {attempts.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-right">
+                    <th className="px-4 py-3 font-medium text-gray-600">#</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">صارف</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">اسکور</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">حالت</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">تاریخ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attempts.map((att, i) => (
+                    <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="px-4 py-3 text-gray-500">{i + 1}</td>
+                      <td className="px-4 py-3 font-medium text-gray-800">
+                        {att.user?.name || att.user?.email || "نامعلوم"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-bold text-pink-600">{att.score ?? "—"}</span>
+                        {att.totalQuestions && <span className="text-gray-400 text-xs">/{att.totalQuestions}</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${
+                          att.status === "completed" ? "bg-green-100 text-green-700"
+                          : att.status === "in_progress" ? "bg-yellow-100 text-yellow-700"
+                          : "bg-blue-100 text-blue-700"
+                        }`}>
+                          {att.status === "completed" ? "مکمل" : att.status === "in_progress" ? "جاری" : att.status || "شروع"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-400 text-xs">
+                        {att.startedAt ? new Date(att.startedAt).toLocaleDateString("ur-PK") : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-gray-400 text-center py-6">ابھی کسی نے کوشش نہیں کی</p>
+          )}
+        </div>
+
+        {/* Leaderboard Section */}
+        {leaderboard.length > 0 && (
+          <div className="bg-white p-6 rounded-xl shadow-lg">
+            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+              <Crown className="w-5 h-5 ml-2 text-yellow-500" />
+              لیڈربورڈ / Leaderboard
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-right">
+                    <th className="px-4 py-3 font-medium text-gray-600">درجہ</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">صارف</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">اسکور</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">وقت</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboard.map((entry, i) => (
+                    <tr key={i} className={`border-b border-gray-100 ${i < 3 ? "bg-yellow-50/50" : ""}`}>
+                      <td className="px-4 py-3">
+                        {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+                      </td>
+                      <td className="px-4 py-3 font-medium text-gray-800">
+                        {entry.user?.name || entry.user?.email || "نامعلوم"}
+                      </td>
+                      <td className="px-4 py-3 font-bold text-pink-600">{entry.bestScore ?? entry.score ?? "—"}</td>
+                      <td className="px-4 py-3 text-gray-400 text-xs">
+                        {entry.bestTime ? `${Math.round(entry.bestTime / 1000)}s` : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ====== QUIZ LIST VIEW (default) ======
+  return (
+    <div className="space-y-6 urdu-text-local">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-900">کوئز کا انتظام</h2>
+        <div className="flex gap-2">
+          <button onClick={loadQuizzes} className="text-pink-600 hover:text-pink-800 flex items-center transition-colors px-3 py-2">
+            <RefreshCw className="w-4 h-4 ml-1" />
+            تازہ کریں
+          </button>
+          <button
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            className="bg-pink-600 text-white px-6 py-2 rounded-lg hover:bg-pink-700 flex items-center transition-colors"
+          >
+            <Plus className="w-4 h-4 ml-2" />
+            {showCreateForm ? "بند کریں" : "نیا کوئز بنائیں"}
+          </button>
+        </div>
+      </div>
+
+      {/* ===== CREATE QUIZ FORM ===== */}
+      {showCreateForm && (
+        <form onSubmit={handleCreateQuiz} className="bg-white p-6 rounded-xl shadow-lg border-2 border-pink-100 space-y-5">
+          <h3 className="text-xl font-bold text-pink-700 mb-2">نیا کوئز / New Quiz</h3>
+
+          {/* Title */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">عنوان / Title *</label>
+            <input type="text" value={quizForm.title} onChange={(e) => setQuizForm(f => ({ ...f, title: e.target.value }))} required minLength={3} maxLength={200} placeholder="کوئز کا عنوان لکھیں..." className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none transition-colors" />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">تفصیل / Description</label>
+            <textarea value={quizForm.description} onChange={(e) => setQuizForm(f => ({ ...f, description: e.target.value }))} maxLength={1000} rows={2} placeholder="کوئز کی تفصیل..." className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none transition-colors resize-none" />
+          </div>
+
+          {/* Category + Difficulty + Time + Passing */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">قسم *</label>
+              <select value={quizForm.category} onChange={(e) => setQuizForm(f => ({ ...f, category: e.target.value }))} className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none text-sm">
+                {categoryOptions.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">مشکل *</label>
+              <select value={quizForm.difficulty} onChange={(e) => setQuizForm(f => ({ ...f, difficulty: e.target.value }))} className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none text-sm">
+                {difficultyOptions.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">وقت (منٹ)</label>
+              <input type="number" value={quizForm.timeLimit} onChange={(e) => setQuizForm(f => ({ ...f, timeLimit: e.target.value }))} min={1} max={120} className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">کامیابی %</label>
+              <input type="number" value={quizForm.passingScore} onChange={(e) => setQuizForm(f => ({ ...f, passingScore: e.target.value }))} min={1} max={100} className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none text-sm" />
+            </div>
+          </div>
+
+          {/* Questions */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">سوالات / Questions *</label>
+            {quizForm.questions.map((q, qi) => (
+              <div key={qi} className="border-2 border-gray-100 rounded-xl p-4 mb-4 hover:border-pink-100 transition-colors">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-bold text-pink-700">سوال {qi + 1}</span>
+                  {quizForm.questions.length > 1 && (
+                    <button type="button" onClick={() => removeQuestion(qi)} className="text-red-400 hover:text-red-600 text-xs flex items-center">
+                      <XCircle className="w-4 h-4 ml-1" />حذف
+                    </button>
+                  )}
+                </div>
+
+                <input
+                  type="text"
+                  value={q.question}
+                  onChange={(e) => updateQuestion(qi, "question", e.target.value)}
+                  placeholder="سوال لکھیں..."
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none text-sm mb-3"
+                />
+
+                <p className="text-xs text-gray-500 mb-2">آپشنز (صحیح جواب پر کلک کریں):</p>
+                {q.options.map((opt, oi) => (
+                  <div key={oi} className="flex items-center gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => updateOption(qi, oi, "isCorrect", true)}
+                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                        opt.isCorrect ? "bg-green-500 border-green-500 text-white" : "border-gray-300 hover:border-green-400"
+                      }`}
+                    >
+                      {opt.isCorrect && <CheckCircle className="w-4 h-4" />}
+                    </button>
+                    <input
+                      type="text"
+                      value={opt.text}
+                      onChange={(e) => updateOption(qi, oi, "text", e.target.value)}
+                      placeholder={`آپشن ${oi + 1}`}
+                      className={`flex-1 px-3 py-1.5 border rounded-lg focus:outline-none text-sm ${
+                        opt.isCorrect ? "border-green-300 bg-green-50" : "border-gray-200"
+                      }`}
+                    />
+                    {q.options.length > 2 && (
+                      <button type="button" onClick={() => removeOption(qi, oi)} className="text-red-400 hover:text-red-600">
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {q.options.length < 6 && (
+                  <button type="button" onClick={() => addOption(qi)} className="text-xs text-pink-600 hover:text-pink-800 mt-1">+ مزید آپشن</button>
+                )}
+
+                <div className="mt-3">
+                  <input
+                    type="text"
+                    value={q.explanation || ""}
+                    onChange={(e) => updateQuestion(qi, "explanation", e.target.value)}
+                    placeholder="وضاحت (اختیاری) — صحیح جواب کی وجہ"
+                    className="w-full px-3 py-1.5 border border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none text-xs"
+                  />
+                </div>
+              </div>
+            ))}
+            <button type="button" onClick={addQuestion} className="text-sm text-pink-600 hover:text-pink-800 font-medium flex items-center">
+              <Plus className="w-4 h-4 ml-1" />
+              مزید سوال شامل کریں
+            </button>
+          </div>
+
+          {/* Submit */}
+          <div className="flex gap-3 pt-2">
+            <button type="submit" disabled={creating} className="bg-pink-600 text-white px-8 py-2.5 rounded-lg hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-colors">
+              {creating ? (<><RefreshCw className="w-4 h-4 ml-2 animate-spin" />بنایا جا رہا ہے...</>) : (<><CheckCircle className="w-4 h-4 ml-2" />کوئز بنائیں</>)}
+            </button>
+            <button type="button" onClick={() => { setShowCreateForm(false); resetQuizForm(); }} className="bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg hover:bg-gray-300 transition-colors">منسوخ</button>
+          </div>
+        </form>
+      )}
+
+      {/* ===== QUIZ LISTING ===== */}
+      {quizzes.length > 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {quizzes.map((quiz) => (
+            <div key={quiz._id} className="bg-white p-6 rounded-xl shadow-lg">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="font-bold text-lg text-gray-900">{quiz.title}</h3>
+                  <p className="text-gray-600 text-sm mt-1">
+                    {quiz.description?.substring(0, 100)}{quiz.description?.length > 100 ? "..." : ""}
+                  </p>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  quiz.difficulty === "advanced" ? "bg-red-100 text-red-800"
+                  : quiz.difficulty === "intermediate" ? "bg-yellow-100 text-yellow-800"
+                  : "bg-green-100 text-green-800"
+                }`}>{quiz.difficulty === "advanced" ? "مشکل" : quiz.difficulty === "intermediate" ? "درمیانہ" : "آسان"}</span>
+              </div>
+              <div className="space-y-2 mb-4 text-sm">
+                {quiz.category && (<div className="flex justify-between"><span>قسم:</span><span className="font-medium capitalize">{quiz.category}</span></div>)}
+                <div className="flex justify-between"><span>سوالات:</span><span className="font-medium">{quiz.questions?.length || 0}</span></div>
+                <div className="flex justify-between"><span>کوششیں:</span><span className="font-medium">{quiz.attempts?.length || quiz.stats?.totalAttempts || 0}</span></div>
+                {quiz.status && (<div className="flex justify-between"><span>حالت:</span><span className="font-medium">{quiz.status === "published" ? "شائع شدہ" : quiz.status === "draft" ? "مسودہ" : quiz.status}</span></div>)}
+              </div>
+              <button onClick={() => handleViewQuiz(quiz)} className="w-full bg-pink-600 text-white py-2 px-4 rounded-lg hover:bg-pink-700 transition-colors">
+                <Eye className="w-4 h-4 inline ml-1" />
+                تفصیلات و جائزہ
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12 bg-white rounded-xl shadow">
+          <Brain className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-600 mb-2">ابھی کوئی کوئز نہیں ہے</h3>
+          <p className="text-gray-400 text-sm">اوپر "نیا کوئز بنائیں" بٹن دبائیں</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Contest Management Tab Component
-const ContestManagementTab = ({ contests }) => {
+const ContestManagementTab = ({ contests, onContestCreated }) => {
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [selectedContest, setSelectedContest] = useState(null);
+  const [contestDetail, setContestDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [gradingIndex, setGradingIndex] = useState(null);
+  const [gradeForm, setGradeForm] = useState({ score: "", creativity: "", language: "", theme: "", structure: "", impact: "", feedback: "", status: "" });
+  const [gradingLoading, setGradingLoading] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    category: "ghazal",
+    theme: "",
+    rules: [""],
+    prizes: [{ position: "اول / 1st", reward: "" }],
+    submissionDeadline: "",
+    votingDeadline: "",
+    maxParticipants: 100,
+  });
+
+  const categories = [
+    { value: "ghazal", label: "غزل" },
+    { value: "nazm", label: "نظم" },
+    { value: "rubai", label: "رباعی" },
+    { value: "free-verse", label: "آزاد نظم" },
+    { value: "all", label: "تمام اصناف" },
+  ];
+
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      description: "",
+      category: "ghazal",
+      theme: "",
+      rules: [""],
+      prizes: [{ position: "اول / 1st", reward: "" }],
+      submissionDeadline: "",
+      votingDeadline: "",
+      maxParticipants: 100,
+    });
+  };
+
+  // Compute effective status based on dates (client-side)
+  const getEffectiveStatus = (contest) => {
+    const now = new Date();
+    const subEnd = contest.submissionEnd ? new Date(contest.submissionEnd) : null;
+    const votingEnd = contest.votingEnd ? new Date(contest.votingEnd) : null;
+    const votingStart = contest.votingStart ? new Date(contest.votingStart) : null;
+    const activeStatuses = ['active', 'submission_open', 'registration_open', 'upcoming'];
+    
+    if (activeStatuses.includes(contest.status) && subEnd && now > subEnd) {
+      if (votingStart && now >= votingStart && votingEnd && now < votingEnd) {
+        return 'voting';
+      }
+      return 'completed';
+    }
+    if (contest.status === 'voting' && votingEnd && now > votingEnd) {
+      return 'completed';
+    }
+    return contest.status;
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'active': case 'submission_open': return 'فعال';
+      case 'upcoming': case 'registration_open': return 'آنے والا';
+      case 'completed': return 'مکمل';
+      case 'voting': return 'ووٹنگ';
+      case 'cancelled': return 'منسوخ';
+      default: return status;
+    }
+  };
+
+  const getStatusClasses = (status) => {
+    switch (status) {
+      case 'active': case 'submission_open': return 'bg-green-100 text-green-800';
+      case 'upcoming': case 'registration_open': return 'bg-blue-100 text-blue-800';
+      case 'completed': return 'bg-gray-100 text-gray-800';
+      case 'voting': return 'bg-purple-100 text-purple-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-yellow-100 text-yellow-800';
+    }
+  };
+
+  const handleViewDetails = async (contest) => {
+    try {
+      setDetailLoading(true);
+      setSelectedContest(contest._id);
+      const { data } = await contestAPI.getContestById(contest._id);
+      if (data.success) {
+        setContestDetail(data.contest);
+      }
+    } catch (err) {
+      console.error("Error loading contest details:", err);
+      alert("تفصیلات لوڈ کرنے میں خرابی");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleCloseDetail = () => {
+    setSelectedContest(null);
+    setContestDetail(null);
+    setGradingIndex(null);
+  };
+
+  const handleOpenGrading = (index, submission) => {
+    setGradingIndex(index);
+    setGradeForm({
+      score: submission.grade?.score ?? "",
+      creativity: submission.grade?.creativity ?? "",
+      language: submission.grade?.language ?? "",
+      theme: submission.grade?.theme ?? "",
+      structure: submission.grade?.structure ?? "",
+      impact: submission.grade?.impact ?? "",
+      feedback: submission.grade?.feedback ?? "",
+      status: submission.status || "submitted"
+    });
+  };
+
+  const handleGradeSubmit = async (e) => {
+    e.preventDefault();
+    if (!gradeForm.score || gradeForm.score < 0 || gradeForm.score > 100) {
+      alert("مجموعی نمبر 0 سے 100 کے درمیان ہونے چاہییں");
+      return;
+    }
+    setGradingLoading(true);
+    try {
+      const { data } = await contestAPI.gradeSubmission(contestDetail._id, gradingIndex, {
+        score: Number(gradeForm.score),
+        creativity: Number(gradeForm.creativity) || 0,
+        language: Number(gradeForm.language) || 0,
+        theme: Number(gradeForm.theme) || 0,
+        structure: Number(gradeForm.structure) || 0,
+        impact: Number(gradeForm.impact) || 0,
+        feedback: gradeForm.feedback,
+        status: gradeForm.status
+      });
+      setContestDetail(data.contest);
+      setGradingIndex(null);
+      alert("درجہ بندی کامیابی سے محفوظ ہو گئی!");
+    } catch (err) {
+      console.error("Grading error:", err);
+      alert("درجہ بندی میں خرابی: " + (err.response?.data?.message || err.message));
+    } finally {
+      setGradingLoading(false);
+    }
+  };
+
+  const handleDeleteContest = async (contestId, contestTitle) => {
+    if (!window.confirm(`کیا آپ واقعی "${contestTitle}" مقابلہ حذف کرنا چاہتے ہیں؟ یہ عمل واپس نہیں ہو سکتا۔`)) return;
+    try {
+      setDeleting(contestId);
+      await adminDashboardAPI.deleteContest(contestId);
+      alert("مقابلہ کامیابی سے حذف ہو گیا!");
+      if (onContestCreated) onContestCreated();
+    } catch (err) {
+      console.error("Delete contest error:", err);
+      alert("مقابلہ حذف کرنے میں خرابی: " + (err.response?.data?.message || err.message));
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleFinalizeResults = async () => {
+    if (!window.confirm("کیا آپ نتائج حتمی کرنا چاہتے ہیں؟ اس سے مقابلہ مکمل ہو جائے گا۔")) return;
+    try {
+      const { data } = await contestAPI.finalizeResults(contestDetail._id);
+      setContestDetail(data.contest);
+      alert("نتائج کامیابی سے حتمی ہو گئے!");
+    } catch (err) {
+      console.error("Finalize error:", err);
+      alert("نتائج حتمی کرنے میں خرابی: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleCreateContest = async (e) => {
+    e.preventDefault();
+    if (!formData.title || formData.title.length < 5) {
+      alert("عنوان کم از کم 5 حروف کا ہونا چاہیے"); return;
+    }
+    if (!formData.description || formData.description.length < 20) {
+      alert("تفصیل کم از کم 20 حروف کی ہونی چاہیے"); return;
+    }
+    if (!formData.submissionDeadline) {
+      alert("جمع کرانے کی آخری تاریخ ضروری ہے"); return;
+    }
+    if (!formData.theme || !formData.theme.trim()) {
+      alert("موضوع ضروری ہے"); return;
+    }
+    const filteredRules = formData.rules.filter((r) => r.trim());
+    if (filteredRules.length === 0) {
+      alert("کم از کم ایک قاعدہ شامل کریں"); return;
+    }
+    const filteredPrizes = formData.prizes.filter((p) => p.reward.trim());
+    if (filteredPrizes.length === 0) {
+      alert("کم از کم ایک انعام شامل کریں"); return;
+    }
+
+    try {
+      setCreating(true);
+      const payload = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        category: formData.category,
+        theme: formData.theme.trim(),
+        rules: filteredRules,
+        prizes: filteredPrizes,
+        submissionDeadline: new Date(formData.submissionDeadline).toISOString(),
+        votingDeadline: formData.votingDeadline
+          ? new Date(formData.votingDeadline).toISOString()
+          : undefined,
+        maxParticipants: parseInt(formData.maxParticipants) || 100,
+      };
+      const { data } = await contestAPI.createContest(payload);
+      if (data.success) {
+        alert("مقابلہ کامیابی سے بنایا گیا! ✅");
+        setShowCreateForm(false);
+        resetForm();
+        if (onContestCreated) onContestCreated();
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data?.errors?.[0]?.msg || "مقابلہ بنانے میں خرابی ہوئی";
+      alert("خرابی: " + msg);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const addRule = () => setFormData((f) => ({ ...f, rules: [...f.rules, ""] }));
+  const removeRule = (i) => setFormData((f) => ({ ...f, rules: f.rules.filter((_, idx) => idx !== i) }));
+  const updateRule = (i, val) => setFormData((f) => { const rules = [...f.rules]; rules[i] = val; return { ...f, rules }; });
+  const addPrize = () => setFormData((f) => ({ ...f, prizes: [...f.prizes, { position: "", reward: "" }] }));
+  const removePrize = (i) => setFormData((f) => ({ ...f, prizes: f.prizes.filter((_, idx) => idx !== i) }));
+  const updatePrize = (i, field, val) => setFormData((f) => { const prizes = [...f.prizes]; prizes[i] = { ...prizes[i], [field]: val }; return { ...f, prizes }; });
+
+  // ====== CONTEST DETAIL VIEW ======
+  if (selectedContest) {
+    if (detailLoading) {
+      return (
+        <div className="text-center py-12">
+          <RefreshCw className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-3" />
+          <p className="text-gray-500">تفصیلات لوڈ ہو رہی ہیں...</p>
+        </div>
+      );
+    }
+
+    if (!contestDetail) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-gray-500">تفصیلات لوڈ نہیں ہو سکیں</p>
+          <button onClick={handleCloseDetail} className="mt-4 text-indigo-600 hover:underline">واپس جائیں</button>
+        </div>
+      );
+    }
+
+    const c = contestDetail;
+    const effectiveStatus = getEffectiveStatus(c);
+    const participants = c.participants || [];
+    const submissions = c.submissions || [];
+    const votes = c.votes || [];
+
+    return (
+      <div className="space-y-6 urdu-text-local">
+        {/* Back button + header */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={handleCloseDetail}
+            className="flex items-center text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5 ml-1" />
+            واپس فہرست پر جائیں
+          </button>
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusClasses(effectiveStatus)}`}>
+            {getStatusLabel(effectiveStatus)}
+          </span>
+        </div>
+
+        {/* Contest Info Card */}
+        <div className="bg-white p-6 rounded-xl shadow-lg">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{c.title}</h2>
+          <p className="text-gray-600 mb-4">{c.description}</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="bg-indigo-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-indigo-700">{participants.length}</div>
+              <div className="text-gray-500 text-xs">شرکاء</div>
+            </div>
+            <div className="bg-green-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-green-700">{submissions.length}</div>
+              <div className="text-gray-500 text-xs">جمع شدہ اشعار</div>
+            </div>
+            <div className="bg-yellow-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-yellow-700">{votes.length}</div>
+              <div className="text-gray-500 text-xs">ووٹ</div>
+            </div>
+            <div className="bg-purple-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-purple-700 capitalize">{c.category || "—"}</div>
+              <div className="text-gray-500 text-xs">قسم</div>
+            </div>
+          </div>
+          {c.theme && (
+            <div className="mt-4 text-sm"><span className="font-medium text-gray-700">موضوع:</span> {c.theme}</div>
+          )}
+          <div className="grid grid-cols-2 gap-4 mt-4 text-sm text-gray-600">
+            {c.submissionStart && <div>اندراج شروع: {new Date(c.submissionStart).toLocaleString("ur-PK", { dateStyle: "short", timeStyle: "short" })}</div>}
+            {c.submissionEnd && <div>اندراج ختم: {new Date(c.submissionEnd).toLocaleString("ur-PK", { dateStyle: "short", timeStyle: "short" })}</div>}
+            {c.votingStart && <div>ووٹنگ شروع: {new Date(c.votingStart).toLocaleString("ur-PK", { dateStyle: "short", timeStyle: "short" })}</div>}
+            {c.votingEnd && <div>ووٹنگ ختم: {new Date(c.votingEnd).toLocaleString("ur-PK", { dateStyle: "short", timeStyle: "short" })}</div>}
+          </div>
+          {c.rules?.length > 0 && (
+            <div className="mt-4">
+              <h4 className="font-medium text-gray-700 mb-1">قواعد:</h4>
+              <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                {c.rules.map((r, i) => <li key={i}>{r}</li>)}
+              </ul>
+            </div>
+          )}
+          {c.prizes?.length > 0 && (
+            <div className="mt-4">
+              <h4 className="font-medium text-gray-700 mb-1">انعامات:</h4>
+              <div className="flex flex-wrap gap-2">
+                {c.prizes.map((p, i) => (
+                  <span key={i} className="px-3 py-1 bg-yellow-50 border border-yellow-200 rounded-full text-sm">
+                    {p.title || p.position}: {p.prize || p.description || "—"}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Participants Section */}
+        <div className="bg-white p-6 rounded-xl shadow-lg">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+            <Users className="w-5 h-5 ml-2 text-indigo-600" />
+            شرکاء / Participants ({participants.length})
+          </h3>
+          {participants.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-right">
+                    <th className="px-4 py-3 font-medium text-gray-600">#</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">صارف / User</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">تاریخ اندراج</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">حالت</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {participants.map((p, i) => (
+                    <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="px-4 py-3 text-gray-500">{i + 1}</td>
+                      <td className="px-4 py-3 font-medium text-gray-800">
+                        {p.user?.name || p.user?.email || "نامعلوم"}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {p.registeredAt ? new Date(p.registeredAt).toLocaleDateString("ur-PK") : "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">
+                          {p.paymentStatus === "paid" ? "ادا شدہ" : "رجسٹرڈ"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-gray-400 text-center py-6">ابھی کوئی شرکاء نہیں</p>
+          )}
+        </div>
+
+        {/* Submissions / Poetry Review & Grading Section */}
+        <div className="bg-white p-6 rounded-xl shadow-lg">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold text-gray-900 flex items-center">
+              <FileText className="w-5 h-5 ml-2 text-green-600" />
+              جمع شدہ شاعری / Submissions ({submissions.length})
+            </h3>
+            {submissions.some(s => s.grade?.score != null) && effectiveStatus !== "completed" && (
+              <button
+                onClick={handleFinalizeResults}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+              >
+                🏆 نتائج حتمی کریں
+              </button>
+            )}
+          </div>
+          {submissions.length > 0 ? (
+            <div className="space-y-6">
+              {submissions.map((sub, i) => (
+                <div key={i} className="border-2 border-gray-100 rounded-xl p-5 hover:border-indigo-200 transition-colors">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <span className="text-xs text-gray-400">#{i + 1}</span>
+                      <h4 className="font-bold text-gray-900 text-lg">
+                        {sub.poem?.title || "بے عنوان"}
+                      </h4>
+                      <p className="text-sm text-gray-500 mt-0.5">
+                        شاعر: {sub.participant?.name || sub.participant?.email || "نامعلوم"}
+                        {sub.participant?.role && (
+                          <span className={`mr-2 px-2 py-0.5 rounded text-xs ${sub.participant.role === "poet" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
+                            {sub.participant.role === "poet" ? "شاعر" : "قاری"}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        sub.status === "qualified" ? "bg-green-100 text-green-700"
+                        : sub.status === "disqualified" ? "bg-red-100 text-red-700"
+                        : sub.status === "under_review" ? "bg-yellow-100 text-yellow-700"
+                        : "bg-blue-100 text-blue-700"
+                      }`}>
+                        {sub.status === "qualified" ? "اہل" : sub.status === "disqualified" ? "نااہل" : sub.status === "under_review" ? "جائزہ" : "جمع شدہ"}
+                      </span>
+                      {sub.grade?.score != null && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                          نمبر: {sub.grade.score}/100
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Poetry content */}
+                  {sub.poem?.content && (
+                    <div className="bg-amber-50/60 border border-amber-200/50 rounded-lg p-4 mb-3">
+                      <pre className="whitespace-pre-wrap font-urdu text-gray-800 leading-relaxed text-base" dir="rtl" style={{ fontFamily: "Noto Nastaliq Urdu, Jameel Noori Nastaleeq, serif" }}>
+                        {sub.poem.content}
+                      </pre>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
+                    <span>
+                      {sub.submittedAt ? `جمع: ${new Date(sub.submittedAt).toLocaleString("ur-PK")}` : ""}
+                    </span>
+                    {sub.poem?.category && (
+                      <span className="capitalize bg-gray-100 px-2 py-0.5 rounded">{sub.poem.category}</span>
+                    )}
+                  </div>
+
+                  {/* Existing Grade Summary */}
+                  {sub.grade?.score != null && gradingIndex !== i && (
+                    <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4 mb-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-bold text-gray-800 text-sm">درجہ بندی کا خلاصہ</h5>
+                        <span className="text-2xl font-bold text-yellow-700">{sub.grade.score}/100</span>
+                      </div>
+                      <div className="grid grid-cols-5 gap-2 text-center text-xs">
+                        {[
+                          { label: "تخلیقیت", val: sub.grade.creativity },
+                          { label: "زبان", val: sub.grade.language },
+                          { label: "موضوع", val: sub.grade.theme },
+                          { label: "ساخت", val: sub.grade.structure },
+                          { label: "اثر", val: sub.grade.impact },
+                        ].map((item, idx) => (
+                          <div key={idx} className="bg-white rounded p-2 shadow-sm">
+                            <div className="font-bold text-gray-700">{item.val || 0}/10</div>
+                            <div className="text-gray-500">{item.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {sub.grade.feedback && (
+                        <p className="mt-2 text-sm text-gray-600 bg-white rounded p-2">
+                          <span className="font-medium">تبصرہ:</span> {sub.grade.feedback}
+                        </p>
+                      )}
+                      {sub.grade.gradedAt && (
+                        <p className="mt-1 text-xs text-gray-400">
+                          درجہ بندی: {new Date(sub.grade.gradedAt).toLocaleString("ur-PK")}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Grading Form */}
+                  {gradingIndex === i ? (
+                    <form onSubmit={handleGradeSubmit} className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-4">
+                      <h5 className="font-bold text-indigo-800 text-sm mb-2">درجہ بندی فارم</h5>
+                      
+                      {/* Overall Score */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">مجموعی نمبر (0-100) *</label>
+                        <input
+                          type="number" min="0" max="100" required
+                          value={gradeForm.score}
+                          onChange={e => setGradeForm(prev => ({ ...prev, score: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="0 - 100"
+                        />
+                      </div>
+
+                      {/* Detailed Criteria (0-10 each) */}
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        {[
+                          { key: "creativity", label: "تخلیقیت" },
+                          { key: "language", label: "زبان و بیان" },
+                          { key: "theme", label: "موضوع" },
+                          { key: "structure", label: "ساخت و عروض" },
+                          { key: "impact", label: "اثر و تاثیر" },
+                        ].map(({ key, label }) => (
+                          <div key={key}>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{label} (0-10)</label>
+                            <input
+                              type="number" min="0" max="10" step="0.5"
+                              value={gradeForm[key]}
+                              onChange={e => setGradeForm(prev => ({ ...prev, [key]: e.target.value }))}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
+                              placeholder="0-10"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Status */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">حالت</label>
+                        <select
+                          value={gradeForm.status}
+                          onChange={e => setGradeForm(prev => ({ ...prev, status: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        >
+                          <option value="submitted">جمع شدہ</option>
+                          <option value="under_review">زیر جائزہ</option>
+                          <option value="qualified">اہل</option>
+                          <option value="disqualified">نااہل</option>
+                        </select>
+                      </div>
+
+                      {/* Feedback */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">تبصرہ / فیڈبیک</label>
+                        <textarea
+                          rows="3"
+                          value={gradeForm.feedback}
+                          onChange={e => setGradeForm(prev => ({ ...prev, feedback: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                          placeholder="شاعری پر اپنا تبصرہ لکھیں..."
+                          dir="rtl"
+                        />
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button
+                          type="submit"
+                          disabled={gradingLoading}
+                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors text-sm font-medium"
+                        >
+                          {gradingLoading ? "محفوظ ہو رہا ہے..." : "درجہ بندی محفوظ کریں"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setGradingIndex(null)}
+                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
+                        >
+                          منسوخ
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <button
+                      onClick={() => handleOpenGrading(i, sub)}
+                      className="mt-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors text-sm font-medium"
+                    >
+                      {sub.grade?.score != null ? "✏️ درجہ بندی میں ترمیم" : "⭐ درجہ بندی کریں"}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-400 text-center py-6">ابھی کوئی شاعری جمع نہیں ہوئی</p>
+          )}
+        </div>
+
+        {/* Results Section (after finalization) */}
+        {(c.results?.length > 0) && (
+          <div className="bg-white p-6 rounded-xl shadow-lg">
+            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+              🏆 نتائج / Results
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gradient-to-r from-yellow-50 to-orange-50 text-right">
+                    <th className="px-4 py-3 font-medium text-gray-600">پوزیشن</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">شاعر</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">نمبر</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">انعام</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">تبصرہ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {c.results.map((r, i) => (
+                    <tr key={i} className={`border-b border-gray-100 ${i === 0 ? "bg-yellow-50" : i === 1 ? "bg-gray-50" : i === 2 ? "bg-orange-50" : ""}`}>
+                      <td className="px-4 py-3 font-bold text-lg">
+                        {r.position === 1 ? "🥇" : r.position === 2 ? "🥈" : r.position === 3 ? "🥉" : `#${r.position}`}
+                      </td>
+                      <td className="px-4 py-3 font-medium text-gray-800">
+                        {r.participant?.name || "نامعلوم"}
+                      </td>
+                      <td className="px-4 py-3 font-bold text-yellow-700">{r.score || "—"}/100</td>
+                      <td className="px-4 py-3 text-green-700">{r.prize || "—"}</td>
+                      <td className="px-4 py-3 text-gray-600 max-w-xs truncate">{r.feedback || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Votes Section */}
+        {votes.length > 0 && (
+          <div className="bg-white p-6 rounded-xl shadow-lg">
+            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+              <Star className="w-5 h-5 ml-2 text-yellow-500" />
+              ووٹ / Votes ({votes.length})
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-right">
+                    <th className="px-4 py-3 font-medium text-gray-600">#</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">ووٹر</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">اسکور</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">تبصرہ</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">تاریخ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {votes.map((v, i) => (
+                    <tr key={i} className="border-b border-gray-100">
+                      <td className="px-4 py-3 text-gray-500">{i + 1}</td>
+                      <td className="px-4 py-3">{v.voter?.name || "نامعلوم"}</td>
+                      <td className="px-4 py-3 font-bold text-yellow-600">{v.score || "—"}</td>
+                      <td className="px-4 py-3 text-gray-600 max-w-xs truncate">{v.comment || "—"}</td>
+                      <td className="px-4 py-3 text-gray-400 text-xs">
+                        {v.votedAt ? new Date(v.votedAt).toLocaleDateString("ur-PK") : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ====== CONTEST LIST VIEW (default) ======
   return (
     <div className="space-y-6 urdu-text-local">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">مقابلوں کا انتظام</h2>
-        <button className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 flex items-center">
+        <button
+          onClick={() => setShowCreateForm(!showCreateForm)}
+          className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 flex items-center transition-colors"
+        >
           <Plus className="w-4 h-4 ml-2" />
-          نیا مقابلہ بنائیں
+          {showCreateForm ? "بند کریں" : "نیا مقابلہ بنائیں"}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {contests.map((contest) => (
-          <div key={contest._id} className="bg-white p-6 rounded-xl shadow-lg">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="font-bold text-lg text-gray-900">
-                  {contest.title}
-                </h3>
-                <p className="text-gray-600">انعام: {contest.prize}</p>
-              </div>
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-medium
-                ${
-                  contest.status === "active"
-                    ? "bg-green-100 text-green-800"
-                    : contest.status === "upcoming"
-                    ? "bg-blue-100 text-blue-800"
-                    : "bg-gray-100 text-gray-800"
-                }`}
-              >
-                {contest.status === "active"
-                  ? "فعال"
-                  : contest.status === "upcoming"
-                  ? "آنے والا"
-                  : "مکمل"}
-              </span>
+      {/* ===== CREATE CONTEST FORM ===== */}
+      {showCreateForm && (
+        <form
+          onSubmit={handleCreateContest}
+          className="bg-white p-6 rounded-xl shadow-lg border-2 border-indigo-100 space-y-5"
+        >
+          <h3 className="text-xl font-bold text-indigo-700 mb-2">نیا مقابلہ / New Contest</h3>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">عنوان / Title *</label>
+            <input type="text" value={formData.title} onChange={(e) => setFormData((f) => ({ ...f, title: e.target.value }))} required minLength={5} maxLength={200} placeholder="مقابلے کا عنوان لکھیں..." className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none transition-colors" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">تفصیل / Description *</label>
+            <textarea value={formData.description} onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))} required minLength={20} maxLength={2000} rows={3} placeholder="مقابلے کی تفصیل لکھیں (کم از کم 20 حروف)..." className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none transition-colors resize-none" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">قسم / Category *</label>
+              <select value={formData.category} onChange={(e) => setFormData((f) => ({ ...f, category: e.target.value }))} className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none">
+                {categories.map((c) => (<option key={c.value} value={c.value}>{c.label}</option>))}
+              </select>
             </div>
-
-            <div className="space-y-2 mb-4 text-sm">
-              <div className="flex justify-between">
-                <span>اندراجات:</span>
-                <span className="font-medium">{contest.entries}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>آخری تاریخ:</span>
-                <span className="font-medium">
-                  {new Date(contest.deadline).toLocaleDateString("ur-PK")}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex space-x-2 space-x-reverse">
-              <button className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">
-                <Edit className="w-4 h-4 inline ml-1" />
-                ترمیم
-              </button>
-              <button className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700">
-                <Eye className="w-4 h-4 inline ml-1" />
-                تفصیلات
-              </button>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">موضوع / Theme *</label>
+              <input type="text" value={formData.theme} onChange={(e) => setFormData((f) => ({ ...f, theme: e.target.value }))} maxLength={100} placeholder="مثلاً: محبت، وطن، موسم بہار..." className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none" />
             </div>
           </div>
-        ))}
-      </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1"><Calendar className="w-3.5 h-3.5 inline ml-1" />جمع کرانے کی آخری تاریخ *</label>
+              <input type="datetime-local" value={formData.submissionDeadline} onChange={(e) => setFormData((f) => ({ ...f, submissionDeadline: e.target.value }))} required className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1"><Calendar className="w-3.5 h-3.5 inline ml-1" />ووٹنگ کی آخری تاریخ</label>
+              <input type="datetime-local" value={formData.votingDeadline} onChange={(e) => setFormData((f) => ({ ...f, votingDeadline: e.target.value }))} className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1"><Users className="w-3.5 h-3.5 inline ml-1" />زیادہ سے زیادہ شرکاء</label>
+              <input type="number" value={formData.maxParticipants} onChange={(e) => setFormData((f) => ({ ...f, maxParticipants: e.target.value }))} min={10} max={10000} className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">قواعد / Rules *</label>
+            {formData.rules.map((rule, i) => (
+              <div key={i} className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-gray-400 w-5">{i + 1}.</span>
+                <input type="text" value={rule} onChange={(e) => updateRule(i, e.target.value)} placeholder="قاعدہ لکھیں..." className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none text-sm" />
+                {formData.rules.length > 1 && (<button type="button" onClick={() => removeRule(i)} className="text-red-400 hover:text-red-600 p-1"><XCircle className="w-4 h-4" /></button>)}
+              </div>
+            ))}
+            <button type="button" onClick={addRule} className="text-sm text-indigo-600 hover:text-indigo-800 mt-1">+ مزید قاعدہ شامل کریں</button>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">انعامات / Prizes *</label>
+            {formData.prizes.map((prize, i) => (
+              <div key={i} className="flex items-center gap-2 mb-2">
+                <input type="text" value={prize.position} onChange={(e) => updatePrize(i, "position", e.target.value)} placeholder="پوزیشن (مثلاً اول)" className="w-32 px-3 py-1.5 border border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none text-sm" />
+                <input type="text" value={prize.reward} onChange={(e) => updatePrize(i, "reward", e.target.value)} placeholder="انعام کی تفصیل..." className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none text-sm" />
+                {formData.prizes.length > 1 && (<button type="button" onClick={() => removePrize(i)} className="text-red-400 hover:text-red-600 p-1"><XCircle className="w-4 h-4" /></button>)}
+              </div>
+            ))}
+            <button type="button" onClick={addPrize} className="text-sm text-indigo-600 hover:text-indigo-800 mt-1">+ مزید انعام شامل کریں</button>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="submit" disabled={creating} className="bg-indigo-600 text-white px-8 py-2.5 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-colors">
+              {creating ? (<><RefreshCw className="w-4 h-4 ml-2 animate-spin" />بنایا جا رہا ہے...</>) : (<><CheckCircle className="w-4 h-4 ml-2" />مقابلہ بنائیں</>)}
+            </button>
+            <button type="button" onClick={() => { setShowCreateForm(false); resetForm(); }} className="bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg hover:bg-gray-300 transition-colors">منسوخ</button>
+          </div>
+        </form>
+      )}
+
+      {/* ===== CONTEST LISTING ===== */}
+      {contests.length > 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {contests.map((contest) => {
+            const effStatus = getEffectiveStatus(contest);
+            return (
+            <div key={contest._id} className="bg-white p-6 rounded-xl shadow-lg">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="font-bold text-lg text-gray-900">{contest.title}</h3>
+                  <p className="text-gray-600 text-sm mt-1">
+                    {contest.description?.substring(0, 100)}{contest.description?.length > 100 ? "..." : ""}
+                  </p>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusClasses(effStatus)}`}>
+                  {getStatusLabel(effStatus)}
+                </span>
+              </div>
+              <div className="space-y-2 mb-4 text-sm">
+                {contest.category && (<div className="flex justify-between"><span>قسم:</span><span className="font-medium capitalize">{contest.category}</span></div>)}
+                <div className="flex justify-between"><span>شرکاء:</span><span className="font-medium">{contest.participants?.length || 0}</span></div>
+                <div className="flex justify-between"><span>جمع شدہ:</span><span className="font-medium">{contest.submissions?.length || 0}</span></div>
+                {contest.submissionEnd && (<div className="flex justify-between"><span>آخری تاریخ:</span><span className="font-medium">{new Date(contest.submissionEnd).toLocaleString("ur-PK", { dateStyle: "short", timeStyle: "short" })}</span></div>)}
+              </div>
+              <div className="flex space-x-2 space-x-reverse">
+                <button onClick={() => handleViewDetails(contest)} className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors">
+                  <Eye className="w-4 h-4 inline ml-1" />
+                  تفصیلات و جائزہ
+                </button>
+                {(effStatus === "completed" || contest.submissions?.some(s => s.grade?.score != null)) && (
+                  <button
+                    onClick={() => handleDeleteContest(contest._id, contest.title)}
+                    disabled={deleting === contest._id}
+                    className="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                  >
+                    {deleting === contest._id ? (
+                      <RefreshCw className="w-4 h-4 inline animate-spin" />
+                    ) : (
+                      <><XCircle className="w-4 h-4 inline ml-1" />حذف</>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+          })}
+        </div>
+      ) : (
+        <div className="text-center py-12 bg-white rounded-xl shadow">
+          <Award className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-600 mb-2">ابھی کوئی مقابلہ نہیں ہے</h3>
+          <p className="text-gray-400 text-sm">اوپر "نیا مقابلہ بنائیں" بٹن دبائیں</p>
+        </div>
+      )}
     </div>
   );
 };

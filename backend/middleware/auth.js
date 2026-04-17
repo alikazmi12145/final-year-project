@@ -163,6 +163,7 @@ export const adminAuth = async (req, res, next) => {
 
     // Check if user is an admin
     if (user.role !== "admin") {
+      console.log(`⛔ adminAuth rejected: user ${user.email} has role '${user.role}', not 'admin'`);
       return res.status(403).json({
         success: false,
         message: "Access denied. Admin role required.",
@@ -181,7 +182,15 @@ export const adminAuth = async (req, res, next) => {
     user.lastActive = new Date();
     await user.save();
 
-    req.user = user;
+    req.user = {
+      _id: user._id,
+      userId: user._id,
+      email: user.email,
+      role: user.role,
+      isVerified: user.isVerified,
+      status: user.status,
+      verificationBadge: user.verificationBadge,
+    };
     next();
   } catch (error) {
     if (error.name === "TokenExpiredError") {
