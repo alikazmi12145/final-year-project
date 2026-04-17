@@ -5,7 +5,8 @@ import Home from "./pages/Home";
 import Search from "./pages/Search";
 import Poetry from "./pages/Poetry";
 import Poets from "./pages/Poets";
-import Contests from "./pages/Contests";
+import ContestsPage from "./components/contests/ContestsPage";
+import QuizzesPage from "./components/quizzes/QuizzesPage";
 import Learning from "./pages/Learning";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
@@ -49,8 +50,10 @@ function App() {
         <Route path="/poetry/:id" element={<Poetry />} />
         <Route path="/poets" element={<Poets />} />
         <Route path="/poets/:id" element={<Poets />} />
-        <Route path="/contests" element={<Contests />} />
-        <Route path="/contests/:id" element={<Contests />} />
+        <Route path="/contests" element={<ContestsPage />} />
+        <Route path="/contests/:id" element={<ContestsPage />} />
+        <Route path="/quizzes" element={<QuizzesPage />} />
+        <Route path="/quizzes/:id" element={<QuizzesPage />} />
         <Route path="/learning" element={<Learning />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/pending-approval" element={<PendingApproval />} />

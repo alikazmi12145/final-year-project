@@ -17,6 +17,7 @@ import {
   BarChart3,
   Feather,
   MessageCircle,
+  Brain,
 } from "lucide-react";
 
 const Navbar = () => {
@@ -38,6 +39,7 @@ const Navbar = () => {
     },
     { path: "/poets", label: "شعراء", urduLabel: "شعراء", icon: Users },
     { path: "/contests", label: "مقابلے", urduLabel: "مقابلے", icon: Trophy },
+    { path: "/quizzes", label: "کوئز", urduLabel: "کوئز", icon: Brain },
     {
       path: "/learning",
       label: "تعلیم",

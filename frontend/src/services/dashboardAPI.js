@@ -20,13 +20,40 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor for error handling
+// Response interceptor for error handling with auto-refresh
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // If 401 and we haven't retried yet, try refreshing the token
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      const refreshToken = localStorage.getItem("refreshToken");
+      if (refreshToken) {
+        try {
+          const refreshResponse = await axios.post(
+            `${API_BASE_URL}/auth/refresh`,
+            { refreshToken }
+          );
+          if (refreshResponse.data?.accessToken) {
+            const newToken = refreshResponse.data.accessToken;
+            localStorage.setItem("token", newToken);
+            if (refreshResponse.data.refreshToken) {
+              localStorage.setItem("refreshToken", refreshResponse.data.refreshToken);
+            }
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            return api(originalRequest);
+          }
+        } catch (refreshError) {
+          // Refresh failed, clear and redirect
+        }
+      }
+      
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      localStorage.removeItem("refreshToken");
       window.location.href = "/auth";
     }
     return Promise.reject(error);

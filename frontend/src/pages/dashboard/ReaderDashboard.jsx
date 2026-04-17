@@ -47,6 +47,8 @@ import {
   Music,
   Palette,
   Camera,
+  Brain,
+  Medal,
 } from "lucide-react";
 
 const ReaderDashboard = () => {
@@ -61,8 +63,12 @@ const ReaderDashboard = () => {
   const [recommendations, setRecommendations] = useState([]);
   const [followedPoets, setFollowedPoets] = useState([]);
   const [contests, setContests] = useState([]);
+  const [contestGrades, setContestGrades] = useState([]);
   const [categories, setCategories] = useState([]);
   const [achievements, setAchievements] = useState([]);
+  const [quizAchievements, setQuizAchievements] = useState([]);
+  const [achievementStats, setAchievementStats] = useState(null);
+  const [achievementsLoading, setAchievementsLoading] = useState(false);
 
   // Analytics state
   const [readerStats, setReaderStats] = useState({
@@ -279,10 +285,31 @@ const ReaderDashboard = () => {
                   ],
             }));
           }
+          
+          // Fetch contest grades separately
+          try {
+            const gradesRes = await dashboardAPI.getMyContestGrades();
+            if (gradesRes?.data?.success) {
+              setContestGrades(gradesRes.data.data || []);
+            }
+          } catch (gradesErr) {
+            console.log("Could not fetch contest grades:", gradesErr.message);
+          }
+          
           return; // Success, no need for fallback
         }
       } catch (apiError) {
         console.log("Dashboard API not available, using fallback:", apiError.message);
+      }
+
+      // Fetch contest grades separately
+      try {
+        const gradesRes = await dashboardAPI.getMyContestGrades();
+        if (gradesRes?.data?.success) {
+          setContestGrades(gradesRes.data.data || []);
+        }
+      } catch (gradesErr) {
+        console.log("Could not fetch contest grades:", gradesErr.message);
       }
       
       // If dashboard API doesn't exist, fall back to individual APIs
@@ -299,6 +326,16 @@ const ReaderDashboard = () => {
       setBookmarkedPoems([]);
       setRecommendations([]);
       setAchievements([]);
+      
+      // Still try to fetch contest grades even if main dashboard fails
+      try {
+        const gradesRes = await dashboardAPI.getMyContestGrades();
+        if (gradesRes?.data?.success) {
+          setContestGrades(gradesRes.data.data || []);
+        }
+      } catch (gradesErr) {
+        console.log("Could not fetch contest grades:", gradesErr.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -485,6 +522,28 @@ const ReaderDashboard = () => {
       showMessage("error", error.response?.data?.message || "بُک مارک اپڈیٹ نہیں ہو سکا");
     }
   };
+
+  // Fetch achievements (quiz + contest results)
+  const fetchAchievements = async () => {
+    if (achievementsLoading) return;
+    try {
+      setAchievementsLoading(true);
+      const { data } = await dashboardAPI.getMyAchievements();
+      if (data.success) {
+        setQuizAchievements(data.data.quizResults || []);
+        setContestGrades(data.data.contestResults || []);
+        setAchievementStats(data.data.stats || null);
+      }
+    } catch (error) {
+      console.log("Could not fetch achievements:", error.message);
+    } finally {
+      setAchievementsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "مقابلے") fetchAchievements();
+  }, [activeTab]);
 
   const handleLike = async (poemId) => {
     // Validation
@@ -788,6 +847,7 @@ const ReaderDashboard = () => {
               { id: "تجاویز", label: "تجاویز", icon: Sparkles },
               { id: "شاعر", label: "پسندیدہ شاعر", icon: Users },
               { id: "تجزیات", label: "میرے اعداد و شمار", icon: BarChart3 },
+              { id: "مقابلے", label: "مقابلے کے نتائج", icon: Trophy },
             ].map((tab) => (
               <TabButton
                 key={tab.id}
@@ -1520,6 +1580,222 @@ const ReaderDashboard = () => {
                 </div>
               </div>
             </Card>
+          </div>
+        )}
+
+        {activeTab === "مقابلے" && (
+          <div className="space-y-8">
+            {/* Achievement Stats Summary */}
+            {achievementStats && (achievementStats.totalQuizzes > 0 || achievementStats.totalContests > 0) && (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[
+                  { label: "کل کوئزز", value: achievementStats.totalQuizzes, icon: Brain, color: "text-blue-600", bg: "bg-blue-50" },
+                  { label: "کامیاب کوئزز", value: achievementStats.passedQuizzes, icon: CheckCircle, color: "text-green-600", bg: "bg-green-50" },
+                  { label: "ٹاپ 3 کوئز", value: achievementStats.quizTop3, icon: Medal, color: "text-purple-600", bg: "bg-purple-50" },
+                  { label: "کل مقابلے", value: achievementStats.totalContests, icon: Trophy, color: "text-yellow-600", bg: "bg-yellow-50" },
+                  { label: "مقابلے جیتے", value: achievementStats.contestWins, icon: Award, color: "text-amber-600", bg: "bg-amber-50" },
+                  { label: "ٹاپ 3 مقابلے", value: achievementStats.top3Finishes, icon: Star, color: "text-orange-600", bg: "bg-orange-50" },
+                ].map((s) => (
+                  <Card key={s.label} className="p-4 text-center">
+                    <s.icon className={`w-6 h-6 mx-auto mb-2 ${s.color}`} />
+                    <div className="text-2xl font-bold text-urdu-brown">{s.value}</div>
+                    <div className="text-xs text-gray-500">{s.label}</div>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {achievementsLoading && (
+              <div className="flex justify-center py-12">
+                <LoadingSpinner size="large" />
+              </div>
+            )}
+
+            {/* ===== QUIZ RESULTS ===== */}
+            {!achievementsLoading && (
+              <div className="space-y-6">
+                <h3 className="text-xl font-semibold text-urdu-brown flex items-center">
+                  <Brain className="w-6 h-6 mr-3 text-blue-600" />
+                  کوئز کے نتائج
+                </h3>
+
+                {quizAchievements.length === 0 ? (
+                  <Card className="p-8 text-center">
+                    <Brain className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h4 className="text-lg font-semibold text-gray-500 mb-2">
+                      ابھی تک کوئی کوئز نہیں دیا
+                    </h4>
+                    <p className="text-gray-400">
+                      جب آپ کوئز دیں گے تو آپ کے نتائج یہاں نظر آئیں گے
+                    </p>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {quizAchievements.map((q, idx) => {
+                      const timeMins = q.timeSpent ? Math.floor(q.timeSpent / 60) : 0;
+                      const timeSecs = q.timeSpent ? q.timeSpent % 60 : 0;
+                      // Badge logic: >=90% = gold, >=80% = silver, >=50% = pass, <50% = failed
+                      const badge = q.percentage >= 90
+                        ? { label: "گولڈ", gradient: "from-yellow-300 via-amber-400 to-yellow-500", ring: "ring-yellow-400", text: "text-yellow-900", shadow: "shadow-yellow-300/50", tagBg: "bg-gradient-to-r from-yellow-100 to-amber-100", tagText: "text-amber-800", tagBorder: "border-amber-300" }
+                        : q.percentage >= 80
+                        ? { label: "سلور", gradient: "from-gray-200 via-slate-300 to-gray-400", ring: "ring-gray-400", text: "text-gray-800", shadow: "shadow-gray-300/50", tagBg: "bg-gradient-to-r from-gray-100 to-slate-100", tagText: "text-gray-700", tagBorder: "border-gray-300" }
+                        : q.percentage >= 50
+                        ? { label: "پاس", gradient: "from-emerald-200 via-green-300 to-teal-400", ring: "ring-green-400", text: "text-green-900", shadow: "shadow-green-300/50", tagBg: "bg-gradient-to-r from-emerald-50 to-green-50", tagText: "text-green-700", tagBorder: "border-green-300" }
+                        : { label: "ناکام", gradient: "from-red-200 via-red-300 to-red-400", ring: "ring-red-300", text: "text-red-900", shadow: "shadow-red-200/50", tagBg: "bg-gradient-to-r from-red-50 to-rose-50", tagText: "text-red-700", tagBorder: "border-red-200" };
+
+                      return (
+                        <Card key={idx} className="p-5">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            {/* Quiz Info */}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2 flex-wrap">
+                                <h4 className="text-lg font-bold text-urdu-brown">
+                                  {q.quizTitle}
+                                </h4>
+                                {/* Professional badge tag */}
+                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${badge.tagBg} ${badge.tagText} ${badge.tagBorder}`}>
+                                  <span className={`w-2 h-2 rounded-full bg-gradient-to-br ${badge.gradient}`} />
+                                  {badge.label} تمغا
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+                                <span>
+                                  {q.difficulty === "beginner" ? "آسان" : q.difficulty === "intermediate" ? "درمیانہ" : "مشکل"}
+                                </span>
+                                <span className="text-gray-300">|</span>
+                                <span>وقت: {timeMins}:{String(timeSecs).padStart(2, "0")}</span>
+                                <span className="text-gray-300">|</span>
+                                <span>{q.completedAt && new Date(q.completedAt).toLocaleDateString("ur-PK")}</span>
+                                {q.totalParticipants > 0 && (
+                                  <>
+                                    <span className="text-gray-300">|</span>
+                                    <span>{q.totalParticipants} شرکاء</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Professional Score Badge */}
+                            <div className={`relative w-20 h-20 rounded-full bg-gradient-to-br ${badge.gradient} ring-[3px] ${badge.ring} shadow-lg ${badge.shadow} flex items-center justify-center flex-shrink-0`}>
+                              <div className="absolute inset-1 rounded-full bg-white/20" />
+                              <div className="relative text-center">
+                                <div className={`text-xl font-black ${badge.text} leading-none`}>{q.percentage}%</div>
+                                <div className={`text-[8px] font-bold ${badge.text} mt-0.5`}>{badge.label}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ===== CONTEST RESULTS ===== */}
+            {!achievementsLoading && (
+              <div className="space-y-6">
+                <h3 className="text-xl font-semibold text-urdu-brown flex items-center">
+                  <Trophy className="w-6 h-6 mr-3 text-yellow-600" />
+                  مقابلے کے نتائج اور نمبرات
+                </h3>
+
+                {contestGrades.length === 0 ? (
+                  <Card className="p-8 text-center">
+                    <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h4 className="text-lg font-semibold text-gray-500 mb-2">
+                      ابھی تک کوئی مقابلے کے نتائج نہیں
+                    </h4>
+                    <p className="text-gray-400">
+                      جب آپ کسی مقابلے میں حصہ لیں گے اور نمبرات دیے جائیں گے تو یہاں نظر آئیں گے
+                    </p>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {contestGrades.map((entry, index) => (
+                      <Card key={index} className="p-6">
+                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                          {/* Contest Info */}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h4 className="text-lg font-bold text-urdu-brown">
+                                {entry.contestTitle}
+                              </h4>
+                              {entry.isWinner && (
+                                <span className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-bold">
+                                  <Trophy className="w-3 h-3 mr-1" /> فاتح
+                                </span>
+                              )}
+                              {entry.position && entry.position <= 3 && !entry.isWinner && (
+                                <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">
+                                  <Award className="w-3 h-3 mr-1" /> پوزیشن #{entry.position}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-500 mb-1">
+                              شاعری: <span className="font-medium text-gray-700">{entry.poemTitle}</span>
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {entry.submittedAt && new Date(entry.submittedAt).toLocaleDateString("ur-PK")}
+                              {" · "}
+                              {entry.contestStatus === "completed" ? "مکمل" :
+                               entry.contestStatus === "active" ? "فعال" :
+                               entry.contestStatus === "judging" ? "فیصلے کا مرحلہ" : entry.contestStatus}
+                            </p>
+                          </div>
+
+                          {/* Grade Info */}
+                          {entry.grade && entry.grade.score != null ? (
+                            <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 min-w-[280px]">
+                              <div className="flex items-center justify-between mb-3">
+                                <span className="text-sm font-semibold text-green-800">کل نمبرات</span>
+                                <span className="text-2xl font-bold text-green-700">
+                                  {entry.grade.score}<span className="text-sm text-green-500">/100</span>
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-5 gap-2 mb-3">
+                                {[
+                                  { label: "تخلیقیت", value: entry.grade.creativity },
+                                  { label: "زبان", value: entry.grade.language },
+                                  { label: "موضوع", value: entry.grade.theme },
+                                  { label: "ساخت", value: entry.grade.structure },
+                                  { label: "اثر", value: entry.grade.impact },
+                                ].map((criterion) => (
+                                  <div key={criterion.label} className="text-center">
+                                    <div className="text-lg font-bold text-green-700">
+                                      {criterion.value ?? "-"}
+                                    </div>
+                                    <div className="text-[10px] text-green-600">{criterion.label}</div>
+                                    <div className="text-[9px] text-green-400">/10</div>
+                                  </div>
+                                ))}
+                              </div>
+                              {entry.grade.feedback && (
+                                <div className="bg-white rounded-lg p-3 border border-green-100">
+                                  <p className="text-xs text-gray-500 mb-1">جج کی رائے:</p>
+                                  <p className="text-sm text-gray-700">{entry.grade.feedback}</p>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center min-w-[200px]">
+                              <Clock className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                              <p className="text-sm text-gray-500">نمبرات ابھی نہیں دیے گئے</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {entry.prize && (
+                          <div className="mt-3 inline-flex items-center px-3 py-1 bg-yellow-50 text-yellow-700 rounded-full text-sm border border-yellow-200">
+                            <Star className="w-4 h-4 mr-1" /> انعام: {entry.prize}
+                          </div>
+                        )}
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

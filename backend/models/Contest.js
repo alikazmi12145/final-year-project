@@ -142,6 +142,21 @@ const contestSchema = new mongoose.Schema({
       type: String,
       enum: ["submitted", "under_review", "qualified", "disqualified"],
       default: "submitted"
+    },
+    // Admin Grading
+    grade: {
+      score: { type: Number, min: 0, max: 100 },
+      creativity: { type: Number, min: 0, max: 10 },
+      language: { type: Number, min: 0, max: 10 },
+      theme: { type: Number, min: 0, max: 10 },
+      structure: { type: Number, min: 0, max: 10 },
+      impact: { type: Number, min: 0, max: 10 },
+      feedback: String,
+      gradedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      gradedAt: Date
     }
   }],
   

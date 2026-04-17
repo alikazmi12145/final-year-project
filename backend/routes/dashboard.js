@@ -4,6 +4,7 @@ import { auth, moderatorAuth } from "../middleware/auth.js";
 import Poem from "../models/Poem.js";
 import User from "../models/User.js";
 import Contest from "../models/Contest.js";
+import Quiz from "../models/Quiz.js";
 import ReadingHistory from "../models/ReadingHistory.js";
 import Bookmark from "../models/Bookmark.js";
 
@@ -562,6 +563,83 @@ router.get("/moderation-queue", auth, moderatorAuth, async (req, res) => {
   }
 });
 
+// Get logged-in user's contest grades
+router.get("/my-contest-grades", auth, async (req, res) => {
+  try {
+    const userId = req.user.userId.toString();
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    // Find all contests where this user has submissions
+    const contests = await Contest.find({
+      "submissions.participant": userObjectId
+    })
+      .select("title description status category startDate endDate submissions results winner runnerUps")
+      .populate("submissions.participant", "name email")
+      .populate("submissions.poem", "title")
+      .populate("submissions.grade.gradedBy", "name")
+      .populate("results.participant", "name")
+      .lean();
+
+    const userGrades = [];
+
+    for (const contest of contests) {
+      // Find this user's submissions in the contest
+      const userSubmissions = contest.submissions.filter(
+        (s) => s.participant && s.participant._id.toString() === userId
+      );
+
+      for (const sub of userSubmissions) {
+        // Check if user has a position in results
+        let position = null;
+        let prize = null;
+        if (contest.results && contest.results.length > 0) {
+          const result = contest.results.find(
+            (r) => r.participant && r.participant._id.toString() === userId
+          );
+          if (result) {
+            position = result.position;
+            prize = result.prize;
+          }
+        }
+
+        // Check if user is the winner
+        const isWinner = contest.winner && contest.winner.toString() === userId;
+
+        userGrades.push({
+          contestId: contest._id,
+          contestTitle: contest.title,
+          contestStatus: contest.status,
+          contestCategory: contest.category,
+          startDate: contest.startDate,
+          endDate: contest.endDate,
+          submittedAt: sub.submittedAt,
+          submissionStatus: sub.status,
+          poemTitle: sub.poem?.title || "نامعلوم",
+          grade: sub.grade || null,
+          position,
+          prize,
+          isWinner,
+        });
+      }
+    }
+
+    // Sort by most recent first
+    userGrades.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+    res.json({
+      success: true,
+      data: userGrades,
+    });
+  } catch (error) {
+    console.error("My contest grades error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch contest grades",
+      error: error.message,
+    });
+  }
+});
+
 // Get reader dashboard data
 router.get("/reader", auth, async (req, res) => {
   try {
@@ -956,5 +1034,135 @@ function calculateAchievements(likesGiven, bookmarksCount, commentsCount, readin
   
   return achievements;
 }
+
+// ============= QUIZ & CONTEST ACHIEVEMENTS =============
+router.get("/my-achievements", auth, async (req, res) => {
+  try {
+    const userId = req.user.userId.toString();
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    // ---- Quiz Achievements ----
+    const quizzes = await Quiz.find({
+      "attempts.user": userObjectId,
+    })
+      .select("title category difficulty timeLimit attempts leaderboard passingScore")
+      .populate("leaderboard.user", "name profileImage")
+      .lean();
+
+    const quizResults = [];
+    for (const quiz of quizzes) {
+      const userAttempts = quiz.attempts.filter(
+        (a) => a.user?.toString() === userId && a.completedAt
+      );
+      if (userAttempts.length === 0) continue;
+
+      // Best attempt
+      const best = userAttempts.reduce((a, b) =>
+        (b.percentage || 0) > (a.percentage || 0) ? b : a
+      );
+
+      // Leaderboard rank
+      let rank = null;
+      if (quiz.leaderboard && quiz.leaderboard.length > 0) {
+        const sorted = [...quiz.leaderboard].sort(
+          (a, b) => (b.bestPercentage || 0) - (a.bestPercentage || 0) || (a.bestTime || Infinity) - (b.bestTime || Infinity)
+        );
+        const idx = sorted.findIndex((e) => e.user?._id?.toString() === userId || e.user?.toString() === userId);
+        if (idx !== -1) rank = idx + 1;
+      }
+
+      quizResults.push({
+        quizId: quiz._id,
+        quizTitle: quiz.title,
+        category: quiz.category,
+        difficulty: quiz.difficulty,
+        score: best.score,
+        percentage: best.percentage,
+        passed: best.passed,
+        timeSpent: best.timeSpent,
+        timeLimit: quiz.timeLimit,
+        passingScore: quiz.passingScore || 60,
+        completedAt: best.completedAt,
+        rank,
+        totalParticipants: quiz.leaderboard?.length || 0,
+      });
+    }
+
+    quizResults.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+
+    // ---- Contest Achievements ----
+    const contests = await Contest.find({
+      "submissions.participant": userObjectId,
+    })
+      .select("title status category submissions results winner runnerUps")
+      .populate("submissions.participant", "name")
+      .populate("submissions.poem", "title")
+      .lean();
+
+    const contestResults = [];
+    for (const contest of contests) {
+      const userSubs = contest.submissions.filter(
+        (s) => s.participant?._id?.toString() === userId
+      );
+      for (const sub of userSubs) {
+        let position = null;
+        let prize = null;
+        if (contest.results?.length > 0) {
+          const r = contest.results.find(
+            (r) => r.participant?.toString() === userId
+          );
+          if (r) { position = r.position; prize = r.prize; }
+        }
+        const isWinner = contest.winner?.toString() === userId;
+
+        contestResults.push({
+          contestId: contest._id,
+          contestTitle: contest.title,
+          contestStatus: contest.status,
+          category: contest.category,
+          poemTitle: sub.poem?.title || "نامعلوم",
+          submittedAt: sub.submittedAt,
+          grade: sub.grade || null,
+          position,
+          prize,
+          isWinner,
+        });
+      }
+    }
+
+    contestResults.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+    // ---- Summary Stats ----
+    const totalQuizzes = quizResults.length;
+    const passedQuizzes = quizResults.filter((q) => q.passed).length;
+    const totalContests = contestResults.length;
+    const contestWins = contestResults.filter((c) => c.isWinner).length;
+    const top3Finishes = contestResults.filter((c) => c.position && c.position <= 3).length;
+    const quizTop3 = quizResults.filter((q) => q.rank && q.rank <= 3).length;
+
+    res.json({
+      success: true,
+      data: {
+        quizResults,
+        contestResults,
+        stats: {
+          totalQuizzes,
+          passedQuizzes,
+          totalContests,
+          contestWins,
+          top3Finishes,
+          quizTop3,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("My achievements error:", error);
+    res.status(500).json({
+      success: false,
+      message: "کامیابیاں حاصل کرنے میں مشکل",
+      error: error.message,
+    });
+  }
+});
 
 export default router;

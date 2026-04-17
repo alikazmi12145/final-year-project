@@ -77,6 +77,9 @@ export const AuthProvider = ({ children }) => {
       if (response.data.success) {
         const token = response.data.accessToken || response.data.token;
         localStorage.setItem("token", token);
+        if (response.data.refreshToken) {
+          localStorage.setItem("refreshToken", response.data.refreshToken);
+        }
         setUser(response.data.user);
 
         // Redirect based on role or intended path
