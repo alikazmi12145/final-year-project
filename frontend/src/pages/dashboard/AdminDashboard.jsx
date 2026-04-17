@@ -46,9 +46,12 @@ import {
   MessagesSquare,
   Upload,
   ChevronLeft,
+  Newspaper,
+  MessageSquare,
 } from "lucide-react";
 import LearningResourcesUpload from "../../components/admin/LearningResourcesUpload";
 import UserApprovalPanel from "../../components/admin/UserApprovalPanel";
+import AdminUpdatesDashboard from "../../components/admin/AdminUpdatesDashboard";
 import {
   adminDashboardAPI,
   formatTimeAgo,
@@ -202,22 +205,17 @@ const AdminDashboard = () => {
       if (response.success) {
         const { stats } = response;
 
-        // Transform API data to match dashboard requirements
+        // Transform API data to match dashboard requirements - ALL REAL DATA
         const dashboardStats = {
           totalUsers: stats.users.total,
           totalPoems: stats.content.poems.total,
           totalContests: stats.content.contests.total,
           activeUsers: stats.users.total - stats.users.pending,
           pendingApprovals: stats.users.pending,
-          weeklyGrowth: calculateGrowthPercentage(
-            stats.users.newThisMonth,
-            stats.users.previousMonth || 100
-          ),
-          topPoets: Math.floor(stats.users.poets * 0.1),
+          weeklyGrowth: stats.growth?.users || 0,
+          topPoets: stats.analytics?.topPerformers?.length || 0,
           contentModeration: stats.content.poems.underReview,
-          monthlyRevenue: stats.revenue?.monthly || 0,
-          userSatisfaction: stats.satisfaction?.rate || "0",
-          onlineNow: stats.users.onlineNow || 0,
+          userSatisfaction: stats.satisfaction?.rate || 0,
           totalViews: stats.analytics?.totalViews || 0,
           todayRegistrations: stats.users.newThisMonth,
           pendingReviews: stats.content.poems.underReview,
@@ -225,6 +223,13 @@ const AdminDashboard = () => {
           readers: stats.users.readers,
           moderators: stats.users.moderators || 0,
           admins: stats.users.admins || 1,
+          // Growth percentages from backend
+          growthUsers: stats.growth?.users || 0,
+          growthPoems: stats.growth?.poems || 0,
+          growthPending: stats.growth?.pending || 0,
+          growthViews: stats.growth?.views || 0,
+          previousMonthUsers: stats.users.previousMonth || 0,
+          totalLikes: stats.analytics?.totalLikes || 0,
         };
 
         // Transform recent activity from API data
@@ -259,18 +264,10 @@ const AdminDashboard = () => {
           stats: dashboardStats,
           recentActivity,
           insights: {
-            popularGenres: stats.analytics?.popularGenres || [
-              "غزل",
-              "نظم",
-              "قطعہ",
-              "رباعی",
-              "حمد",
-              "نعت",
-              "مرثیہ",
-            ],
-            engagementRate: stats.analytics?.engagementRate || "0",
-            userSatisfaction: stats.satisfaction?.rate || "0",
-            contentQuality: stats.analytics?.contentQuality || "0",
+            popularGenres: stats.analytics?.popularGenres || [],
+            engagementRate: stats.analytics?.engagementRate || 0,
+            userSatisfaction: stats.satisfaction?.rate || 0,
+            contentQuality: stats.analytics?.contentQuality || 0,
             weeklyStats: {
               newUsers: stats.users.newThisMonth,
               newPoems: stats.content.poems.newThisMonth,
@@ -279,7 +276,7 @@ const AdminDashboard = () => {
             },
             topPerformers: stats.analytics?.topPerformers || [],
             platformHealth: {
-              serverUptime: stats.system?.uptime || "0%",
+              serverUptime: stats.system?.uptime || "0",
               responseTime: stats.system?.responseTime || "0ms",
               errorRate: stats.system?.errorRate || "0%",
               storageUsed: stats.system?.storageUsed || "0%",
@@ -842,6 +839,18 @@ const AdminDashboard = () => {
       color: "text-teal-600",
     },
     {
+      id: "updates-news",
+      label: "خبریں و اپ ڈیٹس",
+      icon: Newspaper,
+      color: "text-cyan-600",
+    },
+    {
+      id: "user-feedback",
+      label: "صارفین کی رائے",
+      icon: MessageSquare,
+      color: "text-pink-600",
+    },
+    {
       id: "analytics",
       label: "تجزیات",
       icon: TrendingUp,
@@ -1070,6 +1079,8 @@ const AdminDashboard = () => {
             {activeTab === "quiz-management" && <QuizManagementTab />}
             {activeTab === "user-approval" && <UserApprovalPanel />}
             {activeTab === "learning-resources" && <LearningResourcesUpload />}
+            {activeTab === "updates-news" && <AdminUpdatesDashboard />}
+            {activeTab === "user-feedback" && <FeedbackViewTab />}
             {activeTab === "analytics" && (
               <AnalyticsTab dashboardData={dashboardData} />
             )}
@@ -1899,34 +1910,34 @@ const OverviewTab = ({ dashboardData }) => {
         <DynamicStatCard
           title="کل صارفین"
           value={stats.totalUsers}
-          change={`+${stats.weeklyGrowth}%`}
+          change={`${stats.growthUsers >= 0 ? '+' : ''}${stats.growthUsers}%`}
           icon={Users}
           color="blue"
-          trend="up"
+          trend={stats.growthUsers > 0 ? "up" : stats.growthUsers < 0 ? "down" : "stable"}
           subtitle={`آج ${stats.todayRegistrations} نئے`}
         />
         <DynamicStatCard
           title="شعراء"
           value={stats.poets}
-          change="+12.5%"
+          change={`${stats.growthUsers >= 0 ? '+' : ''}${stats.growthUsers}%`}
           icon={Edit}
           color="green"
-          trend="up"
+          trend={stats.poets > 0 ? "up" : "stable"}
           subtitle={`${stats.pendingApprovals} منتظر منظوری`}
         />
         <DynamicStatCard
           title="قاری"
           value={stats.readers}
-          change="+8.3%"
+          change={`${stats.growthUsers >= 0 ? '+' : ''}${stats.growthUsers}%`}
           icon={BookOpen}
           color="purple"
-          trend="up"
+          trend={stats.readers > 0 ? "up" : "stable"}
           subtitle="فعال قارئین"
         />
         <DynamicStatCard
           title="منتظمین"
           value={stats.moderators}
-          change="مستحکم"
+          change={stats.moderators > 0 ? "فعال" : "مستحکم"}
           icon={Shield}
           color="orange"
           trend="stable"
@@ -1939,29 +1950,29 @@ const OverviewTab = ({ dashboardData }) => {
         <DynamicStatCard
           title="منتظر منظوری"
           value={stats.pendingApprovals}
-          change="-5.2%"
+          change={`${stats.growthPending >= 0 ? '+' : ''}${stats.growthPending}%`}
           icon={Clock}
           color="yellow"
-          trend="down"
-          subtitle="کم ہو رہے ہیں"
+          trend={stats.growthPending < 0 ? "down" : stats.growthPending > 0 ? "up" : "stable"}
+          subtitle={stats.growthPending < 0 ? "کم ہو رہے ہیں" : stats.growthPending > 0 ? "بڑھ رہے ہیں" : "مستحکم"}
         />
         <DynamicStatCard
           title="کل مناظر"
           value={formatNumber(stats.totalViews)}
-          change="+22.1%"
+          change={`${stats.growthViews >= 0 ? '+' : ''}${stats.growthViews}%`}
           icon={Eye}
           color="indigo"
-          trend="up"
+          trend={stats.growthViews > 0 ? "up" : stats.growthViews < 0 ? "down" : "stable"}
           subtitle="اس ماہ"
         />
         <DynamicStatCard
           title="صارفین کی رضامندی"
           value={`${stats.userSatisfaction}%`}
-          change="+2.1%"
+          change={stats.userSatisfaction > 70 ? "بہترین" : stats.userSatisfaction > 40 ? "اچھا" : "بہتری ضرور"}
           icon={Heart}
           color="pink"
-          trend="up"
-          subtitle="بہترین ریٹنگ"
+          trend={stats.userSatisfaction > 50 ? "up" : "stable"}
+          subtitle="اوسط ریٹنگ"
         />
       </div>
 
@@ -2042,22 +2053,26 @@ const OverviewTab = ({ dashboardData }) => {
             مقبول اصناف
           </h4>
           <div className="space-y-3">
-            {insights.popularGenres.map((genre, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <span className="text-sm font-medium">{genre}</span>
-                <div className="flex items-center">
-                  <div className="w-20 bg-gray-200 rounded-full h-2 ml-2">
-                    <div
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.random() * 60 + 30}%` }}
-                    ></div>
+            {insights.popularGenres.length > 0 ? (
+              insights.popularGenres.map((genre, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{genre.name || genre}</span>
+                  <div className="flex items-center">
+                    <div className="w-20 bg-gray-200 rounded-full h-2 ml-2">
+                      <div
+                        className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${genre.percentage || 0}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-xs text-gray-500 w-8">
+                      {genre.percentage || 0}%
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-500 w-8">
-                    {Math.floor(Math.random() * 40 + 10)}%
-                  </span>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-gray-400 text-sm text-center py-4">کوئی ڈیٹا دستیاب نہیں</p>
+            )}
           </div>
         </div>
 
@@ -2070,22 +2085,22 @@ const OverviewTab = ({ dashboardData }) => {
           <div className="space-y-4">
             <HealthMetric
               label="سرور اپ ٹائم"
-              value={insights.platformHealth?.serverUptime || "99.9%"}
+              value={insights.platformHealth?.serverUptime || "0"}
               color="green"
             />
             <HealthMetric
               label="جوابی وقت"
-              value={insights.platformHealth?.responseTime || "125ms"}
+              value={insights.platformHealth?.responseTime || "0ms"}
               color="blue"
             />
             <HealthMetric
               label="خرابی کی شرح"
-              value={insights.platformHealth?.errorRate || "0.12%"}
+              value={insights.platformHealth?.errorRate || "0%"}
               color="yellow"
             />
             <HealthMetric
               label="استعمال شدہ جگہ"
-              value={insights.platformHealth?.storageUsed || "72.3%"}
+              value={insights.platformHealth?.storageUsed || "0%"}
               color="purple"
             />
           </div>
@@ -2093,7 +2108,7 @@ const OverviewTab = ({ dashboardData }) => {
       </div>
 
       {/* Top Performers - Enhanced */}
-      {insights.topPerformers && (
+      {insights.topPerformers && insights.topPerformers.length > 0 && (
         <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
           <h4 className="font-bold text-lg mb-4 flex items-center">
             <Crown className="w-5 h-5 ml-2 text-purple-600" />
@@ -2103,7 +2118,11 @@ const OverviewTab = ({ dashboardData }) => {
             {insights.topPerformers.map((performer, index) => (
               <TopPerformerCard
                 key={index}
-                performer={performer}
+                performer={{
+                  name: performer.name,
+                  metric: `${performer.totalPoems} نظمیں • ${formatNumber(performer.totalViews)} مناظر`,
+                  value: performer.totalLikes,
+                }}
                 rank={index + 1}
               />
             ))}
@@ -4361,20 +4380,529 @@ const ContestManagementTab = ({ contests, onContestCreated }) => {
   );
 };
 
-// Other Tab Components (simplified for brevity)
-const PoetBiographiesTab = () => (
-  <div className="urdu-text-local">
-    <h2 className="text-2xl font-bold mb-6">شعراء کی سوانح عمری</h2>
-    <p className="text-gray-600">یہ سیکشن جلد ہی دستیاب ہوگا...</p>
-  </div>
-);
+// Poet Biographies Tab - Full Implementation
+const PoetBiographiesTab = () => {
+  const [poets, setPoets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [eraFilter, setEraFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({});
+  const [selectedPoet, setSelectedPoet] = useState(null);
 
-const AchievementsTab = () => (
-  <div className="urdu-text-local">
-    <h2 className="text-2xl font-bold mb-6">کامیابیوں کی نمائش</h2>
-    <p className="text-gray-600">یہ سیکشن جلد ہی دستیاب ہوگا...</p>
-  </div>
-);
+  const eras = [
+    { value: "all", label: "تمام ادوار" },
+    { value: "classical", label: "کلاسیکی" },
+    { value: "modern", label: "جدید" },
+    { value: "contemporary", label: "عصر حاضر" },
+    { value: "progressive", label: "ترقی پسند" },
+    { value: "traditional", label: "روایتی" },
+  ];
+
+  const fetchPoets = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        page,
+        limit: 12,
+        sortBy: "name",
+        sortOrder: "asc",
+      });
+      if (searchTerm) params.append("search", searchTerm);
+      if (eraFilter !== "all") params.append("era", eraFilter);
+
+      const response = await fetch(`/api/biographies?${params}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setPoets(data.poets || []);
+        setPagination(data.pagination || {});
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      console.error("Error fetching poets:", err);
+      setError("شعراء کی سوانح حاصل کرنے میں خرابی");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (poetId) => {
+    if (!window.confirm("کیا آپ واقعی اس شاعر کی سوانح حذف کرنا چاہتے ہیں؟")) return;
+    try {
+      const response = await fetch(`/api/biographies/${poetId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        fetchPoets();
+      }
+    } catch (err) {
+      console.error("Error deleting poet:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchPoets();
+  }, [page, eraFilter]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+      fetchPoets();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const getEraLabel = (era) => {
+    const map = {
+      classical: "کلاسیکی",
+      modern: "جدید",
+      contemporary: "عصر حاضر",
+      progressive: "ترقی پسند",
+      traditional: "روایتی",
+    };
+    return map[era] || era || "—";
+  };
+
+  const getImageUrl = (img) => {
+    if (!img) return null;
+    if (typeof img === "string") return img.startsWith("http") ? img : `http://localhost:5000${img}`;
+    const url = img.url || img.secure_url;
+    if (!url) return null;
+    return url.startsWith("http") ? url : `http://localhost:5000${url}`;
+  };
+
+  if (loading && poets.length === 0) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 urdu-text-local">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">شعراء کی سوانح عمری</h2>
+        <span className="text-gray-500 text-sm">
+          کل: {pagination.totalPoets || 0} شعراء
+        </span>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="شاعر کا نام تلاش کریں..."
+            className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+            dir="rtl"
+          />
+        </div>
+        <select
+          value={eraFilter}
+          onChange={(e) => { setEraFilter(e.target.value); setPage(1); }}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+          dir="rtl"
+        >
+          {eras.map((era) => (
+            <option key={era.value} value={era.value}>{era.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg">{error}</div>
+      )}
+
+      {/* Selected Poet Detail */}
+      {selectedPoet && (
+        <div className="bg-white rounded-xl shadow-lg p-6 border border-purple-200">
+          <div className="flex justify-between items-start mb-4">
+            <h3 className="text-xl font-bold text-purple-800">{selectedPoet.name}</h3>
+            <button
+              onClick={() => setSelectedPoet(null)}
+              className="text-gray-400 hover:text-gray-600 text-xl"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm" dir="rtl">
+            {selectedPoet.penName && (
+              <div><span className="font-medium text-gray-600">تخلص:</span> {selectedPoet.penName}</div>
+            )}
+            <div><span className="font-medium text-gray-600">دور:</span> {getEraLabel(selectedPoet.era)}</div>
+            {selectedPoet.birthPlace && (
+              <div>
+                <span className="font-medium text-gray-600">جائے پیدائش:</span>{" "}
+                {typeof selectedPoet.birthPlace === "object"
+                  ? [selectedPoet.birthPlace.city, selectedPoet.birthPlace.region, selectedPoet.birthPlace.country].filter(Boolean).join("، ")
+                  : selectedPoet.birthPlace}
+              </div>
+            )}
+            {selectedPoet.isDeceased !== undefined && (
+              <div>
+                <span className="font-medium text-gray-600">حیثیت:</span>{" "}
+                {selectedPoet.isDeceased ? "مرحوم" : "زندہ"}
+              </div>
+            )}
+            <div>
+              <span className="font-medium text-gray-600">پیروکار:</span>{" "}
+              {selectedPoet.followersCount || 0}
+            </div>
+          </div>
+          {selectedPoet.shortBio && (
+            <p className="mt-4 text-gray-700 leading-relaxed" dir="rtl">{selectedPoet.shortBio}</p>
+          )}
+          {selectedPoet.achievements && selectedPoet.achievements.length > 0 && (
+            <div className="mt-4" dir="rtl">
+              <h4 className="font-medium text-gray-600 mb-2">کامیابیاں:</h4>
+              <div className="flex flex-wrap gap-2">
+                {selectedPoet.achievements.map((a, i) => (
+                  <span key={i} className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
+                    🏆 {typeof a === "string" ? a : a.title || a.name || "—"}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Poets Grid */}
+      {poets.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {poets.map((poet) => (
+            <div
+              key={poet._id}
+              className="bg-white rounded-xl shadow hover:shadow-lg transition-shadow p-5 border border-gray-100 cursor-pointer"
+              onClick={() => setSelectedPoet(poet)}
+            >
+              <div className="flex items-start gap-3 mb-3">
+                {getImageUrl(poet.profileImage) ? (
+                  <img
+                    src={getImageUrl(poet.profileImage)}
+                    alt={poet.name}
+                    className="w-12 h-12 rounded-full object-cover border-2 border-purple-200"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-lg">
+                    {poet.name?.charAt(0)}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-gray-800 truncate">{poet.name}</h3>
+                  {poet.penName && (
+                    <p className="text-sm text-gray-500">تخلص: {poet.penName}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <span className="bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded">
+                  {getEraLabel(poet.era)}
+                </span>
+                {poet.isDeceased && (
+                  <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded">مرحوم</span>
+                )}
+                {poet.memorialStatus && (
+                  <span className="bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded">یادگار</span>
+                )}
+                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded flex items-center gap-1">
+                  👥 {poet.followersCount || 0} پیروکار
+                </span>
+              </div>
+              {poet.shortBio && (
+                <p className="text-gray-600 text-sm line-clamp-2 mb-3" dir="rtl">
+                  {poet.shortBio}
+                </p>
+              )}
+              <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setSelectedPoet(poet); }}
+                  className="text-purple-600 hover:text-purple-800 text-sm font-medium"
+                >
+                  تفصیلات دیکھیں
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDelete(poet._id); }}
+                  className="text-red-500 hover:text-red-700 text-sm"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12 text-gray-500">
+          <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <p>کوئی شاعر نہیں ملا</p>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex justify-center gap-2 mt-6">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={!pagination.hasPrev}
+            className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50"
+          >
+            پچھلا
+          </button>
+          <span className="px-4 py-2 text-gray-600">
+            صفحہ {pagination.currentPage} / {pagination.totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={!pagination.hasNext}
+            className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50"
+          >
+            اگلا
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Achievements Showcase Tab - Full Implementation
+const AchievementsTab = () => {
+  const [poets, setPoets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedPoetAchievements, setSelectedPoetAchievements] = useState(null);
+  const [loadingAchievements, setLoadingAchievements] = useState(false);
+
+  const fetchPoets = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/biographies?limit=50&sortBy=name&sortOrder=asc", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        // Only show poets that have achievements or awards
+        const poetsWithAchievements = (data.poets || []).filter(
+          (p) => (p.achievements && p.achievements.length > 0)
+        );
+        setPoets(poetsWithAchievements.length > 0 ? poetsWithAchievements : data.poets || []);
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      console.error("Error fetching poets:", err);
+      setError("شعراء کی کامیابیاں حاصل کرنے میں خرابی");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAchievements = async (poetId, poetName) => {
+    try {
+      setLoadingAchievements(true);
+      const response = await fetch(`/api/biographies/achievements/${poetId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setSelectedPoetAchievements({ ...data.poet, _id: poetId });
+      }
+    } catch (err) {
+      console.error("Error fetching achievements:", err);
+    } finally {
+      setLoadingAchievements(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPoets();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 urdu-text-local">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">کامیابیوں کی نمائش</h2>
+        <span className="text-gray-500 text-sm">{poets.length} شعراء</span>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg">{error}</div>
+      )}
+
+      {/* Selected Poet Achievements Detail */}
+      {selectedPoetAchievements && (
+        <div className="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl shadow-lg p-6 border border-yellow-200">
+          <div className="flex justify-between items-start mb-4">
+            <h3 className="text-xl font-bold text-amber-800">
+              🏆 {selectedPoetAchievements.name} کی کامیابیاں
+            </h3>
+            <button
+              onClick={() => setSelectedPoetAchievements(null)}
+              className="text-gray-400 hover:text-gray-600 text-xl"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Achievements */}
+          {selectedPoetAchievements.achievements && selectedPoetAchievements.achievements.length > 0 && (
+            <div className="mb-4" dir="rtl">
+              <h4 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <Star className="w-4 h-4 text-yellow-500" /> کامیابیاں
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {selectedPoetAchievements.achievements.map((a, i) => (
+                  <div key={i} className="bg-white p-3 rounded-lg border border-yellow-100">
+                    <p className="font-medium">{typeof a === "string" ? a : a.title || a.name || "—"}</p>
+                    {a.description && <p className="text-sm text-gray-500 mt-1">{a.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Awards */}
+          {selectedPoetAchievements.awards && selectedPoetAchievements.awards.length > 0 && (
+            <div className="mb-4" dir="rtl">
+              <h4 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <Award className="w-4 h-4 text-amber-500" /> ایوارڈز
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {selectedPoetAchievements.awards.map((award, i) => (
+                  <div key={i} className="bg-white p-3 rounded-lg border border-amber-100">
+                    <p className="font-medium">{typeof award === "string" ? award : award.name || "—"}</p>
+                    {award.year && <span className="text-xs text-gray-500">{award.year}</span>}
+                    {award.awardedBy && <p className="text-sm text-gray-500">{award.awardedBy}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Famous Works */}
+          {selectedPoetAchievements.famousWorks && selectedPoetAchievements.famousWorks.length > 0 && (
+            <div className="mb-4" dir="rtl">
+              <h4 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-purple-500" /> مشہور تصانیف
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {selectedPoetAchievements.famousWorks.map((work, i) => (
+                  <span key={i} className="bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full">
+                    📖 {typeof work === "string" ? work : work.title || "—"}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Published Poems Stats */}
+          {selectedPoetAchievements.publishedPoems !== undefined && (
+            <div className="mt-4 bg-white p-4 rounded-lg border border-gray-200" dir="rtl">
+              <p className="text-gray-700">
+                <span className="font-medium">شائع شدہ اشعار:</span>{" "}
+                <span className="text-lg font-bold text-purple-600">
+                  {selectedPoetAchievements.publishedPoems}
+                </span>
+              </p>
+            </div>
+          )}
+
+          {/* No data message */}
+          {(!selectedPoetAchievements.achievements || selectedPoetAchievements.achievements.length === 0) &&
+           (!selectedPoetAchievements.awards || selectedPoetAchievements.awards.length === 0) &&
+           (!selectedPoetAchievements.famousWorks || selectedPoetAchievements.famousWorks.length === 0) && (
+            <p className="text-gray-500 text-center py-4">اس شاعر کی کامیابیوں کی تفصیلات دستیاب نہیں ہیں</p>
+          )}
+        </div>
+      )}
+
+      {loadingAchievements && (
+        <div className="flex justify-center py-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-600"></div>
+        </div>
+      )}
+
+      {/* Poets Grid */}
+      {poets.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {poets.map((poet) => (
+            <div
+              key={poet._id}
+              className="bg-white rounded-xl shadow hover:shadow-lg transition-all p-5 border border-gray-100 cursor-pointer hover:border-yellow-300"
+              onClick={() => fetchAchievements(poet._id, poet.name)}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center text-white font-bold">
+                  {poet.name?.charAt(0)}
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-800">{poet.name}</h3>
+                  {poet.penName && (
+                    <p className="text-xs text-gray-500">{poet.penName}</p>
+                  )}
+                </div>
+              </div>
+
+              {poet.achievements && poet.achievements.length > 0 && (
+                <div className="mb-2">
+                  <div className="flex flex-wrap gap-1">
+                    {poet.achievements.slice(0, 2).map((a, i) => (
+                      <span key={i} className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded">
+                        🏆 {typeof a === "string" ? a : a.title || a.name || "—"}
+                      </span>
+                    ))}
+                    {poet.achievements.length > 2 && (
+                      <span className="text-xs text-gray-400">+{poet.achievements.length - 2} مزید</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center pt-2 border-t border-gray-100 mt-2">
+                <span className="text-xs text-gray-400">
+                  {poet.era || "—"}
+                </span>
+                <button className="text-yellow-600 hover:text-yellow-800 text-sm font-medium">
+                  کامیابیاں دیکھیں →
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12 text-gray-500">
+          <Award className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <p>کوئی شاعر نہیں ملا</p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const AnalyticsTab = ({ dashboardData }) => (
   <div className="space-y-6 urdu-text-local">
@@ -4421,6 +4949,144 @@ const AnalyticsTab = ({ dashboardData }) => (
     )}
   </div>
 );
+
+// ─────────────────────────────────────────
+// FeedbackViewTab – shows user feedback inside admin dashboard
+// ─────────────────────────────────────────
+const FeedbackViewTab = () => {
+  const [feedback, setFeedback] = useState([]);
+  const [stats, setStats] = useState({ averageRating: 0, totalFeedback: 0, distribution: [] });
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({});
+
+  const fetchFeedback = async () => {
+    try {
+      setLoading(true);
+      const { default: api } = await import("../../services/api");
+      const res = await api.feedback.getAll({ page, limit: 10 });
+      if (res.data.success) {
+        setFeedback(res.data.data);
+        setStats(res.data.stats || { averageRating: 0, totalFeedback: 0, distribution: [] });
+        setPagination(res.data.pagination || {});
+      }
+    } catch (err) {
+      console.error("Feedback load error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchFeedback(); }, [page]);
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("کیا واقعی اس رائے کو حذف کرنا چاہتے ہیں؟")) return;
+    try {
+      const { default: api } = await import("../../services/api");
+      await api.feedback.delete(id);
+      fetchFeedback();
+    } catch {
+      console.error("Delete failed");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-amber-200 border-t-amber-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 urdu-text-local" dir="rtl">
+      <h2 className="text-2xl font-bold text-amber-900">صارفین کی رائے</h2>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl shadow-sm border border-amber-100 p-5 text-center">
+          <p className="text-3xl font-bold text-amber-700">{Number(stats.averageRating || 0).toFixed(1)}</p>
+          <div className="flex justify-center gap-0.5 my-1">
+            {[1, 2, 3, 4, 5].map((s) => (
+              <Star key={s} className={`w-4 h-4 ${s <= Math.round(stats.averageRating) ? "text-amber-400 fill-amber-400" : "text-gray-300"}`} />
+            ))}
+          </div>
+          <p className="text-sm text-gray-500">اوسط درجہ</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-amber-100 p-5 text-center">
+          <p className="text-3xl font-bold text-amber-700">{stats.totalFeedback}</p>
+          <p className="text-sm text-gray-500">کل رائے</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-amber-100 p-5">
+          <p className="text-sm text-gray-500 mb-2 text-center">درجہ بندی تقسیم</p>
+          {[5, 4, 3, 2, 1].map((rating) => {
+            const item = stats.distribution?.find((d) => d.rating === rating);
+            const count = item?.count || 0;
+            const pct = stats.totalFeedback > 0 ? (count / stats.totalFeedback) * 100 : 0;
+            return (
+              <div key={rating} className="flex items-center gap-2 text-xs mb-1">
+                <span className="w-4 text-right">{rating}</span>
+                <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                  <div className="bg-amber-400 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                </div>
+                <span className="w-6 text-right text-gray-500">{count}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Feedback List */}
+      <div className="space-y-3">
+        {feedback.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-xl border border-amber-100">
+            <MessageSquare className="w-12 h-12 text-amber-300 mx-auto mb-3" />
+            <p className="text-gray-500">ابھی تک کوئی رائے موصول نہیں ہوئی</p>
+          </div>
+        ) : (
+          feedback.map((fb) => (
+            <div key={fb._id} className="bg-white rounded-xl shadow-sm border border-amber-100 p-5 flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="font-bold text-amber-900">{fb.name}</span>
+                  <span className="text-xs text-gray-400" dir="ltr">{fb.email}</span>
+                </div>
+                <div className="flex gap-0.5 mb-2">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star key={s} className={`w-4 h-4 ${s <= fb.rating ? "text-amber-400 fill-amber-400" : "text-gray-300"}`} />
+                  ))}
+                </div>
+                <p className="text-gray-700">{fb.message}</p>
+                <p className="text-xs text-gray-400 mt-2">
+                  {new Date(fb.createdAt).toLocaleDateString("ur-PK")} — {new Date(fb.createdAt).toLocaleTimeString("ur-PK")}
+                </p>
+              </div>
+              <button onClick={() => handleDelete(fb._id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg shrink-0" title="حذف کریں">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-6">
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}
+            className="p-2 rounded-lg bg-amber-100 text-amber-800 disabled:opacity-40 hover:bg-amber-200 transition">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <span className="text-sm text-amber-800">{page} / {pagination.totalPages}</span>
+          <button onClick={() => setPage((p) => p + 1)} disabled={page >= pagination.totalPages}
+            className="p-2 rounded-lg bg-amber-100 text-amber-800 disabled:opacity-40 hover:bg-amber-200 transition">
+            <ChevronLeft className="w-5 h-5 rotate-180" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const SettingsTab = () => (
   <div className="space-y-6 urdu-text-local">

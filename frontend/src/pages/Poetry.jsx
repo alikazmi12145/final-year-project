@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useMessage } from "../context/MessageContext";
 import { poetryAPI } from "../services/api";
@@ -29,8 +29,16 @@ import {
 
 const Poetry = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { showSuccess, showError, showWarning } = useMessage();
+
+  // Redirect to poetry collection page if no ID is provided
+  useEffect(() => {
+    if (!id) {
+      navigate("/poetry-collection", { replace: true });
+    }
+  }, [id, navigate]);
 
   // State management
   const [poem, setPoem] = useState(null);

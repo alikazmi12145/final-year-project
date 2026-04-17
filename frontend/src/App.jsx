@@ -39,6 +39,11 @@ import OAuthSuccessHandler from "./components/auth/OAuthSuccessHandler";
 // Chat Page
 import ChatPage from "./pages/ChatPage";
 
+// Updates & Feedback Module
+import NewsFeedPage from "./pages/NewsFeedPage";
+import FeedbackPage from "./pages/FeedbackPage";
+import AdminUpdatesDashboard from "./components/admin/AdminUpdatesDashboard";
+
 function App() {
   return (
     <Layout>
@@ -160,6 +165,18 @@ function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Updates & Feedback Module Routes */}
+        <Route path="/news-feed" element={<NewsFeedPage />} />
+        <Route path="/feedback" element={<FeedbackPage />} />
+        <Route
+          path="/admin/updates"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminUpdatesDashboard />
             </ProtectedRoute>
           }
         />

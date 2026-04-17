@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, User, Mail, Lock, Shield, Feather, AlertCircle, RotateCcw } from "lucide-react";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { Button } from "../components/ui/Button";
+import { getRedirectPathForRole } from "../components/auth/RoleBasedRedirect";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -77,7 +78,7 @@ const Auth = () => {
     if (successMessage) showAlertMessage(successMessage, "success");
   }, [successMessage]);
 
-  const from = location.state?.from?.pathname || "/dashboard";
+  const from = location.state?.from?.pathname || null;
 
   const onSubmit = async (data) => {
     try {
@@ -142,7 +143,12 @@ const Auth = () => {
           return;
         }
         showAlertMessage(isLogin ? "کامیابی سے لاگ ان ہو گئے!" : "اکاؤنٹ کامیابی سے بن گیا!", "success");
-        setTimeout(() => navigate(from, { replace: true }), 1500);
+        if (!isLogin) {
+          // For registration, redirect with role-based path
+          const redirectTo = from || getRedirectPathForRole(result.user?.role || result.role || selectedRole);
+          setTimeout(() => navigate(redirectTo, { replace: true }), 1500);
+        }
+        // For login, AuthContext.login() already handles navigation
       } else {
         if (result?.code === "PENDING_APPROVAL") {
           showAlertMessage(result?.message || "آپ کا اکاؤنٹ ایڈمن کی منظوری کا منتظر ہے۔", "warning");

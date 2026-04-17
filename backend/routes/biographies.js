@@ -135,6 +135,120 @@ router.post(
   }
 );
 
+// ============= SPECIFIC NAMED ROUTES (must come before /:id) =============
+
+/**
+ * @route   GET /api/biographies/achievements/:id
+ * @desc    Get detailed achievements and works for a poet
+ * @access  Public
+ */
+router.get("/achievements/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const poet = await Poet.findById(id).select(
+      "name achievements awards famousWorks yearsActive"
+    );
+
+    if (!poet) {
+      return res.status(404).json({
+        success: false,
+        message: "Poet not found",
+      });
+    }
+
+    // Get published poems by this poet
+    const publishedPoems = await Poem.find({
+      poet: id,
+      status: "published",
+    })
+      .select("title publishedAt views averageRating totalRatings")
+      .sort({ publishedAt: -1 });
+
+    res.json({
+      success: true,
+      poet: {
+        name: poet.name,
+        achievements: poet.achievements,
+        awards: poet.awards,
+        famousWorks: poet.famousWorks,
+        yearsActive: poet.yearsActive,
+        publishedPoems: publishedPoems.length,
+        poemsDetails: publishedPoems,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching achievements:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch poet achievements",
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * @route   GET /api/biographies/classical/:poet
+ * @desc    Get classical poet biography from Rekhta API
+ * @access  Public
+ */
+router.get("/classical/:poet", async (req, res) => {
+  try {
+    const { poet } = req.params;
+
+    // First check if we have this poet in our database
+    const localPoet = await Poet.findOne({
+      $or: [
+        { name: { $regex: new RegExp(poet, "i") } },
+        { penName: { $regex: new RegExp(poet, "i") } },
+      ],
+      era: "classical",
+    });
+
+    if (localPoet) {
+      return res.json({
+        success: true,
+        source: "local",
+        poet: localPoet,
+      });
+    }
+
+    // If not found locally, fetch from Rekhta
+    try {
+      const rekhtaData = await rekhtaService.getPoetBiography(poet);
+
+      if (rekhtaData.success) {
+        res.json({
+          success: true,
+          source: "rekhta",
+          poet: rekhtaData.biography,
+          poems: rekhtaData.samplePoems || [],
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: "Classical poet not found in Rekhta database",
+          availablePoets: rekhtaService.getSupportedPoets(),
+        });
+      }
+    } catch (rekhtaError) {
+      console.error("Rekhta API error:", rekhtaError);
+      res.status(500).json({
+        success: false,
+        message: "Unable to fetch classical poet data at this time",
+        error: "External service temporarily unavailable",
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching classical poet:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch classical poet biography",
+      error: error.message,
+    });
+  }
+});
+
 /**
  * @route   GET /api/biographies/:id
  * @desc    Get a specific poet biography by ID
@@ -323,70 +437,6 @@ router.delete("/:id", [auth, adminAuth], async (req, res) => {
   }
 });
 
-// ============= CLASSICAL POETS FROM REKHTA =============
-
-/**
- * @route   GET /api/biographies/classical/:poet
- * @desc    Get classical poet biography from Rekhta API
- * @access  Public
- */
-router.get("/classical/:poet", async (req, res) => {
-  try {
-    const { poet } = req.params;
-
-    // First check if we have this poet in our database
-    const localPoet = await Poet.findOne({
-      $or: [
-        { name: { $regex: new RegExp(poet, "i") } },
-        { penName: { $regex: new RegExp(poet, "i") } },
-      ],
-      era: "classical",
-    });
-
-    if (localPoet) {
-      return res.json({
-        success: true,
-        source: "local",
-        poet: localPoet,
-      });
-    }
-
-    // If not found locally, fetch from Rekhta
-    try {
-      const rekhtaData = await rekhtaService.getPoetBiography(poet);
-
-      if (rekhtaData.success) {
-        res.json({
-          success: true,
-          source: "rekhta",
-          poet: rekhtaData.biography,
-          poems: rekhtaData.samplePoems || [],
-        });
-      } else {
-        res.status(404).json({
-          success: false,
-          message: "Classical poet not found in Rekhta database",
-          availablePoets: rekhtaService.getSupportedPoets(),
-        });
-      }
-    } catch (rekhtaError) {
-      console.error("Rekhta API error:", rekhtaError);
-      res.status(500).json({
-        success: false,
-        message: "Unable to fetch classical poet data at this time",
-        error: "External service temporarily unavailable",
-      });
-    }
-  } catch (error) {
-    console.error("Error fetching classical poet:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch classical poet biography",
-      error: error.message,
-    });
-  }
-});
-
 // ============= BROWSE AND SEARCH BIOGRAPHIES =============
 
 /**
@@ -448,7 +498,7 @@ router.get("/", async (req, res) => {
 
     const poets = await Poet.find(query)
       .select(
-        "name penName shortBio era isDeceased birthPlace memorialStatus profileImage achievements"
+        "name penName shortBio era isDeceased birthPlace memorialStatus profileImage achievements followersCount"
       )
       .sort(sortOptions)
       .skip(skip)
@@ -537,56 +587,6 @@ router.put("/:id/memorial", [auth, adminAuth], async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to update memorial status",
-      error: error.message,
-    });
-  }
-});
-
-/**
- * @route   GET /api/biographies/achievements/:id
- * @desc    Get detailed achievements and works for a poet
- * @access  Public
- */
-router.get("/achievements/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const poet = await Poet.findById(id).select(
-      "name achievements awards famousWorks yearsActive"
-    );
-
-    if (!poet) {
-      return res.status(404).json({
-        success: false,
-        message: "Poet not found",
-      });
-    }
-
-    // Get published poems by this poet
-    const publishedPoems = await Poem.find({
-      poet: id,
-      status: "published",
-    })
-      .select("title publishedAt views averageRating totalRatings")
-      .sort({ publishedAt: -1 });
-
-    res.json({
-      success: true,
-      poet: {
-        name: poet.name,
-        achievements: poet.achievements,
-        awards: poet.awards,
-        famousWorks: poet.famousWorks,
-        yearsActive: poet.yearsActive,
-        publishedPoems: publishedPoems.length,
-        poemsDetails: publishedPoems,
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching achievements:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch poet achievements",
       error: error.message,
     });
   }

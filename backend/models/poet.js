@@ -156,6 +156,16 @@ const poetSchema = new mongoose.Schema({
     memorialSites: [String]
   },
   
+  // Followers
+  followers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  followersCount: {
+    type: Number,
+    default: 0
+  },
+  
   // Statistics
   stats: {
     totalPoems: { type: Number, default: 0 },

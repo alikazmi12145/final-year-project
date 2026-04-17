@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
+import { getRedirectPathForRole } from "./RoleBasedRedirect";
 
 const OAuthSuccessHandler = () => {
   const [searchParams] = useSearchParams();
@@ -71,8 +72,9 @@ const OAuthSuccessHandler = () => {
           setMessage("Google authentication successful! Redirecting...");
 
           // Small delay to show success message
+          const redirectPath = getRedirectPathForRole(result.user?.role);
           setTimeout(() => {
-            navigate("/dashboard", { replace: true });
+            navigate(redirectPath, { replace: true });
           }, 2000);
         } else {
           setStatus("error");

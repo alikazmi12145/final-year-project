@@ -9,6 +9,8 @@ import EnhancedPoetSearch from "../components/poetry/EnhancedPoetSearch";
 import {
   User,
   Users,
+  UserPlus,
+  UserMinus,
   BookOpen,
   Heart,
   Star,
@@ -29,6 +31,8 @@ const Poets = () => {
   const [loading, setLoading] = useState(true);
   const [loadingPoems, setLoadingPoems] = useState(false);
   const [error, setError] = useState(null);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
   const [filters, setFilters] = useState({
     page: 1,
     limit: 20,
@@ -138,6 +142,7 @@ const Poets = () => {
         });
         setSelectedPoet(poetWithStats);
         setPoetPoems(response.data.poems || []);
+        setIsFollowing(response.data.isFollowing || false);
       } else {
         setError("Poet not found");
       }
@@ -152,6 +157,31 @@ const Poets = () => {
 
   const [searchResults, setSearchResults] = useState([]);
   const [selectedTab, setSelectedTab] = useState("biography");
+
+  const handleFollowToggle = async () => {
+    try {
+      setFollowLoading(true);
+      const { poetAPI } = await import("../services/api.jsx");
+      const response = await poetAPI.followPoet(poet._id);
+      if (response?.data?.success) {
+        setIsFollowing(response.data.following);
+        setSelectedPoet(prev => ({
+          ...prev,
+          stats: {
+            ...prev.stats,
+            followers: response.data.followersCount
+          }
+        }));
+      }
+    } catch (error) {
+      console.error("Follow toggle error:", error);
+      if (error.response?.status === 401) {
+        alert("براہ کرم پہلے لاگ ان کریں");
+      }
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const poet = id ? (selectedPoet || poets.find((p) => p._id === id)) : null;
 
@@ -203,6 +233,26 @@ const Poets = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Follow Button */}
+                <button
+                  onClick={handleFollowToggle}
+                  disabled={followLoading}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-urdu text-sm transition-all duration-300 shadow-md hover:shadow-lg mb-3 ${
+                    isFollowing
+                      ? "bg-urdu-gold text-white hover:bg-cultural-burgundy"
+                      : "bg-gradient-to-r from-urdu-gold to-cultural-amber text-white hover:from-cultural-amber hover:to-urdu-gold"
+                  } ${followLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  {followLoading ? (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  ) : isFollowing ? (
+                    <UserMinus className="w-4 h-4" />
+                  ) : (
+                    <UserPlus className="w-4 h-4" />
+                  )}
+                  {isFollowing ? "فالو ہٹائیں" : "فالو کریں"}
+                </button>
 
                 {/* Enhanced Bio Section */}
                 <div className="bg-gradient-to-r from-urdu-light/50 to-cultural-pearl/50 p-4 rounded-xl mb-4 border border-urdu-gold/10">
