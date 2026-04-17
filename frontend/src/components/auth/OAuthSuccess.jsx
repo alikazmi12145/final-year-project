@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
+import { getRedirectPathForRole } from "./RoleBasedRedirect";
 
 const OAuthSuccess = () => {
   const navigate = useNavigate();
@@ -28,10 +29,11 @@ const OAuthSuccess = () => {
           localStorage.setItem("refreshToken", refreshToken);
 
           // Update auth context
-          await loginWithTokens(accessToken, refreshToken);
+          const result = await loginWithTokens(accessToken, refreshToken);
 
-          // Redirect to dashboard
-          navigate("/dashboard");
+          // Redirect based on user role
+          const redirectPath = getRedirectPathForRole(result?.user?.role);
+          navigate(redirectPath);
         } else {
           navigate("/auth?error=missing_tokens");
         }

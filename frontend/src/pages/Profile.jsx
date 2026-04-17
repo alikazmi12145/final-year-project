@@ -462,23 +462,19 @@ const Profile = () => {
               <span className="text-urdu-brown font-medium">Home</span>
             </button>
 
-            {/* Dashboard Link for Poets/Admins */}
-            {(user?.role === "poet" ||
-              user?.role === "admin" ||
-              user?.role === "moderator") && (
-              <button
-                onClick={() => {
-                  if (user?.role === "admin") navigate("/admin");
-                  else if (user?.role === "poet") navigate("/poet");
-                  else if (user?.role === "moderator") navigate("/moderator");
-                  else navigate("/dashboard");
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-urdu-brown text-white rounded-lg hover:bg-urdu-maroon transition-colors"
-              >
-                <BarChart3 className="w-4 h-4" />
-                <span className="font-medium">Dashboard</span>
-              </button>
-            )}
+            {/* Dashboard Link */}
+            <button
+              onClick={() => {
+                if (user?.role === "admin") navigate("/admin");
+                else if (user?.role === "poet") navigate("/poet");
+                else if (user?.role === "moderator") navigate("/moderator");
+                else navigate("/dashboard");
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-urdu-brown text-white rounded-lg hover:bg-urdu-maroon transition-colors"
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span className="font-medium">Dashboard</span>
+            </button>
           </div>
 
           <div className="flex items-center gap-3">

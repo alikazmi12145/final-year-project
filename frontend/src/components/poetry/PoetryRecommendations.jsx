@@ -272,7 +272,7 @@ const PoetryRecommendations = () => {
                   : "کچھ دیر بعد دوبارہ کوشش کریں"}
               </p>
               <Button
-                onClick={() => (window.location.href = "/poetry")}
+                onClick={() => (window.location.href = "/poetry-collection")}
                 variant="primary"
               >
                 شاعری تلاش کریں

@@ -57,25 +57,33 @@ router.post("/", auth, uploadFields, PoetryCollectionController.createPoem);
 router.get("/", PoetryCollectionController.getAllPoems);
 
 /**
+ * @route   GET /api/poetry/favorites
+ * @desc    Get user's favorite poems
+ * @access  Private
+ * @params  ?page=1&limit=12
+ */
+router.get("/favorites", auth, PoetryCollectionController.getFavorites);
+
+/**
  * @route   GET /api/poetry/:id
  * @desc    Get single poem by ID with detailed information
  * @access  Public (view count tracked if authenticated)
  */
-router.get("/:id", PoetryCollectionController.getPoemById);
+router.get("/:id([0-9a-fA-F]{24})", PoetryCollectionController.getPoemById);
 
 /**
  * @route   PUT /api/poetry/:id
  * @desc    Update poem
  * @access  Private (author only or admin)
  */
-router.put("/:id", auth, uploadFields, PoetryCollectionController.updatePoem);
+router.put("/:id([0-9a-fA-F]{24})", auth, uploadFields, PoetryCollectionController.updatePoem);
 
 /**
  * @route   DELETE /api/poetry/:id
  * @desc    Delete poem
  * @access  Private (author only or admin)
  */
-router.delete("/:id", auth, PoetryCollectionController.deletePoem);
+router.delete("/:id([0-9a-fA-F]{24})", auth, PoetryCollectionController.deletePoem);
 
 // ============= INTERACTION ROUTES =============
 
@@ -346,14 +354,6 @@ router.delete(
   auth,
   PoetryCollectionController.removeFromFavorites
 );
-
-/**
- * @route   GET /api/poetry/favorites
- * @desc    Get user's favorite poems
- * @access  Private
- * @params  ?page=1&limit=12
- */
-router.get("/favorites", auth, PoetryCollectionController.getFavorites);
 
 // ============= AI POETRY ANALYSIS ROUTES =============
 

@@ -320,6 +320,49 @@ const api = {
         params: { query },
       }),
   },
+
+  // ── News Feed Posts ──
+  posts: {
+    getAll: (params = {}) => axiosInstance.get("/posts", { params }),
+    getById: (id) => axiosInstance.get(`/posts/${id}`),
+    create: (data) => axiosInstance.post("/posts", data),
+    update: (id, data) => axiosInstance.put(`/posts/${id}`, data),
+    delete: (id) => axiosInstance.delete(`/posts/${id}`),
+    toggleLike: (id) => axiosInstance.post(`/posts/${id}/like`),
+    report: (id, reason) => axiosInstance.post(`/posts/${id}/report`, { reason }),
+    getReported: (params = {}) => axiosInstance.get("/posts/admin/reported", { params }),
+    moderateReport: (postId, reportId, action) =>
+      axiosInstance.put(`/posts/admin/${postId}/reports/${reportId}`, { action }),
+  },
+
+  // ── Comments on Posts ──
+  comments: {
+    getByPost: (postId, params = {}) => axiosInstance.get(`/comments/${postId}`, { params }),
+    add: (postId, data) => axiosInstance.post(`/comments/${postId}`, data),
+    delete: (id) => axiosInstance.delete(`/comments/item/${id}`),
+    toggleLike: (id) => axiosInstance.post(`/comments/${id}/like`),
+    report: (id, reason) => axiosInstance.post(`/comments/${id}/report`, { reason }),
+    getReported: (params = {}) => axiosInstance.get("/comments/admin/reported", { params }),
+    moderateReport: (commentId, reportId, action) =>
+      axiosInstance.put(`/comments/admin/${commentId}/reports/${reportId}`, { action }),
+  },
+
+  // ── Notifications ──
+  notifications: {
+    getAll: (params = {}) => axiosInstance.get("/notifications", { params }),
+    getUnreadCount: () => axiosInstance.get("/notifications/unread-count"),
+    markAsRead: (id) => axiosInstance.put(`/notifications/${id}/read`),
+    markAllAsRead: () => axiosInstance.put("/notifications/read-all"),
+    delete: (id) => axiosInstance.delete(`/notifications/${id}`),
+    sendAnnouncement: (message) => axiosInstance.post("/notifications/announce", { message }),
+  },
+
+  // ── General Feedback ──
+  feedback: {
+    submit: (data) => axiosInstance.post("/feedback", data),
+    getAll: (params = {}) => axiosInstance.get("/feedback", { params }),
+    delete: (id) => axiosInstance.delete(`/feedback/${id}`),
+  },
 };
 
 //
@@ -473,6 +516,9 @@ export const poetAPI = {
   getPoetProfile: (id) => axiosInstance.get(`/poets/${id}/profile`),
   getPoetPoems: (id, params = {}) =>
     axiosInstance.get(`/poets/${id}/poems`, { params }),
+
+  // Follow/Unfollow a poet
+  followPoet: (id) => axiosInstance.post(`/poets/${id}/follow`),
 
   // Search poets
   searchPoets: (query, filters = {}) =>

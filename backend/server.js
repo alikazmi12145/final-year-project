@@ -311,6 +311,12 @@ const startServer = async () => {
     const pdfExportRoutes = await import("./routes/pdfExport.js");
     const aiSearchRoutes = await import("./routes/aiSearch.js");
 
+    // Updates & Feedback Module routes
+    const postRoutes = await import("./routes/posts.js");
+    const commentRoutes = await import("./routes/comments.js");
+    const notificationRoutes = await import("./routes/notifications.js");
+    const feedbackRoutes = await import("./routes/feedback.js");
+
     // Apply routes
     app.use("/api/auth", authRoutes.default);
     app.use("/api/auth", oauthRoutes.default);
@@ -332,6 +338,12 @@ const startServer = async () => {
     app.use("/api/history", historyRoutes.default);
     app.use("/api/pdf", pdfExportRoutes.default);
     app.use("/api/ai-search", aiSearchRoutes.default);
+
+    // Updates & Feedback Module routes
+    app.use("/api/posts", postRoutes.default);
+    app.use("/api/comments", commentRoutes.default);
+    app.use("/api/notifications", notificationRoutes.default);
+    app.use("/api/feedback", feedbackRoutes.default);
 
     console.log("✅ Routes loaded successfully");
     console.log("🤖 AI Search routes available at /api/ai-search");

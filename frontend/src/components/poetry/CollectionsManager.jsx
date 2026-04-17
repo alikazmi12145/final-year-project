@@ -41,11 +41,11 @@ const CollectionsManager = () => {
     { value: "educational", label: "تعلیمی" },
   ];
 
-  // Fetch user's favorites
+  // Fetch user's bookmarked poems
   const fetchFavorites = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/poetry/favorites", {
+      const response = await fetch("/api/bookmarks", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -53,14 +53,19 @@ const CollectionsManager = () => {
 
       const data = await response.json();
       if (data.success) {
-        setFavorites(data.poems || []);
+        // Extract poem data from bookmark objects
+        const poems = (data.bookmarks || []).map((b) => ({
+          ...b.poem,
+          bookmarkId: b._id,
+        })).filter((p) => p._id);
+        setFavorites(poems);
         setPagination(data.pagination || {});
       } else {
         setError(data.message);
       }
     } catch (err) {
-      console.error("Error fetching favorites:", err);
-      setError("پسندیدہ شاعری حاصل کرنے میں خرابی");
+      console.error("Error fetching bookmarks:", err);
+      setError("بُک مارک شاعری حاصل کرنے میں خرابی");
     } finally {
       setLoading(false);
     }
@@ -134,10 +139,10 @@ const CollectionsManager = () => {
     }
   };
 
-  // Remove from favorites
+  // Remove bookmark by poem ID
   const handleRemoveFromFavorites = async (poemId) => {
     try {
-      const response = await fetch(`/api/poetry/${poemId}/favorites`, {
+      const response = await fetch(`/api/bookmarks/poem/${poemId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -147,13 +152,13 @@ const CollectionsManager = () => {
       const data = await response.json();
       if (data.success) {
         alert(data.message);
-        fetchFavorites(); // Refresh favorites
+        fetchFavorites(); // Refresh bookmarks
       } else {
         alert(data.message);
       }
     } catch (err) {
-      console.error("Error removing from favorites:", err);
-      alert("پسندیدہ سے ہٹاتے وقت خرابی ہوئی");
+      console.error("Error removing bookmark:", err);
+      alert("بُک مارک ہٹاتے وقت خرابی ہوئی");
     }
   };
 
@@ -211,7 +216,7 @@ const CollectionsManager = () => {
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
             >
-              پسندیدہ شاعری
+              بُک مارک شاعری
             </button>
             <button
               onClick={() => setActiveTab("collections")}
@@ -242,7 +247,7 @@ const CollectionsManager = () => {
               className="text-2xl font-semibold text-gray-800"
               style={{ fontFamily: "Jameel Noori Nastaleeq" }}
             >
-              پسندیدہ شاعری
+              بُک مارک شاعری
             </h2>
             <span className="text-gray-500">{favorites.length} شاعری</span>
           </div>
@@ -263,10 +268,10 @@ const CollectionsManager = () => {
                 className="text-gray-500 text-lg"
                 style={{ fontFamily: "Jameel Noori Nastaleeq" }}
               >
-                آپ نے ابھی تک کوئی شاعری پسندیدہ میں شامل نہیں کی
+                آپ نے ابھی تک کوئی شاعری بُک مارک نہیں کی
               </p>
               <Button
-                onClick={() => (window.location.href = "/poetry")}
+                onClick={() => (window.location.href = "/poetry-collection")}
                 variant="primary"
                 className="mt-4"
               >
@@ -456,9 +461,19 @@ const CollectionsManager = () => {
  * Favorite Poem Card Component
  */
 const FavoritePoemCard = ({ poem, onRemove }) => {
-  const getExcerpt = (content, maxLength = 100) => {
-    if (content.length <= maxLength) return content;
-    return content.substring(0, maxLength) + "...";
+  const getExcerpt = (text, maxLength = 100) => {
+    if (!text) return "";
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + "...";
+  };
+
+  // Get display content from content or verses
+  const getDisplayContent = () => {
+    if (poem.content) return poem.content;
+    if (poem.verses && poem.verses.length > 0) {
+      return poem.verses.map((v) => v.text || v.hemistich1 || "").join("\n");
+    }
+    return "";
   };
 
   return (
@@ -469,7 +484,7 @@ const FavoritePoemCard = ({ poem, onRemove }) => {
             className="text-lg font-bold text-gray-800 mb-2"
             style={{ fontFamily: "Jameel Noori Nastaleeq" }}
           >
-            {poem.title}
+            {poem.title || poem.urduTitle}
           </h3>
 
           {poem.author && (
@@ -483,7 +498,7 @@ const FavoritePoemCard = ({ poem, onRemove }) => {
             style={{ fontFamily: "Jameel Noori Nastaleeq" }}
             dir="rtl"
           >
-            {getExcerpt(poem.content)}
+            {getExcerpt(getDisplayContent())}
           </div>
 
           <div className="flex justify-between items-center text-xs text-gray-500 mb-4">

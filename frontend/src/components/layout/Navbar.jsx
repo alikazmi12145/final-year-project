@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useChatNotifications } from "../../context/ChatNotificationContext";
 import { canAccessDashboard } from "../auth/RoleBasedRedirect";
+import NotificationsPanel from "../notifications/NotificationsPanel";
 import {
   Menu,
   X,
@@ -18,17 +19,22 @@ import {
   Feather,
   MessageCircle,
   Brain,
+  Newspaper,
+  MessageSquare,
+  ChevronDown,
 } from "lucide-react";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef(null);
   const { user, logout, isAuthenticated, hasRole } = useAuth();
   const { unreadCount } = useChatNotifications();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Enhanced Urdu navigation items with cultural aesthetics
-  const navItems = [
+  // Primary nav items (always visible in desktop)
+  const primaryNavItems = [
     { path: "/", label: "گھر", urduLabel: "گھر", icon: Home },
     { path: "/search", label: "تلاش", urduLabel: "تلاش", icon: Search },
     {
@@ -39,6 +45,16 @@ const Navbar = () => {
     },
     { path: "/poets", label: "شعراء", urduLabel: "شعراء", icon: Users },
     { path: "/contests", label: "مقابلے", urduLabel: "مقابلے", icon: Trophy },
+    {
+      path: "/news-feed",
+      label: "خبریں",
+      urduLabel: "خبریں",
+      icon: Newspaper,
+    },
+  ];
+
+  // Secondary nav items (in "More" dropdown on desktop)
+  const secondaryNavItems = [
     { path: "/quizzes", label: "کوئز", urduLabel: "کوئز", icon: Brain },
     {
       path: "/learning",
@@ -52,7 +68,16 @@ const Navbar = () => {
       urduLabel: "تجاویز",
       icon: Feather,
     },
+    {
+      path: "/feedback",
+      label: "رائے",
+      urduLabel: "رائے",
+      icon: MessageSquare,
+    },
   ];
+
+  // All items combined for mobile menu
+  const navItems = [...primaryNavItems, ...secondaryNavItems];
 
   // Auth-only navigation items (shown only when logged in)
   const authNavItems = [
@@ -71,12 +96,25 @@ const Navbar = () => {
     setIsOpen(false);
   };
 
+  // Close "more" dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (moreRef.current && !moreRef.current.contains(e.target)) {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
-    <nav className="bg-gradient-to-r from-white via-urdu-cream/20 to-white backdrop-blur-md shadow-lg border-b-2 border-urdu-gold/30 sticky top-0 z-50 overflow-hidden">
+    <nav className="bg-gradient-to-r from-white via-urdu-cream/20 to-white backdrop-blur-md shadow-lg border-b-2 border-urdu-gold/30 sticky top-0 z-50">
       {/* Islamic geometric pattern overlay */}
-      <div className="absolute inset-0 opacity-5 bg-gradient-to-r from-urdu-maroon/10 via-transparent to-urdu-gold/10"></div>
-      <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-urdu-gold/10 to-transparent rounded-full transform -translate-x-16 -translate-y-16"></div>
-      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-urdu-maroon/10 to-transparent rounded-full transform translate-x-12 -translate-y-12"></div>
+      <div className="absolute inset-0 overflow-hidden opacity-5 bg-gradient-to-r from-urdu-maroon/10 via-transparent to-urdu-gold/10"></div>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-urdu-gold/10 to-transparent rounded-full transform -translate-x-16 -translate-y-16"></div>
+        <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-urdu-maroon/10 to-transparent rounded-full transform translate-x-12 -translate-y-12"></div>
+      </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center relative z-10">
@@ -94,8 +132,8 @@ const Navbar = () => {
 
           {/* Desktop Navigation - Cultural Urdu Design */}
           <div className="hidden md:flex items-center space-x-1 relative z-10">
-            {/* Regular navigation items */}
-            {navItems.map((item) => {
+            {/* Primary navigation items */}
+            {primaryNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
 
@@ -103,32 +141,62 @@ const Navbar = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-300 group relative overflow-hidden ${
+                  className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl font-medium transition-all duration-300 group relative overflow-hidden whitespace-nowrap ${
                     isActive
                       ? "bg-gradient-to-r from-urdu-maroon to-urdu-brown text-white shadow-lg shadow-urdu-maroon/25 border border-urdu-gold/30"
                       : "text-urdu-brown hover:bg-gradient-to-r hover:from-urdu-cream/30 hover:to-urdu-gold/20 hover:text-urdu-maroon hover:shadow-md"
                   }`}
                   onClick={() => setIsOpen(false)}
                 >
-                  {/* Background pattern for active item */}
                   {isActive && (
                     <div className="absolute inset-0 bg-gradient-to-r from-urdu-gold/10 via-transparent to-urdu-maroon/10 opacity-20"></div>
                   )}
-                  <Icon size={16} className="relative z-10" />
+                  <Icon size={15} className="relative z-10" />
                   <span className="text-sm nastaleeq-primary font-semibold relative z-10">
                     {item.urduLabel}
                   </span>
-                  {/* Cultural decorative dot */}
-                  <div
-                    className={`w-1 h-1 rounded-full transition-all duration-300 ${
-                      isActive
-                        ? "bg-urdu-gold"
-                        : "bg-transparent group-hover:bg-urdu-maroon"
-                    }`}
-                  ></div>
                 </Link>
               );
             })}
+
+            {/* "More" dropdown for secondary items */}
+            <div className="relative" ref={moreRef}>
+              <button
+                onClick={() => setMoreOpen(!moreOpen)}
+                className={`flex items-center space-x-1 px-3 py-2 rounded-xl font-medium transition-all duration-300 whitespace-nowrap ${
+                  secondaryNavItems.some((i) => location.pathname === i.path)
+                    ? "bg-gradient-to-r from-urdu-maroon to-urdu-brown text-white shadow-lg"
+                    : "text-urdu-brown hover:bg-urdu-cream/30 hover:text-urdu-maroon"
+                }`}
+              >
+                <span className="text-sm nastaleeq-primary font-semibold">مزید</span>
+                <ChevronDown size={14} className={`transition-transform ${moreOpen ? "rotate-180" : ""}`} />
+              </button>
+              {moreOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-urdu-gold/30 overflow-hidden z-[100]">
+                  <div className="h-1.5 bg-gradient-to-r from-urdu-maroon via-urdu-gold to-urdu-brown"></div>
+                  {secondaryNavItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={`flex items-center space-x-2 px-4 py-3 text-sm transition-all nastaleeq-primary ${
+                          isActive
+                            ? "bg-urdu-cream/50 text-urdu-maroon font-bold"
+                            : "text-urdu-brown hover:bg-urdu-cream/30 hover:text-urdu-maroon"
+                        }`}
+                        onClick={() => setMoreOpen(false)}
+                      >
+                        <Icon size={14} />
+                        <span>{item.urduLabel}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Auth-only navigation items */}
             {isAuthenticated &&
@@ -140,18 +208,17 @@ const Navbar = () => {
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-300 group relative overflow-hidden ${
+                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl font-medium transition-all duration-300 group relative overflow-hidden whitespace-nowrap ${
                       isActive
                         ? "bg-gradient-to-r from-urdu-maroon to-urdu-brown text-white shadow-lg shadow-urdu-maroon/25 border border-urdu-gold/30"
                         : "text-urdu-brown hover:bg-gradient-to-r hover:from-urdu-cream/30 hover:to-urdu-gold/20 hover:text-urdu-maroon hover:shadow-md"
                     }`}
                     onClick={() => setIsOpen(false)}
                   >
-                    {/* Background pattern for active item */}
                     {isActive && (
                       <div className="absolute inset-0 bg-gradient-to-r from-urdu-gold/10 via-transparent to-urdu-maroon/10 opacity-20"></div>
                     )}
-                    <Icon size={16} className="relative z-10" />
+                    <Icon size={15} className="relative z-10" />
                     <span className="text-sm nastaleeq-primary font-semibold relative z-10">
                       {item.urduLabel}
                     </span>
@@ -161,14 +228,6 @@ const Navbar = () => {
                         {unreadCount > 99 ? "99+" : unreadCount}
                       </span>
                     )}
-                    {/* Cultural decorative dot */}
-                    <div
-                      className={`w-1 h-1 rounded-full transition-all duration-300 ${
-                        isActive
-                          ? "bg-urdu-gold"
-                          : "bg-transparent group-hover:bg-urdu-maroon"
-                      }`}
-                    ></div>
                   </Link>
                 );
               })}
@@ -178,6 +237,8 @@ const Navbar = () => {
           <div className="hidden md:flex items-center space-x-3 relative z-10">
             {isAuthenticated ? (
               <div className="flex items-center space-x-3">
+                {/* Notifications Bell */}
+                <NotificationsPanel />
                 {/* User Menu with Cultural Design */}
                 <div className="relative group">
                   <Link
