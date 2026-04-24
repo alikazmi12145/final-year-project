@@ -23,7 +23,7 @@ const PoetryCollectionPage = () => {
     limit: 1000, // Fetch all poems at once (increased from 20)
     category: "all",
     era: "all",
-    poetryLanguage: "urdu",
+    language: "urdu",
     sortBy: "createdAt",
     sortOrder: "desc",
   });
@@ -42,7 +42,7 @@ const PoetryCollectionPage = () => {
         search: searchTerm || undefined,
         category: filters.category === "all" ? undefined : filters.category,
         era: filters.era === "all" ? undefined : filters.era,
-        language: filters.poetryLanguage, // Map poetryLanguage back to language for API
+        language: filters.language,
       };
 
       console.log("📡 API Request params:", params);

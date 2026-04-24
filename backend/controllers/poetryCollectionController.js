@@ -197,6 +197,173 @@ class PoetryCollectionController {
   }
 
   /**
+   * Publish a draft poem (make it visible to public)
+   */
+  static async publishPoem(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.userId;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "غلط شاعری ID",
+        });
+      }
+
+      const poem = await Poem.findById(id);
+      if (!poem) {
+        return res.status(404).json({
+          success: false,
+          message: "شاعری نہیں ملی",
+        });
+      }
+
+      // Check authorization
+      if (poem.author.toString() !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: "اس شاعری کو شائع کرنے کی اجازت نہیں",
+        });
+      }
+
+      // Update status and publish
+      poem.status = "published";
+      poem.published = true;
+      poem.publishedAt = new Date();
+
+      await poem.save();
+      await poem.populate("author", "name profilePicture");
+
+      res.json({
+        success: true,
+        message: "شاعری کامیابی سے شائع ہوگئی",
+        poem,
+      });
+    } catch (error) {
+      console.error("Error publishing poem:", error);
+      res.status(500).json({
+        success: false,
+        message: "شاعری شائع کرتے وقت خرابی",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get user's draft poems
+   */
+  static async getUserDrafts(req, res) {
+    try {
+      const userId = req.user.userId;
+      const { page = 1, limit = 20 } = req.query;
+
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      const drafts = await Poem.find({
+        author: userId,
+        status: "draft",
+      })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean();
+
+      const total = await Poem.countDocuments({
+        author: userId,
+        status: "draft",
+      });
+
+      res.json({
+        success: true,
+        drafts,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / parseInt(limit)),
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching drafts:", error);
+      res.status(500).json({
+        success: false,
+        message: "ڈرافٹ شاعری حاصل کرتے وقت خرابی",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Batch organize poems (add to collection, update category, etc.)
+   */
+  static async batchOrganizePoems(req, res) {
+    try {
+      const userId = req.user.userId;
+      const { poemIds = [], action, collectionId, category, tags } = req.body;
+
+      if (!poemIds || poemIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "شاعری کی IDs درکار ہیں",
+        });
+      }
+
+      // Verify all poems belong to user
+      const poems = await Poem.find({
+        _id: { $in: poemIds },
+        author: userId,
+      });
+
+      if (poems.length !== poemIds.length) {
+        return res.status(403).json({
+          success: false,
+          message: "کچھ شاعریوں کو ترتیب دینے کی اجازت نہیں",
+        });
+      }
+
+      let result;
+
+      if (action === "add_to_collection" && collectionId) {
+        // Add poems to collection
+        const collection = await Collection.findByIdAndUpdate(
+          collectionId,
+          { $addToSet: { poems: { $each: poemIds } } },
+          { new: true }
+        );
+        result = collection;
+      } else if (action === "update_category" && category) {
+        // Update category for all poems
+        await Poem.updateMany(
+          { _id: { $in: poemIds } },
+          { category }
+        );
+        result = { updated: poemIds.length };
+      } else if (action === "add_tags" && tags && tags.length > 0) {
+        // Add tags to poems
+        await Poem.updateMany(
+          { _id: { $in: poemIds } },
+          { $addToSet: { tags: { $each: tags } } }
+        );
+        result = { updated: poemIds.length };
+      }
+
+      res.json({
+        success: true,
+        message: "شاعریوں کو کامیابی سے ترتیب دیا گیا",
+        result,
+      });
+    } catch (error) {
+      console.error("Error batch organizing poems:", error);
+      res.status(500).json({
+        success: false,
+        message: "شاعریوں کو ترتیب دیتے وقت خرابی",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
    * Get single poem by ID with detailed information
    */
   static async getPoemById(req, res) {

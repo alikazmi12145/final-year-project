@@ -85,6 +85,29 @@ router.put("/:id([0-9a-fA-F]{24})", auth, uploadFields, PoetryCollectionControll
  */
 router.delete("/:id([0-9a-fA-F]{24})", auth, PoetryCollectionController.deletePoem);
 
+/**
+ * @route   POST /api/poetry/:id/publish
+ * @desc    Publish a draft poem
+ * @access  Private (author only)
+ */
+router.post("/:id([0-9a-fA-F]{24})/publish", auth, PoetryCollectionController.publishPoem);
+
+/**
+ * @route   GET /api/poetry/user/drafts
+ * @desc    Get user's draft poems
+ * @access  Private
+ * @params  ?page=1&limit=20
+ */
+router.get("/user/drafts", auth, PoetryCollectionController.getUserDrafts);
+
+/**
+ * @route   POST /api/poetry/batch/organize
+ * @desc    Batch organize poems (add to collection, update category, etc.)
+ * @access  Private
+ * @body    { poemIds: [], action: "add_to_collection|update_category|add_tags", collectionId?, category?, tags? }
+ */
+router.post("/batch/organize", auth, PoetryCollectionController.batchOrganizePoems);
+
 // ============= INTERACTION ROUTES =============
 
 /**
