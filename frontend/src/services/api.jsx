@@ -504,6 +504,13 @@ export const poetryAPI = {
   // Recommendations
   getRecommendations: (params = {}) =>
     axiosInstance.get("/poems/recommendations", { params }),
+
+  // Draft and publishing functions
+  publishPoem: (id) => axiosInstance.post(`/poetry/${id}/publish`),
+  getUserDrafts: (params = {}) =>
+    axiosInstance.get("/poetry/user/drafts", { params }),
+  batchOrganizePoems: (data) =>
+    axiosInstance.post("/poetry/batch/organize", data),
 };
 
 //

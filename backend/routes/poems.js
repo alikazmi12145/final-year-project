@@ -16,6 +16,9 @@ import rateLimit from "express-rate-limit";
 
 const router = express.Router();
 
+const escapeRegex = (value = "") =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 // Rate limiting for poem creation
 const createPoemLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -48,55 +51,80 @@ router.get("/", optionalAuth, poemOperationLimit, async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    // Base query - only show published poems to regular users
-    let query = {
-      $or: [
-        { published: true },
-        { status: "published" },
-        { status: "approved" },
-        // Legacy support for moderated poems
-        {
-          moderatedBy: { $exists: true },
-          moderatedAt: { $exists: true },
-          status: { $nin: ["rejected", "pending"] },
-        },
-      ],
-      poetryLanguage: language,
-    };
+    const isPrivilegedUser =
+      req.user && (req.user.role === "admin" || req.user.role === "moderator");
 
-    // If user is admin or moderator, they can see pending poems too
-    if (
-      req.user &&
-      (req.user.role === "admin" || req.user.role === "moderator")
-    ) {
-      query = {
+    const queryConditions = [{ poetryLanguage: language }];
+
+    if (isPrivilegedUser) {
+      queryConditions.push({
         status: { $in: ["pending", "published", "approved"] },
-        poetryLanguage: language,
-      };
+      });
+    } else {
+      queryConditions.push({
+        $or: [
+          { published: true },
+          { status: "published" },
+          { status: "approved" },
+          {
+            moderatedBy: { $exists: true },
+            moderatedAt: { $exists: true },
+            status: { $nin: ["rejected", "pending"] },
+          },
+        ],
+      });
     }
 
     // Apply filters
     if (category && category !== "all") {
-      query.category = category;
+      queryConditions.push({ category });
     }
 
     if (poet) {
-      query.poet = poet;
+      queryConditions.push({ poet });
     }
 
     if (era && era !== "all") {
       // Find poets from specific era
       const poetsFromEra = await Poet.find({ era: era }).select("_id");
-      query.poet = { $in: poetsFromEra.map((p) => p._id) };
+      queryConditions.push({
+        poet: { $in: poetsFromEra.map((p) => p._id) },
+      });
     }
 
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { content: { $regex: search, $options: "i" } },
-        { tags: { $in: [new RegExp(search, "i")] } },
+    const normalizedSearch = typeof search === "string" ? search.trim() : "";
+
+    if (normalizedSearch) {
+      const searchRegex = new RegExp(escapeRegex(normalizedSearch), "i");
+      const [matchingPoets, matchingAuthors] = await Promise.all([
+        Poet.find({ name: searchRegex }).select("_id"),
+        User.find({ name: searchRegex }).select("_id"),
+      ]);
+
+      const searchClauses = [
+        { title: { $regex: searchRegex } },
+        { content: { $regex: searchRegex } },
+        { tags: { $in: [searchRegex] } },
       ];
+
+      if (matchingPoets.length > 0) {
+        searchClauses.push({
+          poet: { $in: matchingPoets.map((matchingPoet) => matchingPoet._id) },
+        });
+      }
+
+      if (matchingAuthors.length > 0) {
+        searchClauses.push({
+          author: {
+            $in: matchingAuthors.map((matchingAuthor) => matchingAuthor._id),
+          },
+        });
+      }
+
+      queryConditions.push({ $or: searchClauses });
     }
+
+    const query = { $and: queryConditions };
 
     // Build sort object
     const sort = {};

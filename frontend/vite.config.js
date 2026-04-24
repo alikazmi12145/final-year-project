@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 // Nuclear option: completely override Vite's env system
-const noEnvPlugin = () => ({
+const noEnvPlugin = (env) => ({
   name: "no-env-plugin",
   configureServer(server) {
     // Block ONLY specific env.mjs requests, not all requests
@@ -27,15 +27,15 @@ const noEnvPlugin = () => ({
         const env = {
           VITE_API_BASE_URL: "http://localhost:5000/api",
           VITE_API_URL: "http://localhost:5000/api", 
-          VITE_NODE_ENV: "development",
+          VITE_NODE_ENV: "${env.VITE_NODE_ENV}",
           VITE_APP_NAME: "Bazm-e-Sukhan",
           VITE_APP_VERSION: "1.0.0",
           VITE_ENABLE_ANALYTICS: "false",
           VITE_ENABLE_CHAT: "true",
           VITE_ENABLE_CONTESTS: "true",
-          MODE: "development",
-          DEV: true,
-          PROD: false,
+          MODE: "${env.MODE}",
+          DEV: ${env.DEV},
+          PROD: ${env.PROD},
           SSR: false,
           BASE_URL: "/"
         };
@@ -62,91 +62,87 @@ const noEnvPlugin = () => ({
   },
 });
 
-export default defineConfig({
-  plugins: [react(), noEnvPlugin()],
-  define: {
-    // Define ALL environment variables directly to completely bypass Vite's env processing
-    "import.meta.env": JSON.stringify({
-      VITE_API_BASE_URL: "http://localhost:5000/api",
-      VITE_API_URL: "http://localhost:5000/api",
-      VITE_NODE_ENV: "development",
-      VITE_APP_NAME: "Bazm-e-Sukhan",
-      VITE_APP_VERSION: "1.0.0",
-      VITE_ENABLE_ANALYTICS: "false",
-      VITE_ENABLE_CHAT: "true",
-      VITE_ENABLE_CONTESTS: "true",
-      MODE: "development",
-      DEV: true,
-      PROD: false,
-      SSR: false,
-      BASE_URL: "/",
-    }),
-    "import.meta.env.VITE_API_BASE_URL": JSON.stringify(
-      "http://localhost:5000/api"
-    ),
-    "import.meta.env.VITE_API_URL": JSON.stringify("http://localhost:5000/api"),
-    "import.meta.env.VITE_NODE_ENV": JSON.stringify("development"),
-    "import.meta.env.VITE_APP_NAME": JSON.stringify("Bazm-e-Sukhan"),
-    "import.meta.env.VITE_APP_VERSION": JSON.stringify("1.0.0"),
-    "import.meta.env.VITE_ENABLE_ANALYTICS": JSON.stringify("false"),
-    "import.meta.env.VITE_ENABLE_CHAT": JSON.stringify("true"),
-    "import.meta.env.VITE_ENABLE_CONTESTS": JSON.stringify("true"),
-    "import.meta.env.MODE": JSON.stringify("development"),
-    "import.meta.env.DEV": JSON.stringify(true),
-    "import.meta.env.PROD": JSON.stringify(false),
-    __WS_TOKEN__: JSON.stringify("dev-token"),
-    global: "globalThis",
-  },
-  server: {
-    port: 5173,
-    host: true,
-    hmr: {
-      port: 5174,
+export default defineConfig(({ command, mode }) => {
+  const isBuild = command === "build";
+  const injectedEnv = {
+    VITE_API_BASE_URL: "http://localhost:5000/api",
+    VITE_API_URL: "http://localhost:5000/api",
+    VITE_NODE_ENV: isBuild ? "production" : "development",
+    VITE_APP_NAME: "Bazm-e-Sukhan",
+    VITE_APP_VERSION: "1.0.0",
+    VITE_ENABLE_ANALYTICS: "false",
+    VITE_ENABLE_CHAT: "true",
+    VITE_ENABLE_CONTESTS: "true",
+    MODE: mode,
+    DEV: !isBuild,
+    PROD: isBuild,
+    SSR: false,
+    BASE_URL: "/",
+  };
+
+  return {
+    plugins: [react(), noEnvPlugin(injectedEnv)],
+    define: {
+      // Define ALL environment variables directly to completely bypass Vite's env processing
+      "import.meta.env": JSON.stringify(injectedEnv),
+      "import.meta.env.VITE_API_BASE_URL": JSON.stringify(
+        injectedEnv.VITE_API_BASE_URL
+      ),
+      "import.meta.env.VITE_API_URL": JSON.stringify(injectedEnv.VITE_API_URL),
+      "import.meta.env.VITE_NODE_ENV": JSON.stringify(injectedEnv.VITE_NODE_ENV),
+      "import.meta.env.VITE_APP_NAME": JSON.stringify(injectedEnv.VITE_APP_NAME),
+      "import.meta.env.VITE_APP_VERSION": JSON.stringify(injectedEnv.VITE_APP_VERSION),
+      "import.meta.env.VITE_ENABLE_ANALYTICS": JSON.stringify(
+        injectedEnv.VITE_ENABLE_ANALYTICS
+      ),
+      "import.meta.env.VITE_ENABLE_CHAT": JSON.stringify(
+        injectedEnv.VITE_ENABLE_CHAT
+      ),
+      "import.meta.env.VITE_ENABLE_CONTESTS": JSON.stringify(
+        injectedEnv.VITE_ENABLE_CONTESTS
+      ),
+      "import.meta.env.MODE": JSON.stringify(injectedEnv.MODE),
+      "import.meta.env.DEV": JSON.stringify(injectedEnv.DEV),
+      "import.meta.env.PROD": JSON.stringify(injectedEnv.PROD),
+      __WS_TOKEN__: JSON.stringify("dev-token"),
+      global: "globalThis",
     },
-    strictPort: true,
-    force: true,
-    proxy: {
-      "/api": {
-        target: "http://localhost:5000",
-        changeOrigin: true,
+    server: {
+      port: 5173,
+      host: true,
+      hmr: {
+        port: 5174,
+      },
+      strictPort: true,
+      force: true,
+      proxy: {
+        "/api": {
+          target: "http://localhost:5000",
+          changeOrigin: true,
+        },
       },
     },
-  },
-  // Completely disable ALL env file processing
-  envDir: false,
-  envPrefix: [],
-  experimental: {
-    hmrPartialAccept: false,
-  },
-  // Override client options to disable env loading
-  client: {
-    overlay: {
-      warnings: false,
-      errors: true,
+    // Completely disable ALL env file processing
+    envDir: false,
+    envPrefix: [],
+    experimental: {
+      hmrPartialAccept: false,
     },
-  },
-  optimizeDeps: {
-    force: true,
-    include: [
-      "react",
-      "react-dom",
-      "react/jsx-runtime",
-      "react-dom/client",
-      "react-router-dom",
-      "@tanstack/react-query",
-      "react-hot-toast",
-      "regenerator-runtime/runtime",
-    ],
-    exclude: [],
-    disabled: false,
-  },
-  build: {
-    sourcemap: false,
-    chunkSizeWarningLimit: 600,
-    rollupOptions: {
-      output: {
-        manualChunks: undefined,
+    // Override client options to disable env loading
+    client: {
+      overlay: {
+        warnings: false,
+        errors: true,
       },
     },
-  },
+    build: {
+      sourcemap: false,
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          manualChunks: undefined,
+        },
+      },
+    },
+  };
 });
