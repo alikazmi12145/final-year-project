@@ -316,6 +316,27 @@ const ContestDetails = () => {
   const [leaderboard, setLeaderboard] = useState([]);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
 
+  const contestSubmissions = React.useMemo(() => {
+    if (!contest) return [];
+
+    const participantByUserId = new Map(
+      (contest.participants || []).map((p) => [String(p.user?._id || p.user), p])
+    );
+
+    return (contest.submissions || [])
+      .filter((s) => s.poem)
+      .map((s) => {
+        const participantId = String(s.participant?._id || s.participant);
+        const participantEntry = participantByUserId.get(participantId);
+        return {
+          _id: participantId,
+          user: s.participant || participantEntry?.user,
+          submission: s.poem,
+          submittedAt: s.submittedAt,
+        };
+      });
+  }, [contest]);
+
   useEffect(() => {
     fetchContest();
     if (user) fetchUserPoems();
@@ -625,13 +646,11 @@ const ContestDetails = () => {
               )}
 
               {/* Submissions list (visible for completed/voting contests) */}
-              {contest.participants?.filter((p) => p.submission).length > 0 && (
+              {contestSubmissions.length > 0 && (
                 <div>
                   <h3 className="font-semibold text-urdu-brown mb-3">جمع شدہ شاعری</h3>
                   <div className="space-y-3">
-                    {contest.participants
-                      .filter((p) => p.submission)
-                      .map((p) => (
+                    {contestSubmissions.map((p) => (
                         <div key={p._id} className="p-4 border border-gray-200 rounded-lg">
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-medium text-urdu-brown">
@@ -663,7 +682,7 @@ const ContestDetails = () => {
             <div>
               {user ? (
                 <VotingSection
-                  submissions={contest.participants?.filter((p) => p.submission) || []}
+                  submissions={contestSubmissions}
                   onVote={handleVote}
                   userHasVoted={false}
                   loading={voteLoading}

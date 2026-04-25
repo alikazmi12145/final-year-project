@@ -1,5 +1,6 @@
 import express from "express";
 import { body, validationResult } from "express-validator";
+import mongoose from "mongoose";
 import Poet from "../models/poet.js";
 import User from "../models/User.js";
 import Poem from "../models/Poem.js";
@@ -454,7 +455,11 @@ router.get("/:id", poetOperationLimit, async (req, res) => {
       poems,
       stats: poetStats,
       categoryDistribution,
-      isFollowing: req.user ? poet.followers?.includes(req.user.userId) : false,
+      isFollowing: req.user
+        ? (poet.followers || []).some(
+            (followerId) => String(followerId) === String(req.user.userId)
+          )
+        : false,
     });
   } catch (error) {
     console.error("Get poet error:", error);
@@ -568,6 +573,13 @@ router.put(
 // Follow/Unfollow poet
 router.post("/:id/follow", auth, poetOperationLimit, async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid poet id",
+      });
+    }
+
     const poet = await Poet.findById(req.params.id);
 
     if (!poet) {
@@ -577,24 +589,32 @@ router.post("/:id/follow", auth, poetOperationLimit, async (req, res) => {
       });
     }
 
-    if (poet.user.toString() === req.user.userId) {
+    const currentUserId = String(req.user.userId);
+    const poetUserId = poet.user ? String(poet.user) : null;
+
+    if (poetUserId && poetUserId === currentUserId) {
       return res.status(400).json({
         success: false,
         message: "Cannot follow yourself",
       });
     }
 
-    const userId = req.user.userId;
-    const isFollowing = poet.followers.includes(userId);
+    const followers = Array.isArray(poet.followers) ? poet.followers : [];
+    const isFollowing = followers.some(
+      (followerId) => String(followerId) === currentUserId
+    );
 
     if (isFollowing) {
       // Unfollow
-      poet.followers.pull(userId);
-      poet.followersCount = Math.max(0, poet.followersCount - 1);
+      poet.followers.pull(currentUserId);
     } else {
       // Follow
-      poet.followers.push(userId);
-      poet.followersCount += 1;
+      poet.followers.push(currentUserId);
+    }
+
+    poet.followersCount = poet.followers.length;
+    if (poet.stats) {
+      poet.stats.followers = poet.followersCount;
     }
 
     await poet.save();
