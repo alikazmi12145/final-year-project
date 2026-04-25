@@ -20,6 +20,11 @@ const Layout = ({ children }) => {
     "/dashboard"
   ];
 
+  // Routes that render their own footer block.
+  const hideFooterRoutes = [
+    "/poetry-tts"
+  ];
+
   const shouldHideNavbar = hideNavbarRoutes.some((route) =>
     location.pathname.startsWith(route)
   );
@@ -30,6 +35,8 @@ const Layout = ({ children }) => {
   const isPoetsPage = location.pathname.startsWith("/poets");
   const shouldShowNavbar =
     isPoetryCollectionPage || isPoetsPage || !shouldHideNavbar;
+  const shouldShowFooter =
+    shouldShowNavbar && !hideFooterRoutes.some((route) => location.pathname.startsWith(route));
 
   // Check if current route is auth page
   const isAuthPage = location.pathname === "/auth";
@@ -69,7 +76,7 @@ const Layout = ({ children }) => {
         </div>
         <div className="relative z-10">{children}</div>
       </main>
-      {shouldShowNavbar && <Footer />}
+      {shouldShowFooter && <Footer />}
     </div>
   );
 };
