@@ -21,6 +21,7 @@ import {
   Brain,
   Newspaper,
   MessageSquare,
+  Headphones,
   ChevronDown,
 } from "lucide-react";
 
@@ -73,6 +74,12 @@ const Navbar = () => {
       label: "رائے",
       urduLabel: "رائے",
       icon: MessageSquare,
+    },
+    {
+      path: "/poetry-tts",
+      label: "آواز",
+      urduLabel: "آواز",
+      icon: Headphones,
     },
   ];
 

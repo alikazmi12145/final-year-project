@@ -8,6 +8,7 @@ import Poets from "./pages/Poets";
 import ContestsPage from "./components/contests/ContestsPage";
 import QuizzesPage from "./components/quizzes/QuizzesPage";
 import Learning from "./pages/Learning";
+import PoetryTTSPage from "./pages/PoetryTTSPage";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import Dashboard from "./pages/dashboard/Dashboard";
@@ -60,6 +61,7 @@ function App() {
         <Route path="/quizzes" element={<QuizzesPage />} />
         <Route path="/quizzes/:id" element={<QuizzesPage />} />
         <Route path="/learning" element={<Learning />} />
+        <Route path="/poetry-tts" element={<PoetryTTSPage />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/pending-approval" element={<PendingApproval />} />
 

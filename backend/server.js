@@ -310,6 +310,7 @@ const startServer = async () => {
     const historyRoutes = await import("./routes/history.js");
     const pdfExportRoutes = await import("./routes/pdfExport.js");
     const aiSearchRoutes = await import("./routes/aiSearch.js");
+    const ttsRoutes = await import("./routes/tts.js");
 
     // Updates & Feedback Module routes
     const postRoutes = await import("./routes/posts.js");
@@ -338,6 +339,7 @@ const startServer = async () => {
     app.use("/api/history", historyRoutes.default);
     app.use("/api/pdf", pdfExportRoutes.default);
     app.use("/api/ai-search", aiSearchRoutes.default);
+    app.use("/api/tts", ttsRoutes.default);
 
     // Updates & Feedback Module routes
     app.use("/api/posts", postRoutes.default);
