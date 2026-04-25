@@ -1,5 +1,6 @@
 import express from "express";
 import { body, validationResult } from "express-validator";
+import mongoose from "mongoose";
 import Contest from "../models/Contest.js";
 import Poem from "../models/Poem.js";
 import User from "../models/User.js";
@@ -98,11 +99,16 @@ router.get("/", contestOperationLimit, async (req, res) => {
       const userParticipation = req.user ? 
         contest.participants?.find(p => p.user?.toString() === req.user?.userId) : 
         null;
+      const userSubmission = req.user
+        ? contest.submissions?.find(
+            s => s.participant?.toString() === req.user?.userId
+          )
+        : null;
 
       return {
         ...contest,
         userHasParticipated: !!userParticipation,
-        userSubmission: userParticipation?.submission || null,
+        userSubmission: userSubmission || null,
         timeRemaining: contest.submissionEnd ? 
           Math.max(0, new Date(contest.submissionEnd) - new Date()) : null
       };
@@ -176,6 +182,11 @@ router.get("/:id", contestOperationLimit, async (req, res) => {
     const userParticipation = req.user ? 
       contest.participants?.find(p => p.user?._id?.toString() === req.user?.userId) : 
       null;
+    const userSubmission = req.user
+      ? contest.submissions?.find(
+          s => s.participant?._id?.toString() === req.user?.userId
+        )
+      : null;
 
     // Calculate contest metrics
     const metrics = {
@@ -194,7 +205,7 @@ router.get("/:id", contestOperationLimit, async (req, res) => {
       contest: {
         ...contest,
         userHasParticipated: !!userParticipation,
-        userSubmission: userParticipation?.submission || null,
+        userSubmission: userSubmission || null,
         userCanVote: req.user && contest.status === 'voting' && !userParticipation,
         canSubmit: (contest.status === 'active' || contest.status === 'submission_open') && 
                    contest.submissionEnd && new Date() < new Date(contest.submissionEnd) && 
@@ -456,6 +467,13 @@ router.post("/:id/vote", auth, contestOperationLimit, [
       });
     }
 
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid contest id"
+      });
+    }
+
     const contest = await Contest.findById(req.params.id);
     
     if (!contest) {
@@ -466,7 +484,7 @@ router.post("/:id/vote", auth, contestOperationLimit, [
     }
 
     // Check if contest allows public voting
-    if (!contest.publicVoting || contest.status !== 'voting') {
+    if (contest.votingType !== 'public' || contest.status !== 'voting') {
       return res.status(400).json({
         success: false,
         message: "Voting is not available for this contest"
@@ -474,7 +492,7 @@ router.post("/:id/vote", auth, contestOperationLimit, [
     }
 
     // Check voting deadline
-    if (contest.votingDeadline && new Date() > new Date(contest.votingDeadline)) {
+    if (contest.votingEnd && new Date() > new Date(contest.votingEnd)) {
       return res.status(400).json({
         success: false,
         message: "Voting deadline has passed"
@@ -495,7 +513,9 @@ router.post("/:id/vote", auth, contestOperationLimit, [
 
     // Find participant
     const participant = contest.participants.find(
-      p => p._id.toString() === req.body.participantId
+      p =>
+        p._id?.toString() === req.body.participantId ||
+        p.user?.toString() === req.body.participantId
     );
 
     if (!participant) {
@@ -505,9 +525,30 @@ router.post("/:id/vote", auth, contestOperationLimit, [
       });
     }
 
-    // Check if user already voted for this participant
-    const existingVote = participant.votes.find(
-      v => v.voter.toString() === req.user.userId
+    const submission = contest.submissions.find(
+      s => s.participant?.toString() === participant.user?.toString()
+    );
+
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: "Submission not found for participant"
+      });
+    }
+
+    // Prevent users from voting for their own submission
+    if (submission.participant?.toString() === req.user.userId) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot vote for your own submission"
+      });
+    }
+
+    // Check if user already voted for this submission
+    const existingVote = (contest.votes || []).find(
+      v =>
+        v.voter?.toString() === req.user.userId &&
+        v.submission?.toString() === submission.poem?.toString()
     );
 
     if (existingVote) {
@@ -518,15 +559,15 @@ router.post("/:id/vote", auth, contestOperationLimit, [
     }
 
     // Add vote
-    participant.votes.push({
+    contest.votes.push({
       voter: req.user.userId,
-      rating: req.body.rating,
-      createdAt: new Date()
+      submission: submission.poem,
+      score: req.body.rating,
+      votedAt: new Date()
     });
 
-    // Recalculate average rating
-    const totalRating = participant.votes.reduce((sum, vote) => sum + vote.rating, 0);
-    participant.rating = totalRating / participant.votes.length;
+    contest.analytics = contest.analytics || {};
+    contest.analytics.votes = (contest.analytics.votes || 0) + 1;
 
     await contest.save();
 
@@ -546,9 +587,17 @@ router.post("/:id/vote", auth, contestOperationLimit, [
 // Get contest leaderboard
 router.get("/:id/leaderboard", contestOperationLimit, async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid contest id"
+      });
+    }
+
     const contest = await Contest.findById(req.params.id)
       .populate('participants.user', 'name isVerified')
-      .populate('participants.submission', 'title category createdAt')
+      .populate('submissions.participant', 'name isVerified')
+      .populate('submissions.poem', 'title category createdAt')
       .lean();
 
     if (!contest) {
@@ -558,26 +607,49 @@ router.get("/:id/leaderboard", contestOperationLimit, async (req, res) => {
       });
     }
 
-    // Sort participants by rating/votes
-    const leaderboard = contest.participants
-      .filter(p => p.submission) // Only include participants with submissions
-      .sort((a, b) => {
-        // Sort by rating first, then by votes count, then by submission time
-        if (b.rating !== a.rating) {
-          return (b.rating || 0) - (a.rating || 0);
-        }
-        if (b.votes.length !== a.votes.length) {
-          return b.votes.length - a.votes.length;
-        }
-        return new Date(a.submittedAt) - new Date(b.submittedAt);
+    const votesByPoem = new Map();
+    (contest.votes || []).forEach(vote => {
+      const key = vote.submission?.toString();
+      if (!key) return;
+      const existing = votesByPoem.get(key) || { total: 0, count: 0 };
+      votesByPoem.set(key, {
+        total: existing.total + (vote.score || 0),
+        count: existing.count + 1
+      });
+    });
+
+    const participantByUserId = new Map(
+      (contest.participants || []).map(p => [p.user?._id?.toString(), p.user])
+    );
+
+    const leaderboard = (contest.submissions || [])
+      .filter(sub => sub.poem)
+      .map(submission => {
+        const poemId = submission.poem?._id?.toString() || submission.poem?.toString();
+        const stats = votesByPoem.get(poemId) || { total: 0, count: 0 };
+        const rating = stats.count > 0 ? stats.total / stats.count : 0;
+        const user = submission.participant || participantByUserId.get(submission.participant?.toString());
+
+        return {
+          user,
+          submission: submission.poem,
+          rating,
+          votesCount: stats.count,
+          submittedAt: submission.submittedAt
+        };
       })
-      .map((participant, index) => ({
+      .sort((a, b) => {
+        if (b.rating !== a.rating) {
+          return b.rating - a.rating;
+        }
+        if (b.votesCount !== a.votesCount) {
+          return b.votesCount - a.votesCount;
+        }
+        return new Date(a.submittedAt || 0) - new Date(b.submittedAt || 0);
+      })
+      .map((entry, index) => ({
         rank: index + 1,
-        user: participant.user,
-        submission: participant.submission,
-        rating: participant.rating || 0,
-        votesCount: participant.votes.length,
-        submittedAt: participant.submittedAt
+        ...entry
       }));
 
     res.json({
@@ -587,7 +659,7 @@ router.get("/:id/leaderboard", contestOperationLimit, async (req, res) => {
         id: contest._id,
         title: contest.title,
         status: contest.status,
-        totalParticipants: contest.participants.length
+        totalParticipants: (contest.participants || []).length
       }
     });
   } catch (error) {
