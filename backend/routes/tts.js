@@ -6,7 +6,7 @@ const router = express.Router();
 
 const ttsRateLimit = rateLimit({
   windowMs: 60 * 1000,
-  max: 12,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -16,5 +16,8 @@ const ttsRateLimit = rateLimit({
 });
 
 router.post("/download", ttsRateLimit, TTSController.downloadRecitation);
+router.get("/voices", ttsRateLimit, TTSController.listVoices);
+router.post("/synthesize", ttsRateLimit, TTSController.synthesizeRecitation);
+router.post("/generate", ttsRateLimit, TTSController.generateRecitation);
 
 export default router;
