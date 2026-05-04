@@ -8,6 +8,7 @@ import Quiz from "../models/Quiz.js";
 import News from "../models/News.js";
 import LearningResource from "../models/LearningResource.js";
 import AdminController from "../controllers/adminController.js";
+import VerificationController from "../controllers/verificationController.js";
 import { adminAuth, moderatorAuth } from "../middleware/auth.js";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
@@ -2196,4 +2197,85 @@ router.post("/users/:id/upload-image", adminAuth, upload.single('avatar'), async
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN: Poet Verification Requests
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/admin/verification-requests
+ * List all verification requests (filter by status via ?status=pending|approved|rejected|all)
+ */
+router.get(
+  "/verification-requests",
+  adminAuth,
+  VerificationController.getAdminVerificationRequests
+);
+
+/**
+ * PUT /api/admin/verification/:id/approve
+ * Approve a verification request
+ */
+router.put(
+  "/verification/:id/approve",
+  adminAuth,
+  [
+    body("adminRemarks")
+      .optional()
+      .trim()
+      .isLength({ max: 1000 })
+      .withMessage("تبصرہ بہت طویل ہے"),
+  ],
+  VerificationController.approveVerificationRequest
+);
+
+/**
+ * PUT /api/admin/verification/:id/reject
+ * Reject a verification request (remarks required)
+ */
+router.put(
+  "/verification/:id/reject",
+  adminAuth,
+  [
+    body("adminRemarks")
+      .trim()
+      .notEmpty()
+      .withMessage("رد کرنے کی وجہ لازمی ہے")
+      .isLength({ min: 10, max: 1000 })
+      .withMessage("وجہ ۱۰ سے ۱۰۰۰ حروف کے درمیان ہونی چاہیے"),
+  ],
+  VerificationController.rejectVerificationRequest
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN: Fraud Reports
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/admin/reports
+ * List all fraud reports (filter by status via ?status=pending|resolved|dismissed|all)
+ */
+router.get("/reports", adminAuth, VerificationController.getAdminFraudReports);
+
+/**
+ * PUT /api/admin/report/:id/resolve
+ * Resolve or dismiss a fraud report
+ */
+router.put(
+  "/report/:id/resolve",
+  adminAuth,
+  [
+    body("action")
+      .optional()
+      .isIn(["resolved", "dismissed"])
+      .withMessage("عمل 'resolved' یا 'dismissed' ہونا چاہیے"),
+    body("adminNotes")
+      .optional()
+      .trim()
+      .isLength({ max: 1000 })
+      .withMessage("نوٹس بہت طویل ہیں"),
+  ],
+  VerificationController.resolveReport
+);
+
 export default router;
+

@@ -1,28 +1,44 @@
 import mongoose from "mongoose";
+import dns from "dns";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(
-      process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bazm-e-sukhan",
-      {
-        serverSelectionTimeoutMS: 30000, // Increased to 30s for slow connections
-        socketTimeoutMS: 45000, // Socket timeout
-        bufferCommands: false, // Disable buffering to fail fast
-        maxPoolSize: 10, // Maximum connection pool size
-      }
-    );
+// Force Node.js c-ares to use reliable DNS servers (fixes ESERVFAIL for Atlas SRV records)
+dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
 
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+const LOCAL_URI = "mongodb://127.0.0.1:27017/bazm-e-sukhan";
+
+const connectDB = async () => {
+  const mongoOptions = {
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+    maxPoolSize: 10,
+  };
+
+  // Try Atlas URI first (if set), then fall back to local MongoDB
+  const atlasURI = process.env.MONGODB_URI && process.env.MONGODB_URI !== LOCAL_URI
+    ? process.env.MONGODB_URI
+    : null;
+
+  if (atlasURI) {
+    try {
+      const conn = await mongoose.connect(atlasURI, mongoOptions);
+      console.log(`✅ MongoDB Connected (Atlas): ${conn.connection.host}`);
+      return conn;
+    } catch (error) {
+      console.warn(`⚠️  Atlas connection failed: ${error.message}`);
+      console.log("🔄 Falling back to local MongoDB...");
+    }
+  }
+
+  // Fallback: local MongoDB
+  try {
+    const conn = await mongoose.connect(LOCAL_URI, mongoOptions);
+    console.log(`✅ MongoDB Connected (Local): ${conn.connection.host}`);
     return conn;
   } catch (error) {
     console.error("❌ MongoDB connection error:", error.message);
-    console.log(
-      "⚠️  Server will continue without database connection for testing"
-    );
-    // Don't exit the process, just log the error
     throw error;
   }
 };

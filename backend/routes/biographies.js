@@ -259,7 +259,6 @@ router.get("/:id", async (req, res) => {
     const { id } = req.params;
 
     const poet = await Poet.findById(id)
-      .populate("addedBy", "name email role")
       .populate("verifiedBy", "name email");
 
     if (!poet) {
@@ -502,8 +501,7 @@ router.get("/", async (req, res) => {
       )
       .sort(sortOptions)
       .skip(skip)
-      .limit(parseInt(limit))
-      .populate("addedBy", "name");
+      .limit(parseInt(limit));
 
     const totalPoets = await Poet.countDocuments(query);
 

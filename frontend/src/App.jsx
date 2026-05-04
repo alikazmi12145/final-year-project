@@ -45,6 +45,9 @@ import NewsFeedPage from "./pages/NewsFeedPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import AdminUpdatesDashboard from "./components/admin/AdminUpdatesDashboard";
 
+// Verification Module
+import VerificationPage from "./pages/VerificationPage";
+
 function App() {
   return (
     <Layout>
@@ -179,6 +182,16 @@ function App() {
           element={
             <ProtectedRoute requiredRole="admin">
               <AdminUpdatesDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Verification Routes */}
+        <Route
+          path="/verification"
+          element={
+            <ProtectedRoute>
+              <VerificationPage />
             </ProtectedRoute>
           }
         />

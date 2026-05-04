@@ -15,10 +15,12 @@ import {
   Clock,
   Tag,
   Star,
+  Mic,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
 import ReviewsSection from "./ReviewsSection";
+import TTSModal from "../tts/TTSModal";
 
 const PoemView = ({
   poem,
@@ -46,6 +48,7 @@ const PoemView = ({
   const [isLiking, setIsLiking] = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [ttsOpen, setTtsOpen] = useState(false);
 
   useEffect(() => {
     if (poem) {
@@ -401,6 +404,14 @@ const PoemView = ({
               <Download className="w-4 h-4" />
               <span>{isDownloading ? "..." : "ڈاؤن لوڈ"}</span>
             </button>
+
+            <button
+              onClick={() => setTtsOpen(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-amber-50 text-urdu-brown rounded-lg hover:bg-amber-100 transition-colors border border-urdu-gold/30"
+            >
+              <Mic className="w-4 h-4 text-urdu-gold" />
+              <span>سنیں</span>
+            </button>
           </div>
 
           {/* Statistics */}
@@ -526,6 +537,15 @@ const PoemView = ({
           </div>
         )}
       </div>
+
+      {/* TTS Modal */}
+      <TTSModal
+        isOpen={ttsOpen}
+        onClose={() => setTtsOpen(false)}
+        text={poem.content || ""}
+        poetName={poem.poet?.name || ""}
+        title={poem.title || ""}
+      />
     </div>
   );
 };

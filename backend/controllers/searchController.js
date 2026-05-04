@@ -238,7 +238,7 @@ export const textSearch = async (req, res) => {
         { name: searchRegex },
         { "profile.penName": searchRegex },
       ],
-    }).select("_id");
+    }).select("_id isVerified");
     
     const matchingUserIds = matchingUsers.map((user) => user._id);
     console.log("🔍 Found matching authors:", matchingUserIds.length);
@@ -305,7 +305,7 @@ export const textSearch = async (req, res) => {
         .sort(sortOptions)
         .skip(skipCount1)
         .limit(parseInt(limit))
-        .populate("author", "name profile.penName")
+        .populate("author", "name profile.penName isVerified verificationBadge")
         .lean(),
       Poem.countDocuments(searchQuery),
     ]);
@@ -317,6 +317,8 @@ export const textSearch = async (req, res) => {
       content: poem.content,
       snippet: poem.content.substring(0, 150) + "...",
       author: poem.author?.name || poem.author?.profile?.penName || "Unknown",
+      authorVerified: poem.author?.isVerified || false,
+      authorBadge: poem.author?.verificationBadge || "none",
       category: poem.category,
       mood: poem.metadata?.mood,
       theme: poem.metadata?.theme,
@@ -329,6 +331,9 @@ export const textSearch = async (req, res) => {
     // Prepare variables for combined results
     let finalResults = processedResults;
     let externalResults = [];
+
+    // Sort verified authors to the top before fuzzy re-ranking
+    processedResults.sort((a, b) => (b.authorVerified ? 1 : 0) - (a.authorVerified ? 1 : 0));
 
     // Apply Fuse.js fuzzy search for better relevance (only if we have DB results)
     if (processedResults.length > 0) {

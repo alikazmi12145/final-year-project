@@ -299,7 +299,7 @@ const NewsFeedPage = () => {
                       <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center">
                         {post.createdBy?.profileImage ? (
                           <img
-                            src={post.createdBy.profileImage}
+                            src={(() => { const img = post.createdBy.profileImage; const url = typeof img === 'string' ? img : img?.url; if (!url) return ''; return url.startsWith('http') ? url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}${url.startsWith('/') ? '' : '/'}${url}`; })()}
                             alt=""
                             className="w-8 h-8 rounded-full object-cover"
                           />
@@ -428,7 +428,7 @@ const NewsFeedPage = () => {
                       <div className="flex items-center gap-2 mb-2">
                         <div className="w-7 h-7 rounded-full bg-amber-200 flex items-center justify-center">
                           {comment.user?.profileImage ? (
-                            <img src={comment.user.profileImage} alt="" className="w-7 h-7 rounded-full object-cover" />
+                            <img src={(() => { const img = comment.user.profileImage; const url = typeof img === 'string' ? img : img?.url; if (!url) return ''; return url.startsWith('http') ? url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}${url.startsWith('/') ? '' : '/'}${url}`; })()} alt="" className="w-7 h-7 rounded-full object-cover" />
                           ) : (
                             <User className="w-3.5 h-3.5 text-amber-700" />
                           )}

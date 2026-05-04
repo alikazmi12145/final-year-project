@@ -11,7 +11,7 @@ const BACKEND_ROOT = path.join(__dirname, "..");
 const TEMP_DIR = path.join(BACKEND_ROOT, "uploads", "tts-temp");
 const OPENAI_VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
 const DEFAULT_VOICE = "onyx";
-const GTTS_PRIMARY_URDU_FALLBACK = "hi";
+const GTTS_PRIMARY_URDU_FALLBACK = "ur";
 const ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1";
 const DEFAULT_ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_DEFAULT_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
 
@@ -71,8 +71,10 @@ const toPublicAudioPath = (filePath) => {
 };
 
 const resolveGTTSLanguageCode = (languageCode) => {
+  // Use native Urdu voice; fall back to Hindi if Google TTS rejects "ur"
+  // ("hi" is a last-resort approximation that shares vocabulary with Urdu)
   if (languageCode === "ur") {
-    return GTTS_PRIMARY_URDU_FALLBACK;
+    return GTTS_PRIMARY_URDU_FALLBACK; // "ur"
   }
   return languageCode;
 };
@@ -113,7 +115,14 @@ const createGTTSFile = async ({ text, languageCode, speed }) => {
   try {
     await writeTTSFile(text, gttsLanguage, filePath, slowMode);
   } catch (error) {
-    if (gttsLanguage !== "en") {
+    // "ur" (native Urdu) failed → try Hindi approximation before English
+    if (gttsLanguage === "ur") {
+      try {
+        await writeTTSFile(text, "hi", filePath, slowMode);
+      } catch {
+        await writeTTSFile(text, "en", filePath, slowMode);
+      }
+    } else if (gttsLanguage !== "en") {
       await writeTTSFile(text, "en", filePath, slowMode);
     } else {
       throw error;
@@ -193,7 +202,7 @@ const generateElevenLabsAudioBuffer = async ({ text, voiceId }) => {
 
   const requestPayload = {
     text,
-    model_id: "eleven_multilingual_v2",
+    model_id: "eleven_multilingual_v3",
     voice_settings: {
       stability: 0.5,
       similarity_boost: 0.75,
@@ -484,6 +493,82 @@ class TTSController {
       return res.status(500).json({
         success: false,
         message: "Unable to generate recitation right now. Please try again.",
+      });
+    }
+  }
+
+  /**
+   * POST /api/tts
+   *
+   * Clean ElevenLabs-first endpoint.
+   *   - Accepts:  { text, voiceId? }
+   *   - Returns:  audio/mpeg binary stream on success
+   *               JSON { success: false, message } on error
+   *
+   * Unlike /api/tts/generate this endpoint does NOT silently fall back to
+   * gTTS (which produces silent MP3 for Urdu text). Instead it returns a
+   * clear error message so the frontend can display it to the user.
+   */
+  static async tts(req, res) {
+    try {
+      const { text, voiceId } = req.body;
+
+      // ── Validate input ──────────────────────────────────────────────────────
+      if (!text || typeof text !== "string" || !text.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "text is required and must be a non-empty string.",
+        });
+      }
+
+      const cleanedText = sanitizeText(text);
+
+      if (cleanedText.length > 5000) {
+        return res.status(400).json({
+          success: false,
+          message: "Text exceeds 5 000-character limit.",
+        });
+      }
+
+      // ── Ensure ElevenLabs API key exists ────────────────────────────────────
+      if (!process.env.ELEVENLABS_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          message:
+            "TTS service not configured. " +
+            "Add ELEVENLABS_API_KEY=<your-key> to backend/.env and restart the server.",
+        });
+      }
+
+      // ── Call ElevenLabs ─────────────────────────────────────────────────────
+      const resolvedVoiceId = (voiceId || DEFAULT_ELEVENLABS_VOICE_ID).toString().trim();
+      const audioBuffer = await generateElevenLabsAudioBuffer({
+        text: cleanedText,
+        voiceId: resolvedVoiceId,
+      });
+
+      // Debug log — check this in the backend terminal to confirm audio is real.
+      console.log(
+        `[TTS] ElevenLabs OK: ${audioBuffer.length} bytes` +
+        ` | voice: ${resolvedVoiceId}` +
+        ` | chars: ${cleanedText.length}`
+      );
+
+      if (!audioBuffer.length) {
+        throw new Error("ElevenLabs returned an empty audio buffer.");
+      }
+
+      // ── Stream audio back to the client ─────────────────────────────────────
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Content-Disposition", "inline; filename=recitation.mp3");
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Content-Length", audioBuffer.length);
+      return res.status(200).send(audioBuffer);
+    } catch (error) {
+      console.error("[TTS] /api/tts failed:", error.message);
+      return res.status(error.httpStatus || 500).json({
+        success: false,
+        message: error.message || "Unable to generate recitation right now.",
       });
     }
   }

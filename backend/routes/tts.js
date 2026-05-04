@@ -15,9 +15,15 @@ const ttsRateLimit = rateLimit({
   },
 });
 
-router.post("/download", ttsRateLimit, TTSController.downloadRecitation);
-router.get("/voices", ttsRateLimit, TTSController.listVoices);
+// ── Clean ElevenLabs endpoint (recommended) ───────────────────────────────────
+// POST /api/tts  { text, voiceId? }  → audio/mpeg binary
+// Returns a clear error (no silent gTTS fallback) when the API key is missing.
+router.post("/", ttsRateLimit, TTSController.tts);
+
+// ── Legacy endpoints (kept for backwards compatibility) ───────────────────────
+router.post("/generate",   ttsRateLimit, TTSController.generateRecitation);
 router.post("/synthesize", ttsRateLimit, TTSController.synthesizeRecitation);
-router.post("/generate", ttsRateLimit, TTSController.generateRecitation);
+router.post("/download",   ttsRateLimit, TTSController.downloadRecitation);
+router.get("/voices",      ttsRateLimit, TTSController.listVoices);
 
 export default router;

@@ -153,7 +153,7 @@ const ReviewsSection = ({ poemId, onReviewAdded }) => {
               rating: userReview.rating,
               title: userReview.title || "",
               content: userReview.content || "",
-              categories: userReview.categories || formData.categories,
+              categories: userReview.categories || { literary: 3, emotional: 3, linguistic: 3, cultural: 3, originality: 3 },
             });
             setIsEditing(true);
           }
@@ -264,11 +264,6 @@ const ReviewsSection = ({ poemId, onReviewAdded }) => {
       month: "long",
       day: "numeric",
     });
-
-  const maxDistribution = Math.max(
-    ...Object.values(statistics.distribution),
-    1
-  );
 
   // ══════════════════════════════════════════
   // RENDER

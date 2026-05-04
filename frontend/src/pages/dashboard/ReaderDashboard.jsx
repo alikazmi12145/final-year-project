@@ -743,7 +743,7 @@ const ReaderDashboard = () => {
             <div className="flex items-center space-x-6">
               {user?.profileImage?.url ? (
                 <img
-                  src={user.profileImage.url}
+                  src={user.profileImage.url.startsWith('http') ? user.profileImage.url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}${user.profileImage.url.startsWith('/') ? '' : '/'}${user.profileImage.url}`}
                   alt={user?.name || "قاری"}
                   className="w-20 h-20 rounded-full object-cover border-4 border-white/30 shadow-lg"
                 />
