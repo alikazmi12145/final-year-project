@@ -52,14 +52,15 @@ if (isGoogleConfigured) {
             return done(null, user);
           }
 
-          // Create new user
+          // Create new user — Google email is verified, but the account must
+          // be approved by an admin before the user is allowed to log in.
           user = new User({
             name: profile.displayName,
             email: profile.emails[0].value,
             role: "reader",
-            status: "active",
+            status: "pending",
             isVerified: true, // Google emails are pre-verified
-            isApproved: true,
+            isApproved: false,
             profileImage: {
               url: profile.photos?.[0]?.value || "",
               publicId: "",
@@ -87,7 +88,8 @@ if (isGoogleConfigured) {
           });
 
           await user.save();
-          return done(null, user);
+          // Pass an info flag so the callback knows this is a brand-new signup
+          return done(null, user, { newSignup: true });
         } catch (error) {
           return done(error, null);
         }

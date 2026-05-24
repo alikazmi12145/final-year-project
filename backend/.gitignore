@@ -12,6 +12,10 @@ yarn-error.log*
 
 # Runtime folders
 uploads/
+storage/
+
+# Google Cloud TTS credentials
+google-credentials.json
 
 # OS files
 .DS_Store

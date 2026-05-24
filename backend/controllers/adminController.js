@@ -8,6 +8,7 @@ import Review from "../models/Review.js";
 import Collection from "../models/Collection.js";
 import LearningResource from "../models/LearningResource.js";
 import mongoose from "mongoose";
+import { evaluateAndApplyAutoVerification } from "../utils/autoVerification.js";
 
 /**
  * Admin Controller for Bazm-E-Sukhan Platform
@@ -714,10 +715,21 @@ class AdminController {
 
       await poem.save();
 
+      // Auto-verification: re-evaluate poet's tier whenever a poem is approved
+      let autoVerification = null;
+      if (action === "approve" && poem.author) {
+        try {
+          autoVerification = await evaluateAndApplyAutoVerification(poem.author);
+        } catch (e) {
+          console.error("Auto-verification check failed:", e);
+        }
+      }
+
       res.json({
         success: true,
         message,
         poem,
+        autoVerification,
       });
     } catch (error) {
       console.error("Error moderating poem:", error);

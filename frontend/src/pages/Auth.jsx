@@ -56,6 +56,12 @@ const Auth = () => {
         showAlertMessage(message || "Google OAuth is not configured. Please use email/password login or contact administrator.", "error");
       } else if (error === "oauth_failed") {
         showAlertMessage("OAuth authentication failed. Please try again or use email/password login.", "error");
+      } else if (error === "pending_admin_approval") {
+        showAlertMessage(message || "آپ کا اکاؤنٹ ایڈمن کی منظوری کے انتظار میں ہے۔", "info");
+      } else if (error === "account_blocked") {
+        showAlertMessage(message || "آپ کا اکاؤنٹ غیر فعال ہے۔ براہِ مہربانی ایڈمن سے رابطہ کریں۔", "error");
+      } else if (error === "poet_pending_approval") {
+        showAlertMessage(message || "Your poet account is pending admin approval.", "info");
       }
       window.history.replaceState({}, document.title, window.location.pathname);
     }

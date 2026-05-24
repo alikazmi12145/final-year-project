@@ -305,6 +305,14 @@ const Navbar = () => {
                     </Link>
 
                     <Link
+                      to="/report-fraud"
+                      className="flex items-center space-x-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-all nastaleeq-primary"
+                    >
+                      <span className="text-base">⚠️</span>
+                      <span>جعلی شاعر کی رپورٹ</span>
+                    </Link>
+
+                    <Link
                       to="/chat"
                       className="flex items-center space-x-2 px-4 py-3 text-sm text-urdu-brown hover:bg-urdu-cream/30 hover:text-urdu-maroon transition-all nastaleeq-primary relative"
                     >

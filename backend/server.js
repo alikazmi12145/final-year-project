@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -68,6 +69,17 @@ app.use(
   })
 );
 
+// Security headers (Helmet). crossOriginResourcePolicy is relaxed because the
+// /uploads and /storage static endpoints are consumed by the SPA running on a
+// different port during development.
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
+    contentSecurityPolicy: false,
+  })
+);
+
 // Middleware
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
@@ -81,6 +93,25 @@ app.use(performanceMonitor);
 
 // Serve uploaded images as static files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Serve persisted TTS recitations as static files (cached for 1 day).
+app.use(
+  "/storage",
+  express.static(path.join(__dirname, "storage"), {
+    maxAge: "1d",
+    immutable: true,
+    setHeaders: (res) => {
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+      // Allow the Vite dev server (and any allowed origin) to fetch / play
+      // audio cross-origin without browsers silently muting it.
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Range, Content-Type");
+      res.setHeader("Access-Control-Expose-Headers", "Content-Range, Accept-Ranges, Content-Length");
+    },
+  })
+);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

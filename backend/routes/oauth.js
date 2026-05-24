@@ -86,7 +86,28 @@ router.get("/google/callback", (req, res, next) => {
       );
     }
 
-    // Check if poet account is pending approval
+    // Brand-new Google signup — account created but cannot log in until admin approves
+    if (info?.newSignup) {
+      return res.redirect(
+        `${clientUrl}/auth?error=pending_admin_approval&message=آپ کا اکاؤنٹ کامیابی سے رجسٹر ہو گیا۔ ایڈمن کی منظوری کے بعد لاگ ان کر سکیں گے۔`
+      );
+    }
+
+    // Existing user but not yet approved by admin (e.g. poet or any pending account)
+    if (user.status === "pending" || user.isApproved === false) {
+      return res.redirect(
+        `${clientUrl}/auth?error=pending_admin_approval&message=آپ کا اکاؤنٹ ایڈمن کی منظوری کے انتظار میں ہے۔`
+      );
+    }
+
+    // Account suspended / banned
+    if (user.status && user.status !== "active") {
+      return res.redirect(
+        `${clientUrl}/auth?error=account_blocked&message=آپ کا اکاؤنٹ غیر فعال ہے۔ براے مہربانی ایڈمن سے رابطہ کریں۔`
+      );
+    }
+
+    // Legacy check kept for backwards compatibility
     if (user.role === "poet" && user.status === "pending") {
       return res.redirect(
         `${clientUrl}/auth?error=poet_pending_approval&message=Your poet account is pending admin approval. Please wait for approval.`

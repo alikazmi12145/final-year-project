@@ -47,6 +47,9 @@ import AdminUpdatesDashboard from "./components/admin/AdminUpdatesDashboard";
 
 // Verification Module
 import VerificationPage from "./pages/VerificationPage";
+import FraudReportPage from "./pages/FraudReportPage";
+import AdminVerificationsPage from "./pages/AdminVerificationsPage";
+import AdminFraudReportsPage from "./pages/AdminFraudReportsPage";
 
 function App() {
   return (
@@ -192,6 +195,30 @@ function App() {
           element={
             <ProtectedRoute>
               <VerificationPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/report-fraud"
+          element={
+            <ProtectedRoute>
+              <FraudReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/verifications"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminVerificationsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/fraud-reports"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminFraudReportsPage />
             </ProtectedRoute>
           }
         />

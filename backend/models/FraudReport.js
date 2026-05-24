@@ -71,6 +71,13 @@ const fraudReportSchema = new mongoose.Schema(
       ref: "User",
     },
     resolvedAt: Date,
+
+    // Whether the reported user has viewed/acknowledged this report in their dashboard
+    seenByReported: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
   },
   {
     timestamps: true,

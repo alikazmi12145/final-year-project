@@ -67,6 +67,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useMessage } from "../../context/MessageContext";
 import { contestAPI, quizAPI } from "../../services/api";
+import AdminVerificationPanel from "../../components/admin/AdminVerificationPanel";
+import AdminFraudPanel from "../../components/admin/AdminFraudPanel";
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -833,6 +835,18 @@ const AdminDashboard = () => {
       color: "text-emerald-600",
     },
     {
+      id: "poet-verification",
+      label: "شاعر تصدیق",
+      icon: Shield,
+      color: "text-amber-600",
+    },
+    {
+      id: "fraud-reports",
+      label: "جعلی رپورٹس",
+      icon: Shield,
+      color: "text-red-600",
+    },
+    {
       id: "learning-resources",
       label: "تعلیمی وسائل",
       icon: Upload,
@@ -1078,6 +1092,8 @@ const AdminDashboard = () => {
             )}
             {activeTab === "quiz-management" && <QuizManagementTab />}
             {activeTab === "user-approval" && <UserApprovalPanel />}
+            {activeTab === "poet-verification" && <AdminVerificationPanel />}
+            {activeTab === "fraud-reports" && <AdminFraudPanel />}
             {activeTab === "learning-resources" && <LearningResourcesUpload />}
             {activeTab === "updates-news" && <AdminUpdatesDashboard />}
             {activeTab === "user-feedback" && <FeedbackViewTab />}

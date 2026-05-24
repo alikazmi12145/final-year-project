@@ -1,6 +1,12 @@
 import VerificationRequest from "../models/VerificationRequest.js";
 import FraudReport from "../models/FraudReport.js";
 import User from "../models/User.js";
+import Notification from "../models/Notification.js";
+import {
+  evaluateAndApplyAutoVerification,
+  getPoetStats,
+  VERIFICATION_TIERS,
+} from "../utils/autoVerification.js";
 
 /**
  * VerificationController
@@ -135,6 +141,54 @@ class VerificationController {
     }
   }
 
+  /**
+   * POST /api/verification/auto-check
+   * Re-evaluate the current user's stats and auto-grant a badge tier
+   * (bronze/silver/gold/diamond) if criteria are met. Never downgrades.
+   */
+  static async autoCheckVerification(req, res) {
+    try {
+      const userId = req.user.userId;
+      const result = await evaluateAndApplyAutoVerification(userId);
+      const stats = result.stats || (await getPoetStats(userId));
+
+      // Build a clear, user-friendly message
+      let message;
+      if (result.updated) {
+        message = `مبارک ہو! آپ کو ${result.to} بیج عطا کر دیا گیا`;
+      } else if (stats.currentBadge && stats.currentBadge !== "none") {
+        message = `آپ پہلے ہی ${stats.currentBadge} بیج کے حامل ہیں — اگلی سطح کے لیے اپنے اعداد و شمار بہتر بنائیں`;
+      } else {
+        message = "ابھی پہلے بیج کے لیے اہلیت نہیں — مزید شاعری شائع کریں";
+      }
+
+      return res.status(200).json({
+        success: true,
+        message,
+        data: {
+          updated: result.updated,
+          previousBadge: result.from,
+          newBadge: result.to,
+          currentBadge: stats.currentBadge || "none",
+          isVerified: !!stats.isVerified,
+          stats: {
+            publishedPoems: stats.poems,
+            followers: stats.followers,
+            totalLikes: stats.likes,
+          },
+          criteria: VERIFICATION_TIERS,
+        },
+      });
+    } catch (error) {
+      console.error("autoCheckVerification error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "آٹو تصدیق میں خرابی",
+        error: error.message,
+      });
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // ADMIN: Verification Management
   // ─────────────────────────────────────────────────────────────────────────────
@@ -162,7 +216,7 @@ class VerificationController {
 
       const [requests, total] = await Promise.all([
         VerificationRequest.find(filter)
-          .populate("userId", "name email profileImage role isVerified")
+          .populate("userId", "name email profileImage role isVerified verificationBadge")
           .populate("reviewedBy", "name email")
           .sort({ createdAt: -1 })
           .skip(skip)
@@ -369,6 +423,27 @@ class VerificationController {
         status: "pending",
       });
 
+      // Notify the reported user (poet) about the new report
+      try {
+        const notif = await Notification.create({
+          userId: reportedUserId,
+          message:
+            "آپ کے خلاف ایک رپورٹ جمع کروائی گئی ہے۔ ایڈمن جلد جائزہ لے گا۔",
+          type: "admin",
+          relatedId: report._id,
+        });
+        const io = req.app.get("io");
+        if (io) {
+          io.to(String(reportedUserId)).emit("notification", {
+            message: notif.message,
+            type: "admin",
+            reportId: report._id,
+          });
+        }
+      } catch (notifErr) {
+        console.error("fraud report notification error:", notifErr);
+      }
+
       return res.status(201).json({
         success: true,
         message: "رپورٹ کامیابی سے جمع ہو گئی۔ ایڈمن جلد جائزہ لے گا",
@@ -387,6 +462,80 @@ class VerificationController {
   // ─────────────────────────────────────────────────────────────────────────────
   // ADMIN: Fraud Report Management
   // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * GET /api/report/against-me
+   * Return all fraud reports filed against the logged-in user (so the poet
+   * can see how many people reported them and the admin verdicts).
+   */
+  static async getReportsAgainstMe(req, res) {
+    try {
+      const userId = req.user.userId;
+      const reports = await FraudReport.find({ reportedUserId: userId })
+        .populate("reportedBy", "name profileImage")
+        .populate("resolvedBy", "name")
+        .sort({ createdAt: -1 })
+        .lean();
+
+      // Alerts auto-expire 24 hours after the report (or admin decision) is recorded
+      const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      const isFresh = (r) => {
+        // Use the most recent activity timestamp: resolvedAt > updatedAt > createdAt
+        const ts = new Date(r.resolvedAt || r.updatedAt || r.createdAt).getTime();
+        return now - ts < TWENTY_FOUR_HOURS;
+      };
+
+      const counts = {
+        total: reports.length,
+        pending: reports.filter((r) => r.status === "pending").length,
+        resolved: reports.filter((r) => r.status === "resolved").length,
+        dismissed: reports.filter((r) => r.status === "dismissed").length,
+        // Banner only counts reports that are both un-acknowledged AND created/updated in last 24h
+        unseen: reports.filter((r) => !r.seenByReported && isFresh(r)).length,
+      };
+
+      return res.status(200).json({
+        success: true,
+        data: reports,
+        counts,
+      });
+    } catch (error) {
+      console.error("getReportsAgainstMe error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "اپنی رپورٹس حاصل کرنے میں خرابی",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * PUT /api/report/mark-seen
+   * Mark all fraud reports against the logged-in user as seen so the
+   * dashboard alert disappears once they’ve checked them.
+   */
+  static async markReportsSeen(req, res) {
+    try {
+      const userId = req.user.userId;
+      const result = await FraudReport.updateMany(
+        { reportedUserId: userId, seenByReported: { $ne: true } },
+        { $set: { seenByReported: true } }
+      );
+      return res.status(200).json({
+        success: true,
+        message: "رپورٹس دیکھ لی گئیں",
+        modified: result.modifiedCount || 0,
+      });
+    } catch (error) {
+      console.error("markReportsSeen error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "رپورٹس اپ ڈیٹ کرنے میں خرابی",
+        error: error.message,
+      });
+    }
+  }
 
   /**
    * GET /api/admin/reports
@@ -472,6 +621,34 @@ class VerificationController {
       report.resolvedBy = adminId;
       report.resolvedAt = new Date();
       await report.save();
+
+      // Notify the reported user about the admin decision
+      try {
+        const decisionMsg =
+          action === "resolved"
+            ? "ایڈمن نے آپ کے خلاف رپورٹ کو حل قرار دے دیا ہے"
+            : "ایڈمن نے آپ کے خلاف رپورٹ مسترد کر دی ہے";
+        const fullMsg = report.adminNotes
+          ? `${decisionMsg} — ایڈمن کا نوٹ: ${report.adminNotes}`
+          : decisionMsg;
+        const notif = await Notification.create({
+          userId: report.reportedUserId,
+          message: fullMsg,
+          type: "admin",
+          relatedId: report._id,
+        });
+        const io = req.app.get("io");
+        if (io) {
+          io.to(String(report.reportedUserId)).emit("notification", {
+            message: notif.message,
+            type: "admin",
+            reportId: report._id,
+            status: action,
+          });
+        }
+      } catch (notifErr) {
+        console.error("fraud resolve notification error:", notifErr);
+      }
 
       return res.status(200).json({
         success: true,

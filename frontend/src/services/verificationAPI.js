@@ -29,6 +29,9 @@ export const applyForVerification = (data) =>
 export const getMyVerificationStatus = () =>
   http.get("/verification/my-status");
 
+export const autoCheckVerification = () =>
+  http.post("/verification/auto-check");
+
 export const getAdminVerificationRequests = (params = {}) =>
   http.get("/admin/verification-requests", { params });
 
@@ -40,6 +43,10 @@ export const rejectVerificationRequest = (id, adminRemarks) =>
 
 export const submitFraudReport = (data) =>
   http.post("/report", data);
+
+export const getReportsAgainstMe = () => http.get("/report/against-me");
+
+export const markReportsSeen = () => http.put("/report/mark-seen");
 
 export const getAdminFraudReports = (params = {}) =>
   http.get("/admin/reports", { params });

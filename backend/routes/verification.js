@@ -67,4 +67,9 @@ router.post(
 // ─────────────────────────────────────────────────────────────────────────────
 router.get("/my-status", auth, VerificationController.getMyVerificationStatus);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/verification/auto-check  — Re-evaluate auto-badge tier
+// ─────────────────────────────────────────────────────────────────────────────
+router.post("/auto-check", auth, VerificationController.autoCheckVerification);
+
 export default router;

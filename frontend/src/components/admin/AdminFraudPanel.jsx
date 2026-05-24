@@ -21,6 +21,22 @@ import {
 } from "../../services/verificationAPI";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Backend host helper — uploaded profile images are stored as relative paths
+// (e.g. "/uploads/profiles/xyz.jpg"). Prefix them with the API host so the
+// admin panel served from the frontend port can still load them.
+// ─────────────────────────────────────────────────────────────────────────────
+const BACKEND_HOST =
+  import.meta.env.VITE_BACKEND_URL ||
+  (import.meta.env.VITE_API_BASE_URL
+    ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "")
+    : "http://localhost:5000");
+const resolveImg = (url) => {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${BACKEND_HOST}${url.startsWith("/") ? "" : "/"}${url}`;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 const REASON_LABELS = {
@@ -97,9 +113,9 @@ const ReportModal = ({ report, onClose, onResolve, processing }) => {
             </p>
             <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-100 rounded-xl">
               <div className="w-10 h-10 rounded-full bg-red-200 flex items-center justify-center overflow-hidden flex-shrink-0">
-                {report.reportedUserId?.profileImage?.url ? (
+                {resolveImg(report.reportedUserId?.profileImage?.url) ? (
                   <img
-                    src={report.reportedUserId.profileImage.url}
+                    src={resolveImg(report.reportedUserId.profileImage.url)}
                     alt={report.reportedUserId.name}
                     className="w-full h-full object-cover"
                   />
@@ -432,9 +448,9 @@ const AdminFraudPanel = () => {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                        {rpt.reportedUserId?.profileImage?.url ? (
+                        {resolveImg(rpt.reportedUserId?.profileImage?.url) ? (
                           <img
-                            src={rpt.reportedUserId.profileImage.url}
+                            src={resolveImg(rpt.reportedUserId.profileImage.url)}
                             alt={rpt.reportedUserId.name}
                             className="w-full h-full object-cover"
                           />

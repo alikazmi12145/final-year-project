@@ -20,6 +20,7 @@ import {
   Award,
   Clock,
   Globe,
+  Flag,
 } from "lucide-react";
 
 const Poets = () => {
@@ -253,6 +254,27 @@ const Poets = () => {
                   )}
                   {isFollowing ? "فالو ہٹائیں" : "فالو کریں"}
                 </button>
+
+                {/* Report poet — opens fraud report form pre-selected with this poet */}
+                {(() => {
+                  const reportTargetId =
+                    poet?.user?._id ||
+                    (typeof poet?.user === "string" ? poet.user : null) ||
+                    poet?._id;
+                  if (!reportTargetId) return null;
+                  return (
+                    <Link
+                      to={`/report-fraud?target=${reportTargetId}&name=${encodeURIComponent(
+                        poet?.name || ""
+                      )}`}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-urdu mb-3 ml-2 text-red-600 border border-red-200 bg-red-50 hover:bg-red-100 hover:text-red-700 transition-all shadow-sm"
+                      title="رپورٹ کریں"
+                    >
+                      <Flag className="w-3.5 h-3.5" />
+                      رپورٹ کریں
+                    </Link>
+                  );
+                })()}
 
                 {/* Enhanced Bio Section */}
                 <div className="bg-gradient-to-r from-urdu-light/50 to-cultural-pearl/50 p-4 rounded-xl mb-4 border border-urdu-gold/10">

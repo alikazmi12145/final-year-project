@@ -33,6 +33,7 @@ import {
   MessagesSquare,
   Feather,
   Trophy,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useMessage } from "../../context/MessageContext";
@@ -40,6 +41,10 @@ import { useNavigate } from "react-router-dom";
 import { poetryAPI } from "../../services/api";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import VerificationForm from "../../components/verification/VerificationForm";
+import VerificationBadge from "../../components/verification/VerificationBadge";
+import VerificationTab from "../../components/verification/VerificationTab";
+import { autoCheckVerification, getReportsAgainstMe, markReportsSeen } from "../../services/verificationAPI";
 import {
   LineChart,
   Line,
@@ -375,6 +380,41 @@ const PoetDashboard = () => {
   const [profile, setProfile] = useState(null);
   const [contestGrades, setContestGrades] = useState([]);
   const [showChat, setShowChat] = useState(false);
+  const [myReports, setMyReports] = useState([]);
+  const [reportCounts, setReportCounts] = useState({ total: 0, pending: 0, resolved: 0, dismissed: 0, unseen: 0 });
+  const [showReportsPanel, setShowReportsPanel] = useState(false);
+
+  // Fetch fraud reports filed against this poet
+  useEffect(() => {
+    const loadReports = async () => {
+      try {
+        const res = await getReportsAgainstMe();
+        if (res?.data?.success) {
+          setMyReports(res.data.data || []);
+          setReportCounts(res.data.counts || { total: 0, pending: 0, resolved: 0, dismissed: 0, unseen: 0 });
+        }
+      } catch (err) {
+        // Silently ignore
+      }
+    };
+    if (user) loadReports();
+  }, [user]);
+
+  // When the poet opens the details panel, acknowledge the reports so the
+  // alert disappears on next render (and future visits).
+  const handleToggleReportsPanel = async () => {
+    const next = !showReportsPanel;
+    setShowReportsPanel(next);
+    if (next && reportCounts.unseen > 0) {
+      try {
+        await markReportsSeen();
+      } catch {
+        // Non-critical
+      }
+      setReportCounts((c) => ({ ...c, unseen: 0 }));
+      setMyReports((reports) => reports.map((r) => ({ ...r, seenByReported: true })));
+    }
+  };
 
   useEffect(() => {
     loadDashboardData();
@@ -864,6 +904,105 @@ const PoetDashboard = () => {
       dir="rtl"
     >
 
+      {/* Fraud Reports Alert — visible to the poet only when there are unseen reports */}
+      {reportCounts.unseen > 0 && (
+        <div className="bg-gradient-to-r from-red-50 via-rose-50 to-orange-50 border-b-2 border-red-300">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <div className="flex-shrink-0 w-11 h-11 rounded-full bg-red-100 border border-red-300 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-red-800 urdu-text text-sm sm:text-base">
+                    آپ کے خلاف {reportCounts.unseen} نئی رپورٹ
+                    {reportCounts.unseen > 1 ? "س" : ""} درج ہوئی ہیں
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-2 text-xs urdu-text">
+                    {reportCounts.pending > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300">
+                        زیرِ غور: {reportCounts.pending}
+                      </span>
+                    )}
+                    {reportCounts.resolved > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        حل شدہ: {reportCounts.resolved}
+                      </span>
+                    )}
+                    {reportCounts.dismissed > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-300">
+                        مسترد: {reportCounts.dismissed}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleToggleReportsPanel}
+                className="flex-shrink-0 px-4 py-2 rounded-full text-xs font-semibold urdu-text bg-red-600 text-white hover:bg-red-700 transition-all shadow-sm"
+              >
+                {showReportsPanel ? "بند کریں" : "تفصیلات دیکھیں"}
+              </button>
+            </div>
+
+            {showReportsPanel && (
+              <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
+                {myReports.map((r) => {
+                  const statusConfig = {
+                    pending: { label: "زیرِ غور", cls: "bg-yellow-100 text-yellow-800 border-yellow-300" },
+                    resolved: { label: "حل شدہ", cls: "bg-emerald-100 text-emerald-800 border-emerald-300" },
+                    dismissed: { label: "مسترد", cls: "bg-gray-100 text-gray-700 border-gray-300" },
+                  }[r.status] || { label: r.status, cls: "bg-gray-100 text-gray-700 border-gray-300" };
+                  const reasonLabels = {
+                    impersonation: "نقالی",
+                    fake_credentials: "جعلی اسناد",
+                    plagiarism: "سرقہ",
+                    spam: "اسپام",
+                    harassment: "ہراسانی",
+                    other: "دیگر",
+                  };
+                  return (
+                    <div
+                      key={r._id}
+                      className="bg-white border border-red-200 rounded-xl p-4 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-300 urdu-text">
+                            {reasonLabels[r.reason] || r.reason}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full border urdu-text ${statusConfig.cls}`}>
+                            {statusConfig.label}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-500 urdu-text">
+                          {new Date(r.createdAt).toLocaleDateString("ur-PK", { year: "numeric", month: "long", day: "numeric" })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-800 urdu-text leading-relaxed mb-2">
+                        {r.description}
+                      </p>
+                      {r.adminNotes && (
+                        <div className="mt-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                          <p className="text-xs font-semibold text-amber-800 urdu-text mb-1">
+                            ایڈمن کا نوٹ:
+                          </p>
+                          <p className="text-xs text-amber-900 urdu-text leading-relaxed">
+                            {r.adminNotes}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Approval Status Notice */}
       {user?.status === "pending" && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
@@ -909,8 +1048,17 @@ const PoetDashboard = () => {
                   <Feather className="inline w-8 h-8 ml-3 text-amber-600" />
                   شاعر ڈیش بورڈ
                 </h1>
-                <p className="text-xl text-amber-700 font-medium nastaleeq-primary">
-                  خوش آمدید، {user?.name || "شاعر"}
+                <p className="text-xl text-amber-700 font-medium nastaleeq-primary flex items-center gap-2">
+                  <span>خوش آمدید، {user?.name || "شاعر"}</span>
+                  <VerificationBadge
+                    isVerified={
+                      (user?.isVerified || profile?.isVerified) &&
+                      (user?.verificationBadge || profile?.verificationBadge) &&
+                      (user?.verificationBadge || profile?.verificationBadge) !== "none"
+                    }
+                    badge={user?.verificationBadge || profile?.verificationBadge || "gold"}
+                    size="md"
+                  />
                 </p>
                 <p className="text-gray-600 text-sm mt-1">{user?.email}</p>
               </div>
@@ -970,6 +1118,12 @@ const PoetDashboard = () => {
                 label: "مقابلے کے نتائج",
                 icon: Trophy,
                 color: "from-amber-500 to-yellow-600",
+              },
+              {
+                id: "verification",
+                label: "تصدیق",
+                icon: ShieldCheck,
+                color: "from-amber-500 to-orange-600",
               },
               {
                 id: "settings",
@@ -1355,6 +1509,17 @@ const PoetDashboard = () => {
             <h2 className="text-3xl font-bold text-gray-800 flex items-center">
               <User className="w-8 h-8 ml-3 text-purple-600" />
               پروفائل کا انتظام
+              <span className="mr-3">
+                <VerificationBadge
+                  isVerified={
+                    (user?.isVerified || profile?.isVerified) &&
+                    (user?.verificationBadge || profile?.verificationBadge) &&
+                    (user?.verificationBadge || profile?.verificationBadge) !== "none"
+                  }
+                  badge={user?.verificationBadge || profile?.verificationBadge || "gold"}
+                  size="md"
+                />
+              </span>
             </h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1938,6 +2103,9 @@ const PoetDashboard = () => {
               </div>
             </div>
           </div>
+        )}
+        {activeTab === "verification" && (
+          <VerificationTab user={user} profile={profile} />
         )}
         {activeTab === "settings" && (
           <div className="space-y-8">

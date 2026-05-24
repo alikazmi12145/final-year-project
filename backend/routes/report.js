@@ -59,4 +59,14 @@ router.post(
   VerificationController.submitFraudReport
 );
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/report/against-me  — Reports filed against the logged-in user
+// ─────────────────────────────────────────────────────────────────────────────
+router.get("/against-me", auth, VerificationController.getReportsAgainstMe);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /api/report/mark-seen  — Acknowledge all reports against the user
+// ─────────────────────────────────────────────────────────────────────────────
+router.put("/mark-seen", auth, VerificationController.markReportsSeen);
+
 export default router;

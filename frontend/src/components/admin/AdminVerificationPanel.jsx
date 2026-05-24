@@ -26,6 +26,19 @@ import {
 } from "../../services/verificationAPI";
 import VerificationBadge from "../verification/VerificationBadge";
 
+// Resolve image URL — absolute URLs (Cloudinary, http) are used as-is,
+// relative paths from local storage are prefixed with backend host.
+const BACKEND_HOST =
+  import.meta.env.VITE_BACKEND_URL ||
+  (import.meta.env.VITE_API_BASE_URL
+    ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "")
+    : "http://localhost:5000");
+const resolveImg = (url) => {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${BACKEND_HOST}${url.startsWith("/") ? "" : "/"}${url}`;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Status pill
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,18 +101,32 @@ const RequestModal = ({ request, onClose, onApprove, onReject, processing }) => 
           {/* User info */}
           <div className="flex items-center gap-4 p-4 bg-amber-50 rounded-xl border border-amber-100">
             <div className="w-12 h-12 rounded-full bg-amber-200 flex items-center justify-center overflow-hidden flex-shrink-0">
-              {request.userId?.profileImage?.url ? (
+              {resolveImg(request.userId?.profileImage?.url) ? (
                 <img
-                  src={request.userId.profileImage.url}
+                  src={resolveImg(request.userId.profileImage.url)}
                   alt={request.userId.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = "none";
+                  }}
                 />
               ) : (
                 <User size={24} className="text-amber-700" />
               )}
             </div>
             <div>
-              <p className="font-bold text-gray-900">{request.userId?.name}</p>
+              <p className="font-bold text-gray-900 flex items-center gap-2">
+                <span>{request.userId?.name}</span>
+                <VerificationBadge
+                  isVerified={
+                    request.userId?.isVerified &&
+                    request.userId?.verificationBadge &&
+                    request.userId?.verificationBadge !== "none"
+                  }
+                  badge={request.userId?.verificationBadge || "gold"}
+                  size="sm"
+                />
+              </p>
               <p className="text-sm text-gray-500">{request.userId?.email}</p>
               <p className="text-xs text-gray-400 mt-0.5">
                 {request.userId?.role} •{" "}
@@ -428,19 +455,32 @@ const AdminVerificationPanel = () => {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                        {req.userId?.profileImage?.url ? (
+                        {resolveImg(req.userId?.profileImage?.url) ? (
                           <img
-                            src={req.userId.profileImage.url}
+                            src={resolveImg(req.userId.profileImage.url)}
                             alt={req.userId.name}
                             className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                            }}
                           />
                         ) : (
                           <User size={16} className="text-amber-600" />
                         )}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">
-                          {req.userId?.name}
+                        <p className="font-medium text-gray-900 flex items-center gap-1.5">
+                          <span>{req.userId?.name}</span>
+                          <VerificationBadge
+                            isVerified={
+                              req.userId?.isVerified &&
+                              req.userId?.verificationBadge &&
+                              req.userId?.verificationBadge !== "none"
+                            }
+                            badge={req.userId?.verificationBadge || "gold"}
+                            size="sm"
+                            showLabel={false}
+                          />
                         </p>
                         <p className="text-xs text-gray-400">{req.userId?.email}</p>
                       </div>
