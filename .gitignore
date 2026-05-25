@@ -48,9 +48,7 @@ pnpm-debug.log*
 Thumbs.db
 desktop.ini
 
-# Python AI microservice (kept out of this repository)
-# The Python AI service is maintained separately. Do not commit it here.
-python-ai-service/
+# Python artifacts
 *.pyc
 __pycache__/
 .venv/
