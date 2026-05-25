@@ -23,6 +23,8 @@ import {
   MessageSquare,
   Headphones,
   ChevronDown,
+  Shield,
+  ShieldAlert,
 } from "lucide-react";
 
 const Navbar = () => {
@@ -313,6 +315,33 @@ const Navbar = () => {
                     </Link>
 
                     <Link
+                      to="/copyright/reports"
+                      className="flex items-center space-x-2 px-4 py-3 text-sm text-urdu-brown hover:bg-urdu-cream/30 hover:text-urdu-maroon transition-all nastaleeq-primary"
+                    >
+                      <Shield size={14} />
+                      <span>کاپی رائٹ شکایات</span>
+                    </Link>
+
+                    {user?.role === "admin" && (
+                      <>
+                        <Link
+                          to="/admin/copyright"
+                          className="flex items-center space-x-2 px-4 py-3 text-sm text-cultural-amber hover:bg-amber-50 transition-all nastaleeq-primary"
+                        >
+                          <ShieldAlert size={14} />
+                          <span>کاپی رائٹ پینل</span>
+                        </Link>
+                        <Link
+                          to="/admin/copyright/violations"
+                          className="flex items-center space-x-2 px-4 py-3 text-sm text-cultural-amber hover:bg-amber-50 transition-all nastaleeq-primary"
+                        >
+                          <ShieldAlert size={14} />
+                          <span>خلاف ورزیاں</span>
+                        </Link>
+                      </>
+                    )}
+
+                    <Link
                       to="/chat"
                       className="flex items-center space-x-2 px-4 py-3 text-sm text-urdu-brown hover:bg-urdu-cream/30 hover:text-urdu-maroon transition-all nastaleeq-primary relative"
                     >
@@ -505,6 +534,36 @@ const Navbar = () => {
                       <BookOpen size={18} />
                       <span className="font-medium">میرے مجموعے</span>
                     </Link>
+
+                    <Link
+                      to="/copyright/reports"
+                      className="flex items-center space-x-3 px-4 py-3 rounded-xl text-urdu-brown hover:bg-urdu-cream/40 hover:text-urdu-maroon transition-all nastaleeq-primary"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <Shield size={18} />
+                      <span className="font-medium">کاپی رائٹ شکایات</span>
+                    </Link>
+
+                    {user?.role === "admin" && (
+                      <>
+                        <Link
+                          to="/admin/copyright"
+                          className="flex items-center space-x-3 px-4 py-3 rounded-xl text-cultural-amber hover:bg-amber-50 transition-all nastaleeq-primary"
+                          onClick={() => setIsOpen(false)}
+                        >
+                          <ShieldAlert size={18} />
+                          <span className="font-medium">کاپی رائٹ پینل</span>
+                        </Link>
+                        <Link
+                          to="/admin/copyright/violations"
+                          className="flex items-center space-x-3 px-4 py-3 rounded-xl text-cultural-amber hover:bg-amber-50 transition-all nastaleeq-primary"
+                          onClick={() => setIsOpen(false)}
+                        >
+                          <ShieldAlert size={18} />
+                          <span className="font-medium">خلاف ورزیاں</span>
+                        </Link>
+                      </>
+                    )}
 
                     <Link
                       to="/chat"

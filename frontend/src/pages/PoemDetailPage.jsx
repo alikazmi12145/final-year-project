@@ -4,6 +4,7 @@ import PoemView from "../components/poetry/PoemView";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
 import { useMessage } from "../context/MessageContext";
+import ReportCopyrightModal from "../components/copyright/ReportCopyrightModal";
 
 const PoemDetailPage = () => {
   const { id } = useParams();
@@ -14,6 +15,7 @@ const PoemDetailPage = () => {
   const [poem, setPoem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [relatedPoems, setRelatedPoems] = useState([]);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   useEffect(() => {
     console.log('PoemDetailPage useEffect triggered for id:', id);
@@ -287,7 +289,23 @@ const PoemDetailPage = () => {
         onDelete={handleDelete}
         onBookmark={handleBookmark}
         onDownload={handleDownload}
+        onReport={
+          user && poem
+            ? () => setShowReportModal(true)
+            : null
+        }
       />
+
+      {/* Copyright Report Modal */}
+      {poem && (
+        <ReportCopyrightModal
+          poemId={poem._id || id}
+          poemTitle={poem.title}
+          open={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          onSuccess={() => setShowReportModal(false)}
+        />
+      )}
 
       {/* Related Poems Section */}
       {relatedPoems.length > 0 && (

@@ -51,6 +51,12 @@ import FraudReportPage from "./pages/FraudReportPage";
 import AdminVerificationsPage from "./pages/AdminVerificationsPage";
 import AdminFraudReportsPage from "./pages/AdminFraudReportsPage";
 
+// Copyright Management Module
+import MyCopyrightReportsPage from "./pages/MyCopyrightReportsPage";
+import CopyrightReportDetailPage from "./pages/CopyrightReportDetailPage";
+import AdminCopyrightDashboard from "./pages/AdminCopyrightDashboard";
+import AdminViolationsPage from "./pages/AdminViolationsPage";
+
 function App() {
   return (
     <Layout>
@@ -219,6 +225,56 @@ function App() {
           element={
             <ProtectedRoute requiredRole="admin">
               <AdminFraudReportsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Copyright Management Module Routes */}
+        <Route
+          path="/copyright/reports"
+          element={
+            <ProtectedRoute>
+              <MyCopyrightReportsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/copyright/report"
+          element={
+            <ProtectedRoute>
+              <MyCopyrightReportsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/copyright/report/:id"
+          element={
+            <ProtectedRoute>
+              <CopyrightReportDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/copyright"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminCopyrightDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/copyright/violations"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminViolationsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/copyright/:id"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <CopyrightReportDetailPage />
             </ProtectedRoute>
           }
         />

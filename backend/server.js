@@ -64,7 +64,7 @@ app.use(
       }
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -344,6 +344,7 @@ const startServer = async () => {
     const ttsRoutes = await import("./routes/tts.js");
     const verificationRoutes = await import("./routes/verification.js");
     const reportRoutes = await import("./routes/report.js");
+    const copyrightModule = await import("./routes/copyright.js");
 
     // Updates & Feedback Module routes
     const postRoutes = await import("./routes/posts.js");
@@ -375,6 +376,8 @@ const startServer = async () => {
     app.use("/api/tts", ttsRoutes.default);
     app.use("/api/verification", verificationRoutes.default);
     app.use("/api/report", reportRoutes.default);
+    app.use("/api/copyright", copyrightModule.default);
+    app.use("/api/admin", copyrightModule.adminRouter);
 
     // Updates & Feedback Module routes
     app.use("/api/posts", postRoutes.default);

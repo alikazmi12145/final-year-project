@@ -16,6 +16,7 @@ import {
   Tag,
   Star,
   Mic,
+  Flag,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
@@ -32,6 +33,7 @@ const PoemView = ({
   onDelete,
   onBookmark,
   onDownload,
+  onReport,
 }) => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -353,11 +355,11 @@ const PoemView = ({
           )}
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="flex flex-nowrap items-center justify-center gap-2">
             <button
               onClick={handleLike}
               disabled={isLiking}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0 whitespace-nowrap ${
                 isLiked
                   ? "bg-red-100 text-red-600"
                   : "bg-red-50 text-red-600 hover:bg-red-100"
@@ -369,7 +371,7 @@ const PoemView = ({
 
             <button
               onClick={() => setShowComments(!showComments)}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm hover:bg-blue-100 transition-colors shrink-0 whitespace-nowrap"
             >
               <MessageCircle className="w-4 h-4" />
               <span>تبصرے ({comments.length})</span>
@@ -378,7 +380,7 @@ const PoemView = ({
             <button
               onClick={handleBookmark}
               disabled={isBookmarking}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0 whitespace-nowrap ${
                 isBookmarked
                   ? "bg-green-100 text-green-600"
                   : "bg-green-50 text-green-600 hover:bg-green-100"
@@ -390,7 +392,7 @@ const PoemView = ({
 
             <button
               onClick={handleShare}
-              className="flex items-center space-x-2 px-4 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-purple-50 text-purple-600 rounded-lg text-sm hover:bg-purple-100 transition-colors shrink-0 whitespace-nowrap"
             >
               <Share2 className="w-4 h-4" />
               <span>شیئر</span>
@@ -399,7 +401,7 @@ const PoemView = ({
             <button
               onClick={handleDownload}
               disabled={isDownloading}
-              className="flex items-center space-x-2 px-4 py-2 bg-urdu-gold/10 text-urdu-brown rounded-lg hover:bg-urdu-gold/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-urdu-gold/10 text-urdu-brown rounded-lg text-sm hover:bg-urdu-gold/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
             >
               <Download className="w-4 h-4" />
               <span>{isDownloading ? "..." : "ڈاؤن لوڈ"}</span>
@@ -407,11 +409,22 @@ const PoemView = ({
 
             <button
               onClick={() => setTtsOpen(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-amber-50 text-urdu-brown rounded-lg hover:bg-amber-100 transition-colors border border-urdu-gold/30"
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-amber-50 text-urdu-brown rounded-lg text-sm hover:bg-amber-100 transition-colors border border-urdu-gold/30 shrink-0 whitespace-nowrap"
             >
               <Mic className="w-4 h-4 text-urdu-gold" />
               <span>سنیں</span>
             </button>
+
+            {onReport && (
+              <button
+                onClick={onReport}
+                title="کاپی رائٹ کی خلاف ورزی کی رپورٹ کریں"
+                className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-sm hover:bg-rose-100 transition-colors border border-rose-200 shrink-0 whitespace-nowrap"
+              >
+                <Flag className="w-4 h-4" />
+                <span>رپورٹ کریں</span>
+              </button>
+            )}
           </div>
 
           {/* Statistics */}

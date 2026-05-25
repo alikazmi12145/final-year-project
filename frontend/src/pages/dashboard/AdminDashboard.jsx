@@ -1003,6 +1003,13 @@ const AdminDashboard = () => {
                   <Download className="w-5 h-5 ml-2" />
                   ڈیٹا ایکسپورٹ
                 </button>
+                <button
+                  onClick={() => navigate("/admin/copyright")}
+                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-rose-600 to-rose-700 text-white rounded-xl hover:from-rose-700 hover:to-rose-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                >
+                  <Shield className="w-5 h-5 ml-2" />
+                  کاپی رائٹ رپورٹس
+                </button>
               </div>
             </div>
           </div>

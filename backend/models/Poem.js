@@ -285,6 +285,41 @@ const poemSchema = new mongoose.Schema(
       ],
       default: "all_rights_reserved",
     },
+    // Granular license selected by the author (used by the Copyright Module)
+    license: {
+      type: String,
+      enum: [
+        "all_rights_reserved",
+        "cc_by",
+        "cc_by_sa",
+        "cc_by_nc",
+        "public_domain",
+        "personal_copyright",
+      ],
+      default: "all_rights_reserved",
+      index: true,
+    },
+    // Auto-generated human-readable notice e.g. "© 2026 Ali Zaidi — CC BY-SA"
+    copyrightNotice: {
+      type: String,
+      maxlength: 300,
+    },
+    // Similarity score against existing corpus (0..1)
+    similarityScore: {
+      type: Number,
+      min: 0,
+      max: 1,
+      default: 0,
+    },
+    flaggedForSimilarity: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    similarToPoemId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Poem",
+    },
     customLicense: String,
     originalSource: String,
 
