@@ -501,13 +501,18 @@ const Poets = () => {
       <div className="min-h-screen cultural-bg pt-20 py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold gradient-text mb-4 urdu-heading-lg">
+          <div className="text-center mb-8 bsk-rise">
+            <h1 className="text-4xl font-bold bsk-section-title mb-4 urdu-heading-lg">
               ہمارے شعراء
             </h1>
             <h2 className="text-3xl font-urdu text-urdu-brown mb-2">
               Our Poets
             </h2>
+            <div className="flex justify-center items-center mb-4">
+              <div className="h-px w-16 bg-gradient-to-r from-transparent to-amber-500 bsk-divider-grow"></div>
+              <span className="mx-3 text-amber-600">✦</span>
+              <div className="h-px w-16 bg-gradient-to-l from-transparent to-amber-500 bsk-divider-grow"></div>
+            </div>
             <p className="text-lg text-urdu-maroon urdu-body">
               اردو شاعری کمیونٹی کے باصلاحیت شعراء کو دریافت کریں
             </p>

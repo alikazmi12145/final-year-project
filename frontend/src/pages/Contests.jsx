@@ -148,13 +148,18 @@ const Contests = () => {
     <div className="min-h-screen cultural-bg py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-r from-urdu-gold to-urdu-brown rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="text-center mb-8 bsk-rise">
+          <div className="w-20 h-20 bg-gradient-to-r from-urdu-gold to-urdu-brown rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg bsk-float">
             <Trophy className="text-white w-10 h-10" />
           </div>
-          <h1 className="text-4xl font-bold gradient-text mb-4">
+          <h1 className="text-4xl font-bold bsk-section-title mb-4">
             Poetry Contests
           </h1>
+          <div className="flex justify-center items-center mb-4">
+            <div className="h-px w-16 bg-gradient-to-r from-transparent to-amber-500 bsk-divider-grow"></div>
+            <span className="mx-3 text-amber-600">✦</span>
+            <div className="h-px w-16 bg-gradient-to-l from-transparent to-amber-500 bsk-divider-grow"></div>
+          </div>
           <p className="text-lg text-urdu-brown">
             Participate in exciting poetry competitions and showcase your talent
           </p>

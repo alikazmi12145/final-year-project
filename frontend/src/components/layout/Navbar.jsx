@@ -36,6 +36,58 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Track avatar load failures so we can fall back to initials gracefully.
+  const [avatarFailed, setAvatarFailed] = useState(false);
+
+  // Resolve any avatar shape (Cloudinary object, string, relative path) to a usable URL.
+  const resolveAvatarUrl = (img) => {
+    if (!img) return null;
+    let raw = null;
+    if (typeof img === "string") raw = img;
+    else raw = img.url || img.secure_url || null;
+    if (!raw) return null;
+    if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+    return `http://localhost:5000${raw.startsWith("/") ? "" : "/"}${raw}`;
+  };
+
+  const avatarUrl = avatarFailed ? null : resolveAvatarUrl(user?.profileImage);
+
+  // Two-letter initials for the placeholder.
+  const userInitials = (() => {
+    const source = (user?.name || user?.username || "").trim();
+    if (!source) return "BS";
+    const parts = source.split(/\s+/).filter(Boolean);
+    const letters = parts.length >= 2
+      ? parts[0][0] + parts[1][0]
+      : source.slice(0, 2);
+    return letters.toUpperCase();
+  })();
+
+  // Reusable avatar element.
+  const renderAvatar = (size = 28) => {
+    const dim = `${size}px`;
+    if (avatarUrl) {
+      return (
+        <img
+          src={avatarUrl}
+          alt={user?.name || user?.username || "User"}
+          onError={() => setAvatarFailed(true)}
+          className="rounded-full object-cover shadow-sm border border-urdu-gold/30"
+          style={{ width: dim, height: dim }}
+        />
+      );
+    }
+    return (
+      <div
+        className="rounded-full flex items-center justify-center shadow-sm border border-urdu-gold/30 bg-gradient-to-br from-urdu-maroon to-urdu-brown text-white font-bold select-none"
+        style={{ width: dim, height: dim, fontSize: size <= 30 ? "11px" : "14px" }}
+        aria-label={user?.name || user?.username || "User"}
+      >
+        {userInitials}
+      </div>
+    );
+  };
+
   // Primary nav items (always visible in desktop)
   const primaryNavItems = [
     { path: "/", label: "گھر", urduLabel: "گھر", icon: Home },
@@ -254,17 +306,7 @@ const Navbar = () => {
                     to="/profile"
                     className="flex items-center space-x-2 bg-gradient-to-r from-urdu-cream/50 to-white/70 px-4 py-2.5 rounded-xl hover:from-urdu-cream hover:to-urdu-gold/20 transition-all duration-300 shadow-sm hover:shadow-md border border-urdu-gold/20 cursor-pointer"
                   >
-                    {user?.profileImage?.url ? (
-                      <img
-                        src={user.profileImage.url}
-                        alt={user?.name || user?.username || "User"}
-                        className="w-7 h-7 rounded-full object-cover shadow-sm border border-urdu-gold/30"
-                      />
-                    ) : (
-                      <div className="w-7 h-7 bg-gradient-to-br from-urdu-maroon to-urdu-brown rounded-full flex items-center justify-center shadow-sm">
-                        <User className="w-4 h-4 text-white" />
-                      </div>
-                    )}
+                    {renderAvatar(28)}
                     <span className="text-sm font-medium text-urdu-brown max-w-24 truncate nastaleeq-primary">
                       {user?.name || user?.username || "User"}
                     </span>
@@ -499,17 +541,7 @@ const Navbar = () => {
                       className="flex items-center space-x-3 px-4 py-3 mb-3 bg-gradient-to-r from-white/70 to-urdu-cream/30 rounded-xl border border-urdu-gold/20 hover:shadow-md transition-all"
                       onClick={() => setIsOpen(false)}
                     >
-                      {user?.profileImage?.url ? (
-                        <img
-                          src={user.profileImage.url}
-                          alt={user?.name || user?.username || "User"}
-                          className="w-10 h-10 rounded-full object-cover shadow-sm border border-urdu-gold/30"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 bg-gradient-to-br from-urdu-maroon to-urdu-brown rounded-full flex items-center justify-center shadow-sm">
-                          <User className="w-5 h-5 text-white" />
-                        </div>
-                      )}
+                      {renderAvatar(40)}
                       <div>
                         <p className="font-medium text-urdu-brown nastaleeq-primary">
                           {user?.name || user?.username || "User"}

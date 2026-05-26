@@ -93,6 +93,10 @@ const AdminDashboard = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showChat, setShowChat] = useState(false);
 
+  // AI Report modal
+  const [showAIReport, setShowAIReport] = useState(false);
+  const [aiReportData, setAiReportData] = useState(null);
+
   // Poet details edit states
   const [showPoetDetailsModal, setShowPoetDetailsModal] = useState(false);
   const [selectedPoet, setSelectedPoet] = useState(null);
@@ -521,11 +525,28 @@ const AdminDashboard = () => {
       // const report = await adminDashboardAPI.generateAIReport('weekly');
 
       // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      showSuccess(
-        "🤖 AI رپورٹ کامیابی سے تیار ہوگئی!\n\n📊 ہفتہ وار تجزیہ:\n✅ 87% صارف کی سرگرمی\n✅ 23% نئے شاعر\n✅ 156 نئی نظمیں\n✅ 94% کوالٹی ریٹنگ\n✅ 78% مشغولیت کی شرح / 🤖 AI Report generated successfully!\n\n📊 Weekly Analysis:\n✅ 87% User Activity\n✅ 23% New Poets\n✅ 156 New Poems\n✅ 94% Quality Rating\n✅ 78% Engagement Rate"
-      );
+      setAiReportData({
+        period: "ہفتہ وار تجزیہ",
+        generatedAt: new Date(),
+        summary:
+          "اس ہفتے بزمِ سخن پر صارفین کی سرگرمی، نئے شاعروں کی آمد اور ادبی مواد کی اشاعت میں نمایاں اضافہ ہوا ہے۔",
+        metrics: [
+          { label: "صارف کی سرگرمی", value: 87, suffix: "٪", tone: "emerald" },
+          { label: "نئے شاعر", value: 23, suffix: "٪", tone: "amber" },
+          { label: "نئی نظمیں", value: 156, suffix: "", tone: "indigo" },
+          { label: "کوالٹی ریٹنگ", value: 94, suffix: "٪", tone: "rose" },
+          { label: "مشغولیت کی شرح", value: 78, suffix: "٪", tone: "purple" },
+        ],
+        highlights: [
+          "ادبی مواد کی اشاعت میں مستحکم اضافہ",
+          "نئے قارئین کی آمد میں خوش آئند رجحان",
+          "شاعروں کی فعالیت اور مشغولیت میں بہتری",
+          "تبصرہ اور پسندیدگی کی شرح بلند",
+        ],
+      });
+      setShowAIReport(true);
     } catch (err) {
       setError("AI رپورٹ تیار کرنے میں خرابی");
     } finally {
@@ -897,121 +918,121 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 urdu-text-local">
-      {/* Dynamic Header - All fields dynamic */}
-      <div className="bg-white shadow-lg border-b-2 border-amber-200 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-amber-100/20 to-rose-100/20"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-8">
-            <div className="urdu-text-local flex items-center">
-              {/* Avatar and name/role */}
+      {/* Dynamic Header - polished, two-row layout */}
+      <div className="bg-white shadow-sm border-b border-amber-200/70 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-50/60 via-white to-rose-50/60"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Row 1: title + user identity + session controls */}
+          <div className="flex flex-wrap items-center justify-between gap-6">
+            <div className="urdu-text-local flex items-center gap-5 min-w-0">
               {user && (
-                <div className="flex items-center mr-8">
-                  {/* Profile Image with fallback */}
+                <div className="flex items-center gap-3 shrink-0">
                   {user.profileImage ? (
                     <img
                       src={getImageUrl(user.profileImage)}
                       alt={user.name}
-                      className="w-20 h-20 rounded-full object-cover shadow-lg border-4 border-white"
+                      className="w-16 h-16 rounded-full object-cover shadow-md ring-2 ring-white"
                       onError={(e) => {
                         e.target.onerror = null;
                         e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&size=200&bold=true&format=png`;
                       }}
                     />
                   ) : (
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center text-3xl font-bold text-white shadow-lg border-4 border-white">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center text-2xl font-bold text-white shadow-md ring-2 ring-white">
                       {user.name?.charAt(0)?.toUpperCase() || "A"}
                     </div>
                   )}
-                  <div className="ml-4">
-                    <div className="text-lg font-bold text-amber-900">{user.name}</div>
-                    <div className="text-sm text-amber-700">{getRoleTextUrdu(user.role)}</div>
+                  <div className="text-right">
+                    <div className="text-base font-bold text-amber-900 leading-tight">{user.name}</div>
+                    <div className="text-xs text-amber-700 mt-0.5">{getRoleTextUrdu(user.role)}</div>
                   </div>
                 </div>
               )}
-              <div>
-                <h1 className="text-4xl font-bold text-amber-900 mb-2 tracking-wide">
-                  <Crown className="inline w-8 h-8 ml-3 text-amber-600" />
-                  ایڈمن ڈیش بورڈ
+              <div className="border-r border-amber-200 pr-5 min-w-0">
+                <h1 className="text-3xl font-bold text-amber-900 tracking-wide flex items-center gap-2">
+                  <Crown className="w-7 h-7 text-amber-600" />
+                  <span>ایڈمن ڈیش بورڈ</span>
                 </h1>
-                <p className="text-lg text-amber-700 font-medium">
-                  {/* Urdu tagline, can be dynamic from config or backend */}
+                <p className="text-sm text-amber-700 font-medium mt-1">
                   بزم سخن کا انتظامی پینل
                 </p>
-                <div className="flex items-center mt-2 text-sm text-amber-600">
-                  <Globe className="w-4 h-4 ml-2" />
-                  <span>
-                    آج کی تاریخ: {new Date().toLocaleDateString("ur-PK")}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-amber-600">
+                  <span className="inline-flex items-center gap-1">
+                    <Globe className="w-3.5 h-3.5" />
+                    {new Date().toLocaleDateString("ur-PK")}
                   </span>
-                  <Clock className="w-4 h-4 ml-4" />
-                  <span>{new Date().toLocaleTimeString("ur-PK")}</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" />
+                    {new Date().toLocaleTimeString("ur-PK")}
+                  </span>
                   {user && (
-                    <>
-                      <User className="w-4 h-4 ml-4" />
-                      <span>خوش آمدید، {user.name}</span>
-                    </>
+                    <span className="inline-flex items-center gap-1">
+                      <User className="w-3.5 h-3.5" />
+                      خوش آمدید، {user.name}
+                    </span>
                   )}
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center space-x-6 space-x-reverse">
-                <button
-                  onClick={() => setShowChat(!showChat)}
-                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                >
-                  <MessagesSquare className="w-5 h-5 ml-2" />
-                  گفتگو
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                >
-                  <LogOut className="w-5 h-5 ml-2" />
-                  لاگ آؤٹ
-                </button>
+
+            {/* Session controls: status + chat + logout */}
+            <div className="urdu-text-local flex items-center gap-2 shrink-0">
+              <div className="inline-flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    isOnline ? "bg-green-500" : "bg-red-500"
+                  } animate-pulse`}
+                ></span>
+                <span className="text-xs font-medium text-gray-700">
+                  {isOnline ? "آن لائن" : "آف لائن"}
+                </span>
               </div>
-              <div className="flex items-center space-x-4 space-x-reverse">
-                <div className="flex items-center space-x-2 space-x-reverse bg-white/70 backdrop-blur rounded-xl px-4 py-2">
-                  <div
-                    className={`w-3 h-3 rounded-full ${
-                      isOnline ? "bg-green-500" : "bg-red-500"
-                    } animate-pulse`}
-                  ></div>
-                  <span className="text-sm text-gray-700 urdu-text-local">
-                    {isOnline ? "آن لائن" : "آف لائن"}
-                  </span>
-                </div>
-                <button
-                  onClick={() => window.location.reload()}
-                  disabled={refreshing}
-                  className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-300"
-                >
-                  <RefreshCw
-                    className={`w-4 h-4 ml-2 ${refreshing ? "animate-spin" : ""}`}
-                  />
-                  {refreshing ? "تازہ ہو رہا..." : "تازہ کریں"}
-                </button>
-                <button
-                  onClick={generateAIReport}
-                  disabled={refreshing}
-                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-50"
-                >
-                  <Brain className="w-5 h-5 ml-2" />
-                  {refreshing ? "تیار ہو رہی..." : "AI رپورٹ"}
-                </button>
-                <button className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-xl hover:from-amber-700 hover:to-amber-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
-                  <Download className="w-5 h-5 ml-2" />
-                  ڈیٹا ایکسپورٹ
-                </button>
-                <button
-                  onClick={() => navigate("/admin/copyright")}
-                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-rose-600 to-rose-700 text-white rounded-xl hover:from-rose-700 hover:to-rose-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                >
-                  <Shield className="w-5 h-5 ml-2" />
-                  کاپی رائٹ رپورٹس
-                </button>
-              </div>
+              <button
+                onClick={() => setShowChat(!showChat)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm text-sm font-semibold whitespace-nowrap"
+              >
+                <MessagesSquare className="w-4 h-4" />
+                <span>گفتگو</span>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm text-sm font-semibold whitespace-nowrap"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>لاگ آؤٹ</span>
+              </button>
             </div>
+          </div>
+
+          {/* Row 2: unified admin action toolbar */}
+          <div className="urdu-text-local mt-5 pt-5 border-t border-amber-100 flex flex-wrap items-center justify-end gap-2.5">
+            <button
+              onClick={() => window.location.reload()}
+              disabled={refreshing}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm text-sm font-semibold whitespace-nowrap disabled:opacity-60"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+              <span>{refreshing ? "تازہ ہو رہا..." : "تازہ کریں"}</span>
+            </button>
+            <button
+              onClick={generateAIReport}
+              disabled={refreshing}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition-colors shadow-sm text-sm font-semibold whitespace-nowrap disabled:opacity-60"
+            >
+              <Brain className="w-4 h-4" />
+              <span>{refreshing ? "تیار ہو رہی..." : "AI رپورٹ"}</span>
+            </button>
+            <button className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-lg hover:from-amber-700 hover:to-amber-800 transition-colors shadow-sm text-sm font-semibold whitespace-nowrap">
+              <Download className="w-4 h-4" />
+              <span>ڈیٹا ایکسپورٹ</span>
+            </button>
+            <button
+              onClick={() => navigate("/admin/copyright")}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-rose-600 to-rose-700 text-white rounded-lg hover:from-rose-700 hover:to-rose-800 transition-colors shadow-sm text-sm font-semibold whitespace-nowrap"
+            >
+              <Shield className="w-4 h-4" />
+              <span>کاپی رائٹ رپورٹس</span>
+            </button>
           </div>
         </div>
       </div>
@@ -1903,6 +1924,151 @@ const AdminDashboard = () => {
               </svg>
             </button>
             <ChatPage embedded={true} />
+          </div>
+        </div>
+      )}
+
+      {/* AI Report — classical Urdu card */}
+      {showAIReport && aiReportData && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowAIReport(false)}
+        >
+          <div
+            className="urdu-text-local relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-b from-[#fdf6e3] via-[#fbf1d5] to-[#f7e8c0] rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            dir="rtl"
+          >
+            {/* Decorative double border */}
+            <div className="absolute inset-3 border-2 border-amber-700/30 rounded-xl pointer-events-none"></div>
+            <div className="absolute inset-4 border border-amber-600/20 rounded-lg pointer-events-none"></div>
+
+            {/* Corner ornaments */}
+            <span className="absolute top-2 right-2 w-6 h-6 border-t-2 border-r-2 border-amber-700/60 rounded-tr-md pointer-events-none"></span>
+            <span className="absolute top-2 left-2 w-6 h-6 border-t-2 border-l-2 border-amber-700/60 rounded-tl-md pointer-events-none"></span>
+            <span className="absolute bottom-2 right-2 w-6 h-6 border-b-2 border-r-2 border-amber-700/60 rounded-br-md pointer-events-none"></span>
+            <span className="absolute bottom-2 left-2 w-6 h-6 border-b-2 border-l-2 border-amber-700/60 rounded-bl-md pointer-events-none"></span>
+
+            {/* Close button */}
+            <button
+              onClick={() => setShowAIReport(false)}
+              className="absolute top-5 left-5 z-10 w-9 h-9 rounded-full bg-white/90 border border-amber-700/30 text-amber-800 hover:bg-amber-100 hover:text-amber-900 transition-colors shadow-sm flex items-center justify-center"
+              aria-label="بند کریں"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="relative px-8 sm:px-12 pt-10 pb-8">
+              {/* Crest */}
+              <div className="flex flex-col items-center mb-5">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center shadow-lg ring-4 ring-amber-200/60">
+                  <Brain className="w-8 h-8 text-white" />
+                </div>
+                <div className="flex items-center gap-2 mt-3 text-amber-700">
+                  <span className="h-px w-12 bg-amber-700/40"></span>
+                  <Sparkles className="w-4 h-4" />
+                  <span className="h-px w-12 bg-amber-700/40"></span>
+                </div>
+              </div>
+
+              {/* Title */}
+              <div className="text-center mb-6">
+                <h2 className="text-3xl font-bold text-amber-900 tracking-wide">
+                  مصنوعی ذہانت کی رپورٹ
+                </h2>
+                <p className="text-sm text-amber-700/80 mt-1.5">AI Intelligence Report</p>
+                <div className="inline-flex items-center gap-2 mt-3 px-4 py-1.5 rounded-full bg-amber-700/10 border border-amber-700/20 text-amber-900 text-sm font-semibold">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>{aiReportData.period}</span>
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="relative bg-white/70 border border-amber-700/15 rounded-xl px-5 py-4 mb-6 shadow-sm">
+                <span className="absolute -top-3 right-5 px-3 py-0.5 bg-amber-700 text-white text-xs font-bold rounded-full shadow">
+                  خلاصہ
+                </span>
+                <p className="text-amber-900 leading-loose text-base text-justify pt-1">
+                  {aiReportData.summary}
+                </p>
+              </div>
+
+              {/* Metrics grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+                {aiReportData.metrics.map((m, idx) => {
+                  const tones = {
+                    emerald: "from-emerald-50 to-emerald-100 border-emerald-200 text-emerald-800",
+                    amber: "from-amber-50 to-amber-100 border-amber-200 text-amber-800",
+                    indigo: "from-indigo-50 to-indigo-100 border-indigo-200 text-indigo-800",
+                    rose: "from-rose-50 to-rose-100 border-rose-200 text-rose-800",
+                    purple: "from-purple-50 to-purple-100 border-purple-200 text-purple-800",
+                  };
+                  return (
+                    <div
+                      key={idx}
+                      className={`bg-gradient-to-br ${tones[m.tone]} border rounded-xl p-3 text-center shadow-sm`}
+                    >
+                      <div className="text-2xl font-bold leading-none mb-1">
+                        {m.value}
+                        <span className="text-base font-semibold">{m.suffix}</span>
+                      </div>
+                      <div className="text-xs font-medium opacity-90">{m.label}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Highlights */}
+              <div className="bg-white/70 border border-amber-700/15 rounded-xl px-5 py-4 mb-6 shadow-sm">
+                <h3 className="flex items-center gap-2 text-amber-900 font-bold mb-3">
+                  <Star className="w-4 h-4 text-amber-600" />
+                  نمایاں نکات
+                </h3>
+                <ul className="space-y-2">
+                  {aiReportData.highlights.map((h, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-amber-900 text-sm leading-relaxed">
+                      <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                      <span>{h}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Footer divider */}
+              <div className="flex items-center justify-center gap-3 text-amber-700/70 mb-4">
+                <span className="h-px w-16 bg-amber-700/30"></span>
+                <Sparkles className="w-4 h-4" />
+                <span className="h-px w-16 bg-amber-700/30"></span>
+              </div>
+
+              {/* Footer */}
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-amber-800/80">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>
+                    {aiReportData.generatedAt.toLocaleDateString("ur-PK")} ·{" "}
+                    {aiReportData.generatedAt.toLocaleTimeString("ur-PK", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+                <span className="italic">— بزمِ سخن انتظامیہ</span>
+              </div>
+
+              {/* Action button */}
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={() => setShowAIReport(false)}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-amber-700 to-amber-800 text-white rounded-lg hover:from-amber-800 hover:to-amber-900 transition-colors shadow-md font-semibold text-sm"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  <span>بند کریں</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -414,7 +414,7 @@ const ChatWindow = ({
       }
     } catch (error) {
       console.error("Failed to send voice message:", error);
-      alert("Failed to send voice message. Please try again.");
+      alert("صوتی پیغام بھیجنے میں خرابی ہوئی۔ براہ کرم دوبارہ کوشش کریں۔");
     } finally {
       setSending(false);
     }
@@ -933,9 +933,16 @@ const ChatWindow = ({
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-gray-50 to-white">
+    <div className="h-full flex flex-col bg-gradient-to-br from-urdu-cream/30 via-white to-amber-50/40 relative">
+      {/* Subtle decorative pattern overlay */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.04]" style={{
+        backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0L25 15L40 20L25 25L20 40L15 25L0 20L15 15Z' fill='%238b3a3a'/%3E%3C/svg%3E\")",
+        backgroundRepeat: "repeat",
+      }}></div>
       {/* Header - STICKY AT TOP */}
-      <div className="sticky top-0 z-50 flex-shrink-0 bg-white border-b-2 border-urdu-maroon px-6 py-5 shadow-md">
+      <div className="sticky top-0 z-50 flex-shrink-0 bg-gradient-to-r from-white via-urdu-cream/40 to-white border-b-2 border-urdu-gold/40 px-6 py-5 shadow-md backdrop-blur-sm">
+        {/* Gold accent line at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-urdu-gold to-transparent"></div>
         <div className="flex items-center justify-between gap-4">
           {/* Left: Avatar and Name */}
           <div className="flex items-center gap-4 flex-1 min-w-0">

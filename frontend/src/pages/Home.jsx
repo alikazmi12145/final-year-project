@@ -94,10 +94,10 @@ const Home = () => {
       {/* Dark Mode Toggle */}
       <DarkModeToggle />
 
-      {/* Subtle Islamic pattern overlay */}
-      <div className="absolute inset-0 opacity-5">
+      {/* Subtle Islamic pattern overlay with slow drift */}
+      <div className="absolute inset-0 opacity-5 pointer-events-none">
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 bsk-drift"
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23B45309' fill-opacity='0.3'%3E%3Cpolygon points='30 0 60 30 30 60 0 30'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
             backgroundSize: "60px 60px",
@@ -105,25 +105,35 @@ const Home = () => {
         ></div>
       </div>
 
+      {/* Decorative floating ornaments */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <Sparkles className="absolute top-24 left-[8%] w-5 h-5 text-amber-400/50 bsk-float" />
+        <Star className="absolute top-40 right-[10%] w-4 h-4 text-amber-500/40 bsk-float-slow" />
+        <Sparkles className="absolute top-[60vh] right-[6%] w-6 h-6 text-orange-400/40 bsk-float-slow" style={{ animationDelay: '1.2s' }} />
+        <Star className="absolute top-[55vh] left-[7%] w-3.5 h-3.5 text-amber-600/40 bsk-float" style={{ animationDelay: '0.6s' }} />
+      </div>
+
       {/* Hero Section - Simplified and Professional */}
       <div className="relative z-10 flex items-center justify-center min-h-screen px-4">
         <div className="text-center max-w-5xl mx-auto w-full">
           {/* Main Title with Cultural Elegance */}
           <div className="mb-8">
-            <div className="relative inline-block mb-8">
-              {/* Decorative elements */}
-              <div className="absolute -top-4 -left-4 w-8 h-8 border-t-2 border-l-2 border-amber-600 opacity-60"></div>
-              <div className="absolute -bottom-4 -right-4 w-8 h-8 border-b-2 border-r-2 border-amber-600 opacity-60"></div>
+            <div className="relative inline-block mb-8 px-6 py-2">
+              {/* Animated decorative corner brackets */}
+              <div className="absolute -top-4 -left-4 w-10 h-10 border-t-2 border-l-2 border-amber-600 opacity-70 bsk-rise" style={{ animationDelay: '0.1s' }}></div>
+              <div className="absolute -top-4 -right-4 w-10 h-10 border-t-2 border-r-2 border-amber-600 opacity-70 bsk-rise" style={{ animationDelay: '0.2s' }}></div>
+              <div className="absolute -bottom-4 -left-4 w-10 h-10 border-b-2 border-l-2 border-amber-600 opacity-70 bsk-rise" style={{ animationDelay: '0.2s' }}></div>
+              <div className="absolute -bottom-4 -right-4 w-10 h-10 border-b-2 border-r-2 border-amber-600 opacity-70 bsk-rise" style={{ animationDelay: '0.1s' }}></div>
 
               <h1
-                className="nastaleeq-heading cultural-title text-5xl md:text-7xl lg:text-8xl font-bold text-amber-900 mb-4"
+                className="nastaleeq-heading cultural-title bsk-gold-title bsk-ink-reveal text-5xl md:text-7xl lg:text-8xl font-bold mb-4"
                 style={{
                   direction: "rtl",
                   textAlign: "center",
                   fontWeight: "700",
                   letterSpacing: "0.02em",
-                  lineHeight: "1.1",
-                  textShadow: "0 4px 12px rgba(139, 69, 19, 0.3)",
+                  lineHeight: "1.15",
+                  filter: "drop-shadow(0 6px 16px rgba(139,69,19,0.25))",
                 }}
                 dir="rtl"
               >
@@ -133,12 +143,13 @@ const Home = () => {
 
             {/* Elegant subtitle */}
             <p
-              className="nastaleeq-primary cultural-title text-xl md:text-2xl text-slate-700 mb-6 font-medium"
+              className="nastaleeq-primary cultural-title text-xl md:text-2xl text-slate-700 mb-6 font-medium bsk-rise"
               style={{
                 direction: "rtl",
                 textAlign: "center",
                 letterSpacing: "0.01em",
                 lineHeight: "1.6",
+                animationDelay: '0.5s',
               }}
               dir="rtl"
             >
@@ -146,14 +157,15 @@ const Home = () => {
             </p>
 
             <div className="flex justify-center items-center mb-8">
-              <div className="h-px w-16 bg-gradient-to-r from-transparent to-amber-400"></div>
-              <Sparkles className="mx-4 w-6 h-6 text-amber-500" />
-              <div className="h-px w-16 bg-gradient-to-l from-transparent to-amber-400"></div>
+              <div className="h-px w-20 bg-gradient-to-r from-transparent to-amber-500 bsk-divider-grow"></div>
+              <Sparkles className="mx-4 w-6 h-6 text-amber-500 bsk-spin-slow" />
+              <div className="h-px w-20 bg-gradient-to-l from-transparent to-amber-500 bsk-divider-grow"></div>
             </div>
 
             <p
-              className="nastaleeq-primary text-slate-600 max-w-2xl mx-auto leading-relaxed text-xl mb-8"
+              className="nastaleeq-primary text-slate-700 max-w-2xl mx-auto leading-relaxed text-xl md:text-2xl mb-8 italic bsk-rise"
               dir="rtl"
+              style={{ animationDelay: '0.75s' }}
             >
               نہیں کھیل اے داغؔ یاروں سے کہہ دو
               <br />
@@ -167,16 +179,17 @@ const Home = () => {
           </div>
 
           {/* Action Buttons - Clean and Simple */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center bsk-rise" style={{ animationDelay: '0.9s' }}>
             <Link
               to="/search"
-              className="group flex items-center px-8 py-4 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              className="group relative flex items-center px-8 py-4 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 overflow-hidden"
             >
-              <Search className="ml-3 h-5 w-5" />
-              <span className="nastaleeq-primary font-bold">
+              <span className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/25 to-transparent"></span>
+              <Search className="ml-3 h-5 w-5 relative" />
+              <span className="nastaleeq-primary font-bold relative">
                 شاعری تلاش کریں
               </span>
-              <ArrowLeft className="mr-3 h-5 w-5 group-hover:-translate-x-1 transition-transform" />
+              <ArrowLeft className="mr-3 h-5 w-5 relative group-hover:-translate-x-1 transition-transform" />
             </Link>
 
             <Link
@@ -196,16 +209,21 @@ const Home = () => {
       {/* Featured Quote Section - Elegant and Minimal */}
       <div className="relative z-10 py-16 px-4 bg-white/80 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto">
-          <div className="relative bg-gradient-to-r from-amber-900 to-orange-900 rounded-2xl shadow-2xl p-8 md:p-12 text-white overflow-hidden">
+          <div className="relative bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 rounded-2xl shadow-2xl p-8 md:p-12 text-white overflow-hidden bsk-pulse-glow">
+            {/* Inner classical border */}
+            <div className="pointer-events-none absolute inset-3 border border-amber-300/25 rounded-xl"></div>
             {/* Decorative Quote Icon */}
-            <div className="absolute top-6 right-6 opacity-20">
+            <div className="absolute top-6 right-6 opacity-20 bsk-float-slow">
               <Quote className="h-16 w-16" />
+            </div>
+            <div className="absolute bottom-6 left-6 opacity-10 bsk-float" style={{ animationDelay: '1s' }}>
+              <Quote className="h-12 w-12 rotate-180" />
             </div>
 
             <div className="relative z-10 text-center">
-              <div className="mb-6">
+              <div className="mb-6" key={`quote-${currentQuoteIndex}`}>
                 <p
-                  className="nastaleeq-primary urdu-text text-2xl md:text-3xl leading-relaxed font-medium"
+                  className="nastaleeq-primary urdu-text text-2xl md:text-3xl leading-relaxed font-medium bsk-quote-fade"
                   dir="rtl"
                   style={{ color: 'white' }}
                 >
@@ -213,12 +231,12 @@ const Home = () => {
                 </p>
               </div>
 
-              <div className="flex justify-center items-center">
+              <div className="flex justify-center items-center" key={`poet-${currentQuoteIndex}`}>
                 <div className="h-px w-12 bg-amber-300 opacity-60"></div>
                 <p
-                  className="nastaleeq-primary urdu-text mx-4 text-xl"
+                  className="nastaleeq-primary urdu-text mx-4 text-xl bsk-quote-fade"
                   dir="rtl"
-                  style={{ color: 'white' }}
+                  style={{ color: 'white', animationDelay: '0.15s' }}
                 >
                   {poeticQuotes[currentQuoteIndex].poet}
                 </p>
@@ -232,10 +250,10 @@ const Home = () => {
                 <button
                   key={index}
                   onClick={() => setCurrentQuoteIndex(index)}
-                  className={`w-2 h-2 rounded-full transition-all ${
+                  className={`h-2 rounded-full transition-all duration-500 ${
                     index === currentQuoteIndex
-                      ? "bg-amber-300"
-                      : "bg-amber-600"
+                      ? "w-8 bg-amber-300"
+                      : "w-2 bg-amber-600/70 hover:bg-amber-400"
                   }`}
                 />
               ))}
@@ -273,8 +291,10 @@ const Home = () => {
             {featuredPoets.map((poet, index) => (
               <div
                 key={index}
-                className="group bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 border border-slate-200 hover:border-amber-300"
+                className="group bsk-card-lift bsk-rise bg-white rounded-xl shadow-lg hover:shadow-2xl p-6 border border-slate-200 hover:border-amber-400 relative overflow-hidden"
+                style={{ animationDelay: `${0.1 + index * 0.08}s` }}
               >
+                <span className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 bg-amber-200/0 group-hover:bg-amber-200/40 rounded-full blur-2xl transition-colors duration-500"></span>
                 <div className="text-center">
                   <div className="mb-4">
                     <div className="w-20 h-20 mx-auto rounded-full overflow-hidden border-4 border-amber-200 shadow-lg group-hover:border-amber-400 transition-all duration-300">
@@ -363,7 +383,8 @@ const Home = () => {
             ].map((feature, index) => (
               <div
                 key={index}
-                className="group bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200"
+                className="group bsk-card-lift bsk-rise bg-white rounded-xl p-6 shadow-lg hover:shadow-2xl border border-slate-200 hover:border-amber-300"
+                style={{ animationDelay: `${0.1 + index * 0.12}s` }}
               >
                 <div className="text-center">
                   <div
@@ -403,8 +424,12 @@ const Home = () => {
               { number: "50+", label: "مقابلے" },
               { number: "100K+", label: "قارئین" },
             ].map((stat, index) => (
-              <div key={index} className="group">
-                <div className="text-3xl md:text-4xl font-bold text-amber-600 mb-3 group-hover:scale-110 transition-transform">
+              <div
+                key={index}
+                className="group bsk-rise"
+                style={{ animationDelay: `${0.1 + index * 0.1}s` }}
+              >
+                <div className="text-3xl md:text-5xl font-bold bg-gradient-to-br from-amber-500 to-orange-600 bg-clip-text text-transparent mb-3 group-hover:scale-110 transition-transform duration-300">
                   {stat.number}
                 </div>
                 <div

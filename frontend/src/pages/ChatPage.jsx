@@ -229,17 +229,27 @@ const ChatPage = ({ embedded = false }) => {
   return (
     <div className={embedded ? "h-full flex flex-col bg-gradient-to-br from-urdu-cream/20 to-white" : "min-h-screen bg-gradient-to-br from-urdu-cream/20 via-white to-urdu-gold/10"}>
       {/* Header - Show in both embedded and regular mode */}
-      <div className={`bg-white/90 backdrop-blur-sm border-b border-urdu-gold/30 ${embedded ? 'flex-shrink-0' : 'sticky top-0'} z-10 shadow-sm`}>
+      <div className={`bg-white/90 backdrop-blur-sm border-b border-urdu-gold/30 ${embedded ? 'flex-shrink-0' : 'sticky top-0'} z-10 shadow-sm relative`}>
+        {/* Classical corner accents (non-embedded) */}
+        {!embedded && (
+          <>
+            <span className="pointer-events-none absolute top-1 left-2 w-4 h-4 border-t-2 border-l-2 border-urdu-gold/50 rounded-tl-md"></span>
+            <span className="pointer-events-none absolute top-1 right-2 w-4 h-4 border-t-2 border-r-2 border-urdu-gold/50 rounded-tr-md"></span>
+          </>
+        )}
         <div className={embedded ? "px-6 py-3" : "max-w-7xl mx-auto px-4 py-4"}>
           <div className="flex items-center justify-between">
             {!embedded && (
-              <div>
-                <h1 className="text-2xl font-bold text-urdu-brown nastaleeq-heading">
-                  بزم سخن چیٹ
+              <div className="bsk-rise">
+                <h1 className="text-2xl font-bold bsk-gold-title nastaleeq-heading">
+                  بزم سخن گفتگو
                 </h1>
-                <p className="text-sm text-gray-600 nastaleeq-primary">
-                  شاعروں اور قارئین سے رابطہ
-                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="h-px w-10 bg-gradient-to-r from-transparent to-urdu-gold bsk-divider-grow"></div>
+                  <p className="text-sm text-urdu-brown nastaleeq-primary">
+                    شاعروں اور قارئین سے رابطہ
+                  </p>
+                </div>
               </div>
             )}
 
@@ -283,7 +293,7 @@ const ChatPage = ({ embedded = false }) => {
               >
                 <Headphones className="w-4 h-4" />
                 <span className="text-sm font-medium nastaleeq-primary">
-                  سپورٹ
+                  مدد
                 </span>
               </button>
             </div>

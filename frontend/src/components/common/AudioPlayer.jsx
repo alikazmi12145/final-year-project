@@ -27,8 +27,8 @@ import {
  */
 const AudioPlayer = ({ 
   src, 
-  title = 'Unknown Track',
-  artist = 'Unknown Artist',
+  title = 'نامعلوم تلاوت',
+  artist = 'نامعلوم شاعر',
   description = '',
   coverImage = null,
   onClose = null,
@@ -223,18 +223,27 @@ const AudioPlayer = ({
   const speedOptions = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
   return (
-    <div className={`bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-2xl overflow-hidden ${className}`}>
+    <div className={`relative bg-gradient-to-br from-urdu-cream via-white to-amber-50 rounded-2xl shadow-xl overflow-hidden border border-urdu-gold/30 ${className}`}>
+      {/* Classical corner brackets */}
+      <span className="pointer-events-none absolute top-3 left-3 w-5 h-5 border-t-2 border-l-2 border-urdu-gold/60 rounded-tl-md z-10"></span>
+      <span className="pointer-events-none absolute top-3 right-3 w-5 h-5 border-t-2 border-r-2 border-urdu-gold/60 rounded-tr-md z-10"></span>
+      <span className="pointer-events-none absolute bottom-3 left-3 w-5 h-5 border-b-2 border-l-2 border-urdu-gold/60 rounded-bl-md z-10"></span>
+      <span className="pointer-events-none absolute bottom-3 right-3 w-5 h-5 border-b-2 border-r-2 border-urdu-gold/60 rounded-br-md z-10"></span>
+      {/* Floating ornament blobs */}
+      <div className="pointer-events-none absolute -top-8 -right-8 w-32 h-32 bg-urdu-gold/15 rounded-full blur-3xl"></div>
+      <div className="pointer-events-none absolute -bottom-8 -left-8 w-40 h-40 bg-amber-200/30 rounded-full blur-3xl"></div>
+
       {/* Hidden audio element */}
       <audio ref={audioRef} src={src} preload="metadata" />
 
       {isExpanded ? (
         /* ============ EXPANDED PLAYER ============ */
-        <div className="p-8">
+        <div className="p-8 relative">
           {/* Header with close/minimize */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-6">
             <button
               onClick={() => setIsExpanded(false)}
-              className="p-2 hover:bg-white/10 rounded-full transition-all text-white/70 hover:text-white"
+              className="p-2 hover:bg-urdu-gold/15 rounded-full transition-all text-urdu-brown hover:text-urdu-maroon"
               title="چھوٹا کریں"
             >
               <Minimize2 className="w-5 h-5" />
@@ -243,14 +252,14 @@ const AudioPlayer = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsFavorite(!isFavorite)}
-                className={`p-2 rounded-full transition-all ${isFavorite ? 'text-red-500 bg-red-500/20' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+                className={`p-2 rounded-full transition-all ${isFavorite ? 'text-red-600 bg-red-100' : 'text-urdu-brown hover:text-urdu-maroon hover:bg-urdu-gold/15'}`}
                 title="پسندیدہ"
               >
                 <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
               </button>
               <button
                 onClick={handleDownload}
-                className="p-2 hover:bg-white/10 rounded-full transition-all text-white/70 hover:text-white"
+                className="p-2 hover:bg-urdu-gold/15 rounded-full transition-all text-urdu-brown hover:text-urdu-maroon"
                 title="ڈاؤن لوڈ"
               >
                 <Download className="w-5 h-5" />
@@ -258,7 +267,7 @@ const AudioPlayer = ({
               {onClose && (
                 <button
                   onClick={onClose}
-                  className="p-2 hover:bg-white/10 rounded-full transition-all text-white/70 hover:text-white"
+                  className="p-2 hover:bg-urdu-gold/15 rounded-full transition-all text-urdu-brown hover:text-urdu-maroon"
                   title="بند کریں"
                 >
                   <X className="w-5 h-5" />
@@ -268,68 +277,75 @@ const AudioPlayer = ({
           </div>
 
           {/* Cover Art / Visualizer */}
-          <div className="flex justify-center mb-8">
-            <div className={`relative w-64 h-64 rounded-2xl overflow-hidden shadow-2xl ${isPlaying ? 'animate-pulse' : ''}`}>
+          <div className="flex justify-center mb-6 relative z-10">
+            <div className={`relative w-56 h-56 sm:w-64 sm:h-64 rounded-2xl overflow-hidden shadow-2xl ring-4 ring-urdu-gold/40 ${isPlaying ? 'animate-pulse' : ''}`}>
               {coverImage ? (
                 <img src={coverImage} alt={title} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-amber-500 via-orange-600 to-red-700 flex items-center justify-center">
-                  <Music className="w-24 h-24 text-white/80" />
+                <div className="w-full h-full bg-gradient-to-br from-urdu-gold via-amber-500 to-urdu-maroon flex items-center justify-center">
+                  <Music className="w-24 h-24 text-white/90" />
                 </div>
               )}
               {isBuffering && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                   <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
                 </div>
               )}
             </div>
           </div>
 
+          {/* Ornamental divider */}
+          <div className="flex justify-center items-center mb-4">
+            <div className="h-px w-16 bg-gradient-to-r from-transparent to-urdu-gold"></div>
+            <span className="mx-3 text-urdu-gold text-lg">✦</span>
+            <div className="h-px w-16 bg-gradient-to-l from-transparent to-urdu-gold"></div>
+          </div>
+
           {/* Track Info */}
-          <div className="text-center mb-8" dir="rtl">
-            <h2 className="text-2xl font-bold text-white mb-2 truncate">{title}</h2>
-            <p className="text-white/60 text-lg">{artist}</p>
+          <div className="text-center mb-6 relative z-10" dir="rtl">
+            <h2 className="text-2xl font-bold text-urdu-maroon mb-2 truncate nastaleeq-heading">{title}</h2>
+            <p className="text-urdu-brown text-lg nastaleeq-primary">{artist}</p>
             {description && (
-              <p className="text-white/40 text-sm mt-2 line-clamp-2">{description}</p>
+              <p className="text-urdu-brown/70 text-sm mt-2 line-clamp-2 urdu-body">{description}</p>
             )}
           </div>
 
           {/* Progress Bar */}
-          <div className="mb-6">
+          <div className="mb-6 relative z-10">
             <div
               ref={progressRef}
               onClick={handleProgressClick}
-              className="relative h-2 bg-white/20 rounded-full cursor-pointer group"
+              className="relative h-2 bg-urdu-gold/20 rounded-full cursor-pointer group"
             >
               {/* Buffered indicator */}
-              <div className="absolute inset-0 bg-white/10 rounded-full"></div>
+              <div className="absolute inset-0 bg-urdu-gold/10 rounded-full"></div>
               
               {/* Progress fill */}
               <div
-                className="absolute h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all"
+                className="absolute h-full bg-gradient-to-r from-urdu-gold via-amber-500 to-urdu-maroon rounded-full transition-all"
                 style={{ width: `${progressPercent}%` }}
               />
               
               {/* Thumb */}
               <div
-                className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-urdu-maroon border-2 border-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
                 style={{ left: `calc(${progressPercent}% - 8px)` }}
               />
             </div>
             
             {/* Time labels */}
-            <div className="flex justify-between mt-2 text-sm text-white/60">
+            <div className="flex justify-between mt-2 text-sm text-urdu-brown font-semibold">
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
             </div>
           </div>
 
           {/* Main Controls */}
-          <div className="flex items-center justify-center gap-6 mb-8">
+          <div className="flex items-center justify-center gap-6 mb-6 relative z-10">
             {/* Loop */}
             <button
               onClick={toggleLoop}
-              className={`p-3 rounded-full transition-all ${isLooping ? 'text-amber-400 bg-amber-400/20' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+              className={`p-3 rounded-full transition-all ${isLooping ? 'text-urdu-maroon bg-urdu-gold/30 ring-2 ring-urdu-gold/40' : 'text-urdu-brown hover:text-urdu-maroon hover:bg-urdu-gold/15'}`}
               title="دہرائیں"
             >
               <Repeat className="w-5 h-5" />
@@ -338,7 +354,7 @@ const AudioPlayer = ({
             {/* Skip Back */}
             <button
               onClick={() => skip(-10)}
-              className="p-4 text-white hover:bg-white/10 rounded-full transition-all hover:scale-110"
+              className="p-4 text-urdu-maroon hover:bg-urdu-gold/15 rounded-full transition-all hover:scale-110"
               title="10 سیکنڈ پیچھے"
             >
               <SkipBack className="w-8 h-8" fill="currentColor" />
@@ -347,7 +363,7 @@ const AudioPlayer = ({
             {/* Play/Pause */}
             <button
               onClick={togglePlay}
-              className="p-6 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white rounded-full transition-all shadow-lg hover:shadow-xl hover:scale-105"
+              className="p-6 bg-gradient-to-br from-urdu-gold via-amber-500 to-urdu-maroon hover:from-amber-500 hover:to-urdu-maroon text-white rounded-full transition-all shadow-xl hover:shadow-2xl hover:scale-105 ring-4 ring-urdu-gold/30"
             >
               {isPlaying ? (
                 <Pause className="w-10 h-10" fill="currentColor" />
@@ -359,7 +375,7 @@ const AudioPlayer = ({
             {/* Skip Forward */}
             <button
               onClick={() => skip(10)}
-              className="p-4 text-white hover:bg-white/10 rounded-full transition-all hover:scale-110"
+              className="p-4 text-urdu-maroon hover:bg-urdu-gold/15 rounded-full transition-all hover:scale-110"
               title="10 سیکنڈ آگے"
             >
               <SkipForward className="w-8 h-8" fill="currentColor" />
@@ -369,19 +385,19 @@ const AudioPlayer = ({
             <div className="relative">
               <button
                 onClick={() => setShowSpeedMenu(!showSpeedMenu)}
-                className={`p-3 rounded-full transition-all ${playbackRate !== 1 ? 'text-amber-400 bg-amber-400/20' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+                className={`p-3 rounded-full transition-all ${playbackRate !== 1 ? 'text-urdu-maroon bg-urdu-gold/30 ring-2 ring-urdu-gold/40' : 'text-urdu-brown hover:text-urdu-maroon hover:bg-urdu-gold/15'}`}
                 title="رفتار"
               >
                 <span className="text-xs font-bold">{playbackRate}x</span>
               </button>
               
               {showSpeedMenu && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-700 rounded-xl shadow-xl py-2 min-w-[80px]">
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white border border-urdu-gold/40 rounded-xl shadow-xl py-2 min-w-[80px] z-20">
                   {speedOptions.map((speed) => (
                     <button
                       key={speed}
                       onClick={() => changeSpeed(speed)}
-                      className={`w-full px-4 py-2 text-sm transition-colors ${playbackRate === speed ? 'text-amber-400 bg-amber-400/20' : 'text-white hover:bg-white/10'}`}
+                      className={`w-full px-4 py-2 text-sm transition-colors ${playbackRate === speed ? 'text-urdu-maroon bg-urdu-gold/20 font-bold' : 'text-urdu-brown hover:bg-urdu-cream'}`}
                     >
                       {speed}x
                     </button>
@@ -392,10 +408,10 @@ const AudioPlayer = ({
           </div>
 
           {/* Volume Control */}
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-4 relative z-10">
             <button
               onClick={toggleMute}
-              className="p-2 text-white/60 hover:text-white transition-colors"
+              className="p-2 text-urdu-brown hover:text-urdu-maroon transition-colors"
             >
               <VolumeIcon className="w-6 h-6" />
             </button>
@@ -407,29 +423,29 @@ const AudioPlayer = ({
               step="0.01"
               value={isMuted ? 0 : volume}
               onChange={handleVolumeChange}
-              className="w-32 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-400 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:cursor-pointer"
+              className="w-32 h-1.5 bg-urdu-gold/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-urdu-maroon [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:cursor-pointer"
             />
             
-            <span className="text-white/60 text-sm w-10 text-center">
+            <span className="text-urdu-brown text-sm w-10 text-center font-semibold">
               {Math.round((isMuted ? 0 : volume) * 100)}%
             </span>
           </div>
         </div>
       ) : (
         /* ============ COMPACT PLAYER ============ */
-        <div className="p-4">
-          <div className="flex items-center gap-4">
+        <div className="p-4 relative">
+          <div className="flex items-center gap-4 relative z-10">
             {/* Mini Cover */}
-            <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
+            <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-lg ring-2 ring-urdu-gold/40">
               {coverImage ? (
                 <img src={coverImage} alt={title} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-                  <Music className="w-6 h-6 text-white/80" />
+                <div className="w-full h-full bg-gradient-to-br from-urdu-gold to-urdu-maroon flex items-center justify-center">
+                  <Music className="w-6 h-6 text-white/90" />
                 </div>
               )}
               {isBuffering && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                   <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                 </div>
               )}
@@ -438,19 +454,19 @@ const AudioPlayer = ({
             {/* Track Info & Progress */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1" dir="rtl">
-                <h4 className="text-white font-semibold truncate text-sm">{title}</h4>
-                <span className="text-white/40 text-xs ml-2">{formatTime(currentTime)} / {formatTime(duration)}</span>
+                <h4 className="text-urdu-maroon font-semibold truncate text-sm nastaleeq-primary">{title}</h4>
+                <span className="text-urdu-brown/70 text-xs ml-2 font-semibold">{formatTime(currentTime)} / {formatTime(duration)}</span>
               </div>
-              <p className="text-white/50 text-xs mb-2 truncate" dir="rtl">{artist}</p>
+              <p className="text-urdu-brown text-xs mb-2 truncate nastaleeq-primary" dir="rtl">{artist}</p>
               
               {/* Mini Progress Bar */}
               <div
                 ref={progressRef}
                 onClick={handleProgressClick}
-                className="h-1.5 bg-white/20 rounded-full cursor-pointer"
+                className="h-1.5 bg-urdu-gold/20 rounded-full cursor-pointer"
               >
                 <div
-                  className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all"
+                  className="h-full bg-gradient-to-r from-urdu-gold via-amber-500 to-urdu-maroon rounded-full transition-all"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
@@ -460,7 +476,7 @@ const AudioPlayer = ({
             <div className="flex items-center gap-1">
               <button
                 onClick={() => skip(-10)}
-                className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                className="p-2 text-urdu-brown hover:text-urdu-maroon hover:bg-urdu-gold/15 rounded-full transition-all"
                 title="10 سیکنڈ پیچھے"
               >
                 <SkipBack className="w-4 h-4" />
@@ -468,7 +484,7 @@ const AudioPlayer = ({
               
               <button
                 onClick={togglePlay}
-                className="p-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white rounded-full transition-all shadow-lg hover:scale-105"
+                className="p-3 bg-gradient-to-br from-urdu-gold to-urdu-maroon hover:from-amber-500 hover:to-red-800 text-white rounded-full transition-all shadow-lg hover:scale-105 ring-2 ring-urdu-gold/30"
               >
                 {isPlaying ? (
                   <Pause className="w-5 h-5" fill="currentColor" />
@@ -479,7 +495,7 @@ const AudioPlayer = ({
               
               <button
                 onClick={() => skip(10)}
-                className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                className="p-2 text-urdu-brown hover:text-urdu-maroon hover:bg-urdu-gold/15 rounded-full transition-all"
                 title="10 سیکنڈ آگے"
               >
                 <SkipForward className="w-4 h-4" />
@@ -490,14 +506,14 @@ const AudioPlayer = ({
                 <button
                   onClick={toggleMute}
                   onMouseEnter={() => setShowVolumeSlider(true)}
-                  className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                  className="p-2 text-urdu-brown hover:text-urdu-maroon hover:bg-urdu-gold/15 rounded-full transition-all"
                 >
                   <VolumeIcon className="w-4 h-4" />
                 </button>
                 
                 {showVolumeSlider && (
                   <div 
-                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-700 rounded-xl p-3 shadow-xl"
+                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white border border-urdu-gold/40 rounded-xl p-3 shadow-xl z-20"
                     onMouseLeave={() => setShowVolumeSlider(false)}
                   >
                     <input
@@ -507,7 +523,7 @@ const AudioPlayer = ({
                       step="0.01"
                       value={isMuted ? 0 : volume}
                       onChange={handleVolumeChange}
-                      className="w-24 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-400"
+                      className="w-24 h-1 bg-urdu-gold/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-urdu-maroon"
                       style={{ writingMode: 'horizontal-tb' }}
                     />
                   </div>
@@ -517,7 +533,7 @@ const AudioPlayer = ({
               {/* Expand Button */}
               <button
                 onClick={() => setIsExpanded(true)}
-                className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                className="p-2 text-urdu-brown hover:text-urdu-maroon hover:bg-urdu-gold/15 rounded-full transition-all"
                 title="بڑا کریں"
               >
                 <Maximize2 className="w-4 h-4" />
@@ -526,7 +542,7 @@ const AudioPlayer = ({
               {/* Loop Indicator */}
               <button
                 onClick={toggleLoop}
-                className={`p-2 rounded-full transition-all ${isLooping ? 'text-amber-400 bg-amber-400/20' : 'text-white/40 hover:text-white/60 hover:bg-white/10'}`}
+                className={`p-2 rounded-full transition-all ${isLooping ? 'text-urdu-maroon bg-urdu-gold/30 ring-2 ring-urdu-gold/40' : 'text-urdu-brown hover:text-urdu-maroon hover:bg-urdu-gold/15'}`}
                 title="دہرائیں"
               >
                 <Repeat className="w-4 h-4" />
@@ -538,12 +554,12 @@ const AudioPlayer = ({
 
       {/* Keyboard Shortcuts Hint */}
       {isExpanded && (
-        <div className="border-t border-white/10 px-8 py-4 text-center text-white/30 text-xs">
-          <span>کی بورڈ شارٹ کٹس: </span>
-          <span className="mx-2">Space = چلائیں/روکیں</span>
-          <span className="mx-2">← → = آگے/پیچھے</span>
-          <span className="mx-2">M = خاموش</span>
-          <span className="mx-2">L = دہرائیں</span>
+        <div className="border-t border-urdu-gold/30 px-8 py-4 text-center text-urdu-brown/80 text-xs bg-gradient-to-r from-urdu-cream/40 via-white/60 to-urdu-cream/40 relative z-10">
+          <span className="font-semibold text-urdu-maroon nastaleeq-primary">کی بورڈ شارٹ کٹس: </span>
+          <span className="mx-2 nastaleeq-primary"><kbd className="px-1.5 py-0.5 bg-white border border-urdu-gold/40 rounded text-urdu-maroon">Space</kbd> چلائیں / روکیں</span>
+          <span className="mx-2 nastaleeq-primary"><kbd className="px-1.5 py-0.5 bg-white border border-urdu-gold/40 rounded text-urdu-maroon">← →</kbd> آگے / پیچھے</span>
+          <span className="mx-2 nastaleeq-primary"><kbd className="px-1.5 py-0.5 bg-white border border-urdu-gold/40 rounded text-urdu-maroon">M</kbd> خاموش</span>
+          <span className="mx-2 nastaleeq-primary"><kbd className="px-1.5 py-0.5 bg-white border border-urdu-gold/40 rounded text-urdu-maroon">L</kbd> دہرائیں</span>
         </div>
       )}
     </div>

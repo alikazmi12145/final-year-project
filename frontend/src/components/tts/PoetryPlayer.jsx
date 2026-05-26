@@ -201,9 +201,9 @@ const PoetryPlayer = ({
         voiceId: selectedVoiceId,
         fileName: formatFileName(title),
       });
-      setDownloadSuccess("MP3 generated and downloaded successfully.");
+      setDownloadSuccess("آواز کامیابی سے تیار اور ڈاؤنلوڈ ہو گئی।");
     } catch (downloadErrorValue) {
-      setDownloadError(downloadErrorValue.message || "MP3 generation failed. Please try again.");
+      setDownloadError(downloadErrorValue.message || "MP3 تیار نہ ہو سکی۔ براے کرم دوبارہ کوشش کریں।");
     }
   };
 
@@ -227,7 +227,7 @@ const PoetryPlayer = ({
       const parsed = parseImportedPoetry(content);
 
       if (!parsed.text) {
-        setImportError("Imported file has no readable poetry text.");
+        setImportError("درآمد کی گئی فائل میں کوئی قابلِ مطالعہ شاعری نہیں ملی۔");
         return;
       }
 
@@ -237,7 +237,7 @@ const PoetryPlayer = ({
       }
       setImportError("");
     } catch (importFileError) {
-      setImportError(importFileError?.message || "Could not import this file. Please upload .txt, .json, or .pdf.");
+      setImportError(importFileError?.message || "یہ فائل درآمد نہ ہو سکی۔ براے کرم .txt، .json یا .pdf اپ لوڈ کریں।");
     }
   };
 
@@ -253,7 +253,7 @@ const PoetryPlayer = ({
           <span aria-hidden="true" />
         )}
         <div className="rounded-full bg-urdu-gold/15 px-4 py-2 text-sm font-semibold text-urdu-brown shadow-inner">
-          {hasWebSpeechUrdu ? "Browser Urdu Voice" : "ElevenLabs AI Mode"}
+          {hasWebSpeechUrdu ? "براوزر اردو آواز" : "AI نظام آواز"}
         </div>
       </div>
 
@@ -266,7 +266,7 @@ const PoetryPlayer = ({
         <div className="mb-4 rounded-2xl bg-white/85 p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <label className="w-full text-right sm:w-auto" htmlFor="poet-input">
-              <span className="mb-1 block text-xs font-semibold text-urdu-brown">شاعر / Poet</span>
+              <span className="mb-1 block text-xs font-semibold text-urdu-brown">شاعر</span>
               <input
                 id="poet-input"
                 type="text"
@@ -289,16 +289,16 @@ const PoetryPlayer = ({
               <button
                 type="button"
                 onClick={handleImportClick}
-                className="inline-flex items-center gap-2 rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-urdu-brown transition hover:bg-amber-200"
+                className="inline-flex items-center gap-2 rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-urdu-brown transition hover:bg-amber-200 hover:shadow-md"
               >
                 <Upload className="h-4 w-4" />
-                Import File
+                فائل درآمد کریں
               </button>
             </div>
           </div>
 
           <label htmlFor="poetry-input" className="mb-2 block text-right text-sm font-semibold text-urdu-brown">
-            Poetry Text / شاعری
+            شاعری کا متن
           </label>
           <textarea
             id="poetry-input"
@@ -345,7 +345,7 @@ const PoetryPlayer = ({
         <div className="rounded-2xl bg-gradient-to-br from-urdu-cream/70 to-white p-4 shadow-md">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <label className="w-full text-right sm:w-auto" htmlFor="eleven-voice-selector">
-              <span className="mb-1 block text-xs font-semibold text-urdu-brown">ElevenLabs Voice</span>
+              <span className="mb-1 block text-xs font-semibold text-urdu-brown">آواز کا انتخاب</span>
               <select
                 id="eleven-voice-selector"
                 className="w-full min-w-[220px] rounded-lg bg-white px-3 py-2 text-sm text-urdu-brown shadow-sm outline-none focus:ring-2 focus:ring-urdu-gold/25"
@@ -366,7 +366,7 @@ const PoetryPlayer = ({
                 onChange={(event) => setRecitationMode(event.target.checked)}
                 className="h-3 w-3 accent-urdu-gold"
               />
-              Recitation Mode
+              ترنم کی حالت
             </label>
           </div>
 

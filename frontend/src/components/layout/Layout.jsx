@@ -71,10 +71,11 @@ const Layout = ({ children }) => {
       <main className="flex-grow relative">
         {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-urdu-gold/5 rounded-full"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-urdu-brown/5 rounded-full"></div>
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-urdu-gold/5 rounded-full bsk-float-slow"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-urdu-brown/5 rounded-full bsk-float-slow" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[28rem] h-[28rem] bg-amber-100/20 rounded-full blur-3xl bsk-drift"></div>
         </div>
-        <div className="relative z-10">{children}</div>
+        <div key={location.pathname} className="relative z-10 bsk-page-enter">{children}</div>
       </main>
       {shouldShowFooter && <Footer />}
     </div>

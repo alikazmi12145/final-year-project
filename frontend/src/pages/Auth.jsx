@@ -190,15 +190,27 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-urdu-cream via-white to-urdu-gold/10 flex items-center justify-center py-4 px-4 relative overflow-hidden">
-      <div className="absolute inset-0 opacity-5 pointer-events-none">
-        <div className="absolute top-10 left-10 text-6xl text-urdu-maroon nastaleeq-heading">ب</div>
-        <div className="absolute top-20 right-20 text-5xl text-urdu-brown nastaleeq-heading">ز</div>
-        <div className="absolute bottom-20 left-1/4 text-5xl text-urdu-gold nastaleeq-heading">م</div>
-        <div className="absolute top-1/3 right-10 text-4xl text-urdu-maroon nastaleeq-heading">س</div>
+      <div className="absolute inset-0 opacity-10 pointer-events-none">
+        <div className="absolute top-10 left-10 text-6xl text-urdu-maroon nastaleeq-heading bsk-float">ب</div>
+        <div className="absolute top-20 right-20 text-5xl text-urdu-brown nastaleeq-heading bsk-float-slow" style={{ animationDelay: '0.6s' }}>ز</div>
+        <div className="absolute bottom-20 left-1/4 text-5xl text-urdu-gold nastaleeq-heading bsk-float" style={{ animationDelay: '1.2s' }}>م</div>
+        <div className="absolute top-1/3 right-10 text-4xl text-urdu-maroon nastaleeq-heading bsk-float-slow" style={{ animationDelay: '1.8s' }}>س</div>
+        <div className="absolute bottom-10 right-1/3 text-4xl text-urdu-brown nastaleeq-heading bsk-float" style={{ animationDelay: '2.4s' }}>خ</div>
+        <div className="absolute top-1/2 left-1/3 text-3xl text-urdu-gold nastaleeq-heading bsk-float-slow" style={{ animationDelay: '3s' }}>ن</div>
       </div>
 
-      <div className="w-full max-w-md mx-auto" dir="ltr">
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-urdu-gold/20">
+      {/* Subtle radial glow */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[36rem] h-[36rem] bg-amber-200/20 rounded-full blur-3xl bsk-drift"></div>
+      </div>
+
+      <div className="w-full max-w-md mx-auto bsk-rise" dir="ltr">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-urdu-gold/20 relative">
+          {/* Classical corner accents */}
+          <span className="pointer-events-none absolute top-2 left-2 w-5 h-5 border-t-2 border-l-2 border-urdu-gold/50 rounded-tl-md"></span>
+          <span className="pointer-events-none absolute top-2 right-2 w-5 h-5 border-t-2 border-r-2 border-urdu-gold/50 rounded-tr-md"></span>
+          <span className="pointer-events-none absolute bottom-2 left-2 w-5 h-5 border-b-2 border-l-2 border-urdu-gold/50 rounded-bl-md"></span>
+          <span className="pointer-events-none absolute bottom-2 right-2 w-5 h-5 border-b-2 border-r-2 border-urdu-gold/50 rounded-br-md"></span>
           <div className="p-4 sm:p-5 text-left">
             {alertMessage && (
               <div className={`mb-2 p-2 rounded-lg border text-xs transition-opacity duration-300 ${showAlert ? "opacity-100" : "opacity-0"} ${alertType === "error" ? "bg-red-50 border-red-300 text-red-800" : "bg-green-50 border-green-300 text-green-800"}`}>
@@ -210,10 +222,10 @@ const Auth = () => {
             )}
 
             <div className="text-center mb-3">
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-urdu-maroon to-urdu-brown rounded-full mb-2 shadow-lg">
+              <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-urdu-maroon to-urdu-brown rounded-full mb-2 shadow-lg bsk-float">
                 {isForgotPassword ? <Mail className="w-7 h-7 text-white" /> : isResetPassword ? <Lock className="w-7 h-7 text-white" /> : isLogin ? <Lock className="w-7 h-7 text-white" /> : <User className="w-7 h-7 text-white" />}
               </div>
-              <h1 className="text-xl font-bold text-urdu-brown">
+              <h1 className="text-xl font-bold bsk-gold-title">
                 {isForgotPassword ? "Forgot Password" : isResetPassword ? "Reset Password" : isLogin ? "Login" : "Register"}
               </h1>
               <p className="text-xs text-gray-500">

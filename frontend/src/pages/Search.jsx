@@ -314,13 +314,13 @@ const Search = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-amber-50">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Enhanced Cultural Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 bsk-rise">
           <div className="inline-flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
+            <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg bsk-float">
               <SearchIcon className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold text-amber-900 mb-1">
+              <h1 className="text-4xl font-bold bsk-gold-title mb-1">
                 AI Search
               </h1>
               <p
@@ -334,9 +334,9 @@ const Search = () => {
 
           {/* Cultural decorative element */}
           <div className="flex justify-center items-center mb-6">
-            <div className="h-px w-20 bg-gradient-to-r from-transparent to-amber-400"></div>
-            <Sparkles className="mx-4 w-6 h-6 text-amber-500" />
-            <div className="h-px w-20 bg-gradient-to-l from-transparent to-amber-400"></div>
+            <div className="h-px w-20 bg-gradient-to-r from-transparent to-amber-500 bsk-divider-grow"></div>
+            <Sparkles className="mx-4 w-6 h-6 text-amber-500 bsk-spin-slow" />
+            <div className="h-px w-20 bg-gradient-to-l from-transparent to-amber-500 bsk-divider-grow"></div>
           </div>
         </div>
 

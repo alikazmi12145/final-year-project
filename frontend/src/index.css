@@ -570,6 +570,175 @@ body {
   animation: shimmer 2s infinite;
 }
 
+/* ===== Classical Urdu / Bazm-e-Sukhan homepage animations ===== */
+@keyframes bsk-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes bsk-float-slow {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(2deg); }
+}
+@keyframes bsk-ink-reveal {
+  0% { opacity: 0; transform: translateY(20px); filter: blur(6px); letter-spacing: 0.06em; }
+  60% { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); letter-spacing: 0.02em; }
+}
+@keyframes bsk-gold-shine {
+  0% { background-position: -250% 0; }
+  100% { background-position: 250% 0; }
+}
+@keyframes bsk-pulse-glow {
+  0%, 100% { box-shadow: 0 20px 45px -15px rgba(180, 83, 9, 0.45), 0 0 0 0 rgba(245, 158, 11, 0.35); }
+  50% { box-shadow: 0 25px 55px -15px rgba(180, 83, 9, 0.55), 0 0 0 8px rgba(245, 158, 11, 0); }
+}
+@keyframes bsk-spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes bsk-quote-fade {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes bsk-drift {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(8px, -6px); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes bsk-divider-grow {
+  from { transform: scaleX(0); opacity: 0; }
+  to { transform: scaleX(1); opacity: 1; }
+}
+
+.bsk-float { animation: bsk-float 4s ease-in-out infinite; }
+.bsk-float-slow { animation: bsk-float-slow 7s ease-in-out infinite; }
+.bsk-spin-slow { animation: bsk-spin-slow 18s linear infinite; }
+.bsk-pulse-glow { animation: bsk-pulse-glow 4.5s ease-in-out infinite; }
+.bsk-drift { animation: bsk-drift 14s ease-in-out infinite; }
+.bsk-quote-fade { animation: bsk-quote-fade 0.6s ease-out; }
+.bsk-divider-grow { transform-origin: center; animation: bsk-divider-grow 1.1s ease-out 0.3s both; }
+
+.bsk-ink-reveal {
+  animation: bsk-ink-reveal 1.2s cubic-bezier(0.2, 0.65, 0.3, 1) both;
+}
+
+/* Animated gold-ink sweep over the hero title */
+.bsk-gold-title {
+  background: linear-gradient(
+    100deg,
+    #92400e 0%,
+    #b45309 25%,
+    #f59e0b 45%,
+    #fde68a 50%,
+    #f59e0b 55%,
+    #b45309 75%,
+    #92400e 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: bsk-gold-shine 6s ease-in-out infinite;
+}
+
+/* Staggered fade-in-up utility (used with inline animationDelay) */
+.bsk-rise {
+  opacity: 0;
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+/* Subtle card lift on hover, layered with global hover styles */
+.bsk-card-lift {
+  transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+}
+.bsk-card-lift:hover {
+  transform: translateY(-6px);
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .bsk-float, .bsk-float-slow, .bsk-spin-slow, .bsk-pulse-glow, .bsk-drift,
+  .bsk-quote-fade, .bsk-ink-reveal, .bsk-gold-title, .bsk-rise, .bsk-divider-grow {
+    animation: none !important;
+  }
+  .bsk-gold-title {
+    -webkit-text-fill-color: #92400e;
+    color: #92400e;
+  }
+  .bsk-rise { opacity: 1; }
+}
+
+/* ===== Global page transition + reusable classical utilities ===== */
+@keyframes bsk-page-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.bsk-page-enter {
+  animation: bsk-page-in 0.45s cubic-bezier(0.2, 0.65, 0.3, 1) both;
+}
+
+/* Classical section heading: gold gradient text + ornament dividers via ::before/::after */
+.bsk-section-title {
+  position: relative;
+  display: inline-block;
+  padding: 0 1.25rem;
+  background: linear-gradient(100deg, #92400e, #b45309 45%, #f59e0b 55%, #92400e);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.bsk-section-title::before,
+.bsk-section-title::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 2.5rem;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #b45309);
+  opacity: 0.55;
+}
+.bsk-section-title::before {
+  right: 100%;
+  background: linear-gradient(to left, transparent, #b45309);
+}
+.bsk-section-title::after {
+  left: 100%;
+}
+
+/* Soft Islamic-pattern background overlay any page can opt into */
+.bsk-pattern-bg {
+  position: relative;
+}
+.bsk-pattern-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23B45309' fill-opacity='0.5'%3E%3Cpolygon points='30 0 60 30 30 60 0 30'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  background-size: 60px 60px;
+}
+
+/* Generic auto-card style: subtle border + hover lift + gold accent on hover */
+.bsk-auto-card {
+  background: #ffffff;
+  border: 1px solid rgba(180, 83, 9, 0.12);
+  border-radius: 0.875rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 8px 18px -10px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.bsk-auto-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(180, 83, 9, 0.35);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 14px 28px -10px rgba(180, 83, 9, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bsk-page-enter, .bsk-auto-card { animation: none !important; transition: none !important; }
+}
+
 /* ==================== COMPONENT LAYER ==================== */
 
 /* Professional component styles */

@@ -111,11 +111,11 @@ const ReportCopyrightModal = ({
           <div className="flex items-center gap-2 min-w-0">
             <Flag className="h-5 w-5 shrink-0" />
             <div className="min-w-0">
-              <h2 className="urdu-text font-bold text-base sm:text-lg truncate">
+              <h2 className="urdu-text font-bold text-base sm:text-lg truncate" style={{ color: '#ffffff' }}>
                 کاپی رائٹ کی شکایت
               </h2>
               {poemTitle && (
-                <p className="text-xs opacity-80 urdu-text truncate">
+                <p className="text-xs opacity-90 urdu-text truncate" style={{ color: '#ffffff' }}>
                   {poemTitle}
                 </p>
               )}
@@ -287,7 +287,8 @@ const ReportCopyrightModal = ({
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-urdu-maroon hover:bg-red-800 text-white urdu-text font-bold shadow disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-urdu-maroon hover:bg-red-800 urdu-text font-bold shadow disabled:opacity-60"
+                style={{ color: '#ffffff' }}
               >
                 {submitting ? (
                   <>
