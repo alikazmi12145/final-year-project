@@ -286,7 +286,6 @@ const PoetryCollection = () => {
         await BookmarkAPI.addBookmark(poemId);
         alert("بک مارک کر دیا گیا");
       }
-      }
     } catch (error) {
       console.error("Error bookmarking poem:", error);
     }

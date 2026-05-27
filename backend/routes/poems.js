@@ -12,7 +12,8 @@ import {
   optionalAuth,
 } from "../middleware/auth.js";
 import rateLimit from "express-rate-limit";
-// import AIPoetryService from "../services/aiPoetryService.js";
+import AIPoetryService from "../services/aiPoetryService.js";
+import { isOpenAIConfigured } from "../utils/openaiClient.js";
 
 const router = express.Router();
 
@@ -1727,38 +1728,98 @@ router.post("/recommend", auth, poemOperationLimit, async (req, res) => {
   }
 });
 
-// ============= AI-POWERED ANALYSIS ROUTES REMOVED =============
-// All AI endpoints now return fallback responses
+// ============= AI-POWERED ANALYSIS ROUTES (GPT-4o) =============
 router.post("/:id/analyze", poemOperationLimit, async (req, res) => {
-  res.json({
-    success: false,
-    message: "AI analysis unavailable. OpenAI API removed.",
-    analysis: {},
-  });
+  try {
+    const poem = await Poem.findById(req.params.id).select("title content text");
+    if (!poem) {
+      return res.status(404).json({ success: false, message: "شاعری نہیں ملی" });
+    }
+    const result = await AIPoetryService.analyzePoem(poem.content || poem.text || "");
+    return res.json(result);
+  } catch (err) {
+    console.error("AI analyze error:", err);
+    return res.status(500).json({ success: false, message: "AI تجزیے میں خرابی" });
+  }
 });
 
 router.post("/:id/evaluate", auth, poemOperationLimit, async (req, res) => {
-  res.json({
-    success: false,
-    message: "AI evaluation unavailable. OpenAI API removed.",
-    evaluation: {},
-  });
+  try {
+    const poem = await Poem.findById(req.params.id).select("title content text");
+    if (!poem) {
+      return res.status(404).json({ success: false, message: "شاعری نہیں ملی" });
+    }
+    const result = await AIPoetryService.evaluatePoem(poem);
+    return res.json(result);
+  } catch (err) {
+    console.error("AI evaluate error:", err);
+    return res.status(500).json({ success: false, message: "AI جائزے میں خرابی" });
+  }
 });
 
 router.get("/ai/personalized", auth, poemOperationLimit, async (req, res) => {
-  res.json({
-    success: false,
-    message: "AI personalized recommendations unavailable. OpenAI API removed.",
-    recommendations: [],
-  });
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+
+    const interactions = await Poem.find({
+      $or: [
+        { "likes.user": req.user.userId },
+        { "bookmarks.user": req.user.userId },
+        { "ratings.user": req.user.userId },
+      ],
+    }).populate("author", "name");
+
+    const userProfile = {
+      favoriteCategories: [...new Set(interactions.map((p) => p.category).filter(Boolean))],
+      favoritePoets: [...new Set(interactions.map((p) => p.author?.name).filter(Boolean))],
+      preferredThemes: [...new Set(interactions.map((p) => p.theme).filter(Boolean))],
+    };
+
+    const excludeIds = interactions.map((p) => p._id);
+    const pool = await Poem.find({
+      _id: { $nin: excludeIds },
+      status: "published",
+      published: true,
+    })
+      .populate("author", "name profilePicture")
+      .sort({ averageRating: -1, views: -1 })
+      .limit(30);
+
+    const result = await AIPoetryService.generatePersonalizedRecommendations(userProfile, pool);
+    return res.json({
+      success: true,
+      recommendations: (result.recommendations || []).slice(0, limit),
+      reasoning: result.reasoning,
+      aiGenerated: !result.fallback,
+      diversityScore: result.diversityScore,
+      confidenceScore: result.confidenceScore,
+    });
+  } catch (err) {
+    console.error("AI personalized error:", err);
+    return res.status(500).json({ success: false, message: "تجاویز حاصل کرنے میں خرابی", recommendations: [] });
+  }
 });
 
 router.post("/ai/thematic-analysis", poemOperationLimit, async (req, res) => {
-  res.json({
-    success: false,
-    message: "AI thematic analysis unavailable. OpenAI API removed.",
-    analysis: {},
-  });
+  try {
+    const { poemIds, poems: rawPoems } = req.body || {};
+    let poems = [];
+    if (Array.isArray(poemIds) && poemIds.length) {
+      poems = await Poem.find({ _id: { $in: poemIds } }).select("title content text");
+    } else if (Array.isArray(rawPoems)) {
+      poems = rawPoems;
+    } else {
+      poems = await Poem.find({ status: "published", published: true })
+        .sort({ views: -1 })
+        .limit(15)
+        .select("title content text");
+    }
+    const result = await AIPoetryService.generateThematicAnalysis(poems);
+    return res.json(result);
+  } catch (err) {
+    console.error("AI thematic error:", err);
+    return res.status(500).json({ success: false, message: "موضوعاتی تجزیے میں خرابی" });
+  }
 });
 
 router.post(
@@ -1766,11 +1827,14 @@ router.post(
   auth,
   poemOperationLimit,
   async (req, res) => {
-    res.json({
-      success: false,
-      message: "AI writing suggestions unavailable. OpenAI API removed.",
-      suggestions: {},
-    });
+    try {
+      const { theme = "محبت", style = "ghazal" } = req.body || {};
+      const result = await AIPoetryService.generateWritingSuggestions(theme, style);
+      return res.json(result);
+    } catch (err) {
+      console.error("AI writing suggestions error:", err);
+      return res.status(500).json({ success: false, message: "تجاویز پیدا کرنے میں خرابی" });
+    }
   }
 );
 
@@ -1780,12 +1844,22 @@ router.post(
  * @access  Public
  */
 router.get("/ai/features", (req, res) => {
-  // OpenAI AI features endpoint removed
+  const configured = isOpenAIConfigured();
   res.json({
     success: true,
-    features: {},
-    aiConfigured: false,
-    message: "AI فیچرز دستیاب نہیں - OpenAI API key کی ضرورت", // AI features unavailable
+    aiConfigured: configured,
+    features: {
+      analyze: configured,
+      evaluate: configured,
+      personalized: configured,
+      thematicAnalysis: configured,
+      writingSuggestions: configured,
+      translation: configured,
+      feedback: configured,
+    },
+    message: configured
+      ? "AI فیچرز دستیاب ہیں (GPT-4o)"
+      : "AI فیچرز دستیاب نہیں - OpenAI API key کی ضرورت",
   });
 });
 

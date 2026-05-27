@@ -148,10 +148,7 @@ const PoemDetail = () => {
       setUserEngagement((prev) => ({
         ...prev,
         hasBookmarked: !checkResult.isBookmarked,
-          hasBookmarked: data.isBookmarked,
-        }));
-        alert(data.message);
-      }
+      }));
     } catch (error) {
       console.error("Error bookmarking poem:", error);
     }

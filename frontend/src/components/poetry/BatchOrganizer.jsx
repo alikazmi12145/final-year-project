@@ -1,1 +1,158 @@
-import React, { useState } from \"react\";\nimport { poetryAPI } from \"../../services/poetryService\";\nimport { Button } from \"../ui/Button\";\nimport { MdTag, MdFolder, MdCategory } from \"react-icons/md\";\n\n/**\n * Batch Organizer Component\n * Allows users to organize multiple poems at once\n */\nexport function BatchOrganizer({ selectedPoemIds, onComplete }) {\n  const [action, setAction] = useState(\"add_tags\");\n  const [category, setCategory] = useState(\"\");\n  const [tags, setTags] = useState(\"\");\n  const [collectionId, setCollectionId] = useState(\"\");\n  const [loading, setLoading] = useState(false);\n  const [error, setError] = useState(\"\");\n\n  if (!selectedPoemIds || selectedPoemIds.length === 0) {\n    return null;\n  }\n\n  const categories = [\n    \"ghazal\",\n    \"nazm\",\n    \"rubai\",\n    \"qawwali\",\n    \"marsiya\",\n    \"salam\",\n    \"hamd\",\n    \"naat\",\n    \"free-verse\",\n    \"other\",\n  ];\n\n  const handleOrganize = async () => {\n    setLoading(true);\n    setError(\"\");\n\n    try {\n      const payload = {\n        poemIds: Array.from(selectedPoemIds),\n        action,\n      };\n\n      if (action === \"update_category\") {\n        payload.category = category;\n      } else if (action === \"add_tags\") {\n        payload.tags = tags.split(\",\").map((t) => t.trim());\n      } else if (action === \"add_to_collection\") {\n        payload.collectionId = collectionId;\n      }\n\n      const response = await poetryAPI.batchOrganizePoems(payload);\n\n      if (response.success) {\n        alert(`${selectedPoemIds.length} شاعریں کامیابی سے ترتیب دی گئیں`); // \"X poems organized successfully\"\n        onComplete?.();\n      }\n    } catch (err) {\n      setError(err.message || \"خرابی ہوئی\"); // \"Error occurred\"\n    } finally {\n      setLoading(false);\n    }\n  };\n\n  return (\n    <div className=\"bg-white rounded-lg shadow-md p-6 mb-6\">\n      <h3 className=\"text-lg font-bold mb-4 flex items-center gap-2\">\n        <MdFolder size={24} />\n        {selectedPoemIds.size} شاعریں منتخب ہیں {/* \"X Poems Selected\" */}\n      </h3>\n\n      {error && <div className=\"text-red-600 mb-4\">{error}</div>}\n\n      <div className=\"space-y-4\">\n        {/* Action Selector */}\n        <div>\n          <label className=\"block text-sm font-medium mb-2\">کیا کریں:</label> {/* \"Action\" */}\n          <select\n            value={action}\n            onChange={(e) => setAction(e.target.value)}\n            className=\"w-full border rounded-lg px-3 py-2\"\n          >\n            <option value=\"add_tags\">ٹیگز شامل کریں</option> {/* \"Add Tags\" */}\n            <option value=\"update_category\">زمرہ تبدیل کریں</option> {/* \"Change Category\" */}\n            <option value=\"add_to_collection\">مجموعہ میں شامل کریں</option> {/* \"Add to Collection\" */}\n          </select>\n        </div>\n\n        {/* Action-specific inputs */}\n        {action === \"add_tags\" && (\n          <div>\n            <label className=\"block text-sm font-medium mb-2\">ٹیگز (کوما سے الگ):</label> {/* \"Tags (comma-separated)\" */}\n            <input\n              type=\"text\"\n              value={tags}\n              onChange={(e) => setTags(e.target.value)}\n              placeholder=\"مثال: غزل، رومانی، محبت\" // \"Example: ghazal, romantic, love\"\n              className=\"w-full border rounded-lg px-3 py-2\"\n            />\n          </div>\n        )}\n\n        {action === \"update_category\" && (\n          <div>\n            <label className=\"block text-sm font-medium mb-2 flex items-center gap-2\">\n              <MdCategory /> زمرہ: {/* \"Category\" */}\n            </label>\n            <select\n              value={category}\n              onChange={(e) => setCategory(e.target.value)}\n              className=\"w-full border rounded-lg px-3 py-2\"\n            >\n              <option value=\"\">منتخب کریں...</option> {/* \"Select...\" */}\n              {categories.map((cat) => (\n                <option key={cat} value={cat}>\n                  {cat}\n                </option>\n              ))}\n            </select>\n          </div>\n        )}\n\n        {action === \"add_to_collection\" && (\n          <div>\n            <label className=\"block text-sm font-medium mb-2\">مجموعہ ID:</label> {/* \"Collection ID\" */}\n            <input\n              type=\"text\"\n              value={collectionId}\n              onChange={(e) => setCollectionId(e.target.value)}\n              placeholder=\"MongoDB ObjectId\"\n              className=\"w-full border rounded-lg px-3 py-2\"\n            />\n          </div>\n        )}\n      </div>\n\n      {/* Action Buttons */}\n      <div className=\"flex gap-2 mt-6\">\n        <Button\n          onClick={handleOrganize}\n          disabled={loading || (action === \"add_tags\" && !tags) || (action === \"update_category\" && !category)}\n          variant=\"primary\"\n          className=\"flex-1\"\n        >\n          {loading ? \"جاری ہے...\" : \"لاگو کریں\"} {/* \"Apply\" */}\n        </Button>\n        <Button\n          onClick={() => onComplete?.()}\n          variant=\"secondary\"\n          className=\"flex-1\"\n        >\n          منسوخ کریں {/* \"Cancel\" */}\n        </Button>\n      </div>\n    </div>\n  );\n}\n"
+import React, { useState } from "react";
+import { poetryAPI } from "../../services/poetryService";
+import { Button } from "../ui/Button";
+import { MdTag, MdFolder, MdCategory } from "react-icons/md";
+
+/**
+ * Batch Organizer Component
+ * Allows users to organize multiple poems at once
+ */
+export function BatchOrganizer({ selectedPoemIds, onComplete }) {
+  const [action, setAction] = useState("add_tags");
+  const [category, setCategory] = useState("");
+  const [tags, setTags] = useState("");
+  const [collectionId, setCollectionId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  if (!selectedPoemIds || selectedPoemIds.length === 0) {
+    return null;
+  }
+
+  const categories = [
+    "ghazal",
+    "nazm",
+    "rubai",
+    "qawwali",
+    "marsiya",
+    "salam",
+    "hamd",
+    "naat",
+    "free-verse",
+    "other",
+  ];
+
+  const handleOrganize = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const payload = {
+        poemIds: Array.from(selectedPoemIds),
+        action,
+      };
+
+      if (action === "update_category") {
+        payload.category = category;
+      } else if (action === "add_tags") {
+        payload.tags = tags.split(",").map((t) => t.trim());
+      } else if (action === "add_to_collection") {
+        payload.collectionId = collectionId;
+      }
+
+      const response = await poetryAPI.batchOrganizePoems(payload);
+
+      if (response.success) {
+        alert(`${selectedPoemIds.length} شاعریں کامیابی سے ترتیب دی گئیں`); // "X poems organized successfully"
+        onComplete?.();
+      }
+    } catch (err) {
+      setError(err.message || "خرابی ہوئی"); // "Error occurred"
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+        <MdFolder size={24} />
+        {selectedPoemIds.size} شاعریں منتخب ہیں {/* "X Poems Selected" */}
+      </h3>
+
+      {error && <div className="text-red-600 mb-4">{error}</div>}
+
+      <div className="space-y-4">
+        {/* Action Selector */}
+        <div>
+          <label className="block text-sm font-medium mb-2">کیا کریں:</label> {/* "Action" */}
+          <select
+            value={action}
+            onChange={(e) => setAction(e.target.value)}
+            className="w-full border rounded-lg px-3 py-2"
+          >
+            <option value="add_tags">ٹیگز شامل کریں</option> {/* "Add Tags" */}
+            <option value="update_category">زمرہ تبدیل کریں</option> {/* "Change Category" */}
+            <option value="add_to_collection">مجموعہ میں شامل کریں</option> {/* "Add to Collection" */}
+          </select>
+        </div>
+
+        {/* Action-specific inputs */}
+        {action === "add_tags" && (
+          <div>
+            <label className="block text-sm font-medium mb-2">ٹیگز (کوما سے الگ):</label> {/* "Tags (comma-separated)" */}
+            <input
+              type="text"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="مثال: غزل، رومانی، محبت" // "Example: ghazal, romantic, love"
+              className="w-full border rounded-lg px-3 py-2"
+            />
+          </div>
+        )}
+
+        {action === "update_category" && (
+          <div>
+            <label className="text-sm font-medium mb-2 flex items-center gap-2">
+              <MdCategory /> زمرہ:
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2"
+            >
+              <option value="">منتخب کریں...</option> {/* "Select..." */}
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {action === "add_to_collection" && (
+          <div>
+            <label className="block text-sm font-medium mb-2">مجموعہ ID:</label> {/* "Collection ID" */}
+            <input
+              type="text"
+              value={collectionId}
+              onChange={(e) => setCollectionId(e.target.value)}
+              placeholder="MongoDB ObjectId"
+              className="w-full border rounded-lg px-3 py-2"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 mt-6">
+        <Button
+          onClick={handleOrganize}
+          disabled={loading || (action === "add_tags" && !tags) || (action === "update_category" && !category)}
+          variant="primary"
+          className="flex-1"
+        >
+          {loading ? "جاری ہے..." : "لاگو کریں"} {/* "Apply" */}
+        </Button>
+        <Button
+          onClick={() => onComplete?.()}
+          variant="secondary"
+          className="flex-1"
+        >
+          منسوخ کریں {/* "Cancel" */}
+        </Button>
+      </div>
+    </div>
+  );
+}

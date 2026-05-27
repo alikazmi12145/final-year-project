@@ -1,13 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useMessage } from "../context/MessageContext";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import api, {
-  authAPI,
-  poetryAPI,
-  adminAPI,
-  dashboardAPI,
-} from "../services/api";
+import { poetryAPI, dashboardAPI } from "../services/api";
 import {
   User,
   Settings,
@@ -127,6 +122,7 @@ const Profile = () => {
       fetchRecentActivity();
       // Note: fetchBookmarkedPoems is called inside fetchUserData, no need to call separately
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, location.key]); // location.key changes on each navigation
 
   const fetchUserData = async () => {
@@ -337,15 +333,15 @@ const Profile = () => {
         await dashboardAPI.updateNotificationSettings(
           newSettings.notifications
         );
-        showMessage("success", "Notification settings updated successfully!");
+        showMessage("success", "اطلاعات کی ترتیبات کامیابی سے محفوظ ہو گئیں");
       } else {
         // In a real app, you'd save other settings to backend too
         await new Promise((resolve) => setTimeout(resolve, 500)); // Mock API call
-        showMessage("success", "Settings updated successfully!");
+        showMessage("success", "ترتیبات کامیابی سے محفوظ ہو گئیں");
       }
     } catch (error) {
       console.error("Settings update error:", error);
-      showMessage("error", "Failed to update settings");
+      showMessage("error", "ترتیبات محفوظ کرنے میں خرابی پیش آئی");
       // Revert settings on error
       setSettings((prevSettings) => prevSettings);
     }
@@ -356,7 +352,7 @@ const Profile = () => {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      showMessage("error", "Image must be smaller than 5MB");
+      showMessage("error", "تصویر کا حجم 5 ایم بی سے کم ہونا چاہیے");
       return;
     }
 
@@ -372,15 +368,15 @@ const Profile = () => {
         updateUser({
           profileImage: response.data.profileImage,
         });
-        showMessage("success", "Profile picture updated successfully!");
+        showMessage("success", "پروفائل تصویر کامیابی سے تبدیل ہو گئی");
       } else {
-        showMessage("error", response.data.message || "Failed to upload image");
+        showMessage("error", response.data.message || "تصویر اپلوڈ کرنے میں خرابی پیش آئی");
       }
     } catch (error) {
       console.error("Upload error:", error);
       showMessage(
         "error",
-        error.response?.data?.message || "Failed to upload image"
+        error.response?.data?.message || "تصویر اپلوڈ کرنے میں خرابی پیش آئی"
       );
     } finally {
       setLoading(false);
@@ -409,9 +405,9 @@ const Profile = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      showMessage("success", "Data exported successfully!");
+      showMessage("success", "ڈیٹا کامیابی سے ایکسپورٹ ہو گیا");
     } catch (error) {
-      showMessage("error", "Failed to export data");
+      showMessage("error", "ڈیٹا ایکسپورٹ کرنے میں خرابی پیش آئی");
     } finally {
       setLoading(false);
     }
@@ -422,7 +418,7 @@ const Profile = () => {
       <div className="min-h-screen cultural-bg flex items-center justify-center">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 text-urdu-maroon animate-spin mx-auto mb-4" />
-          <p className="text-urdu-brown">Loading profile...</p>
+          <p className="text-urdu-brown nastaleeq-primary">پروفائل لوڈ ہو رہا ہے...</p>
         </div>
       </div>
     );
@@ -430,19 +426,19 @@ const Profile = () => {
   const stats = [
     {
       icon: BookOpen,
-      label: "Poems Read",
+      label: "پڑھی گئی شاعری",
       value: statistics.poemsRead || statistics.likedPoems || 0,
       color: "text-blue-600",
     },
     {
       icon: Heart,
-      label: "Liked Poems",
+      label: "پسندیدہ کلام",
       value: statistics.likedPoems || 0,
       color: "text-red-600",
     },
     {
       icon: Bookmark,
-      label: "Bookmarks",
+      label: "محفوظ شدہ",
       value: statistics.bookmarks || 0,
       color: "text-yellow-600",
     },
@@ -459,7 +455,7 @@ const Profile = () => {
               className="flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-urdu-gold/20"
             >
               <ArrowLeft className="w-4 h-4 text-urdu-brown" />
-              <span className="text-urdu-brown font-medium">Home</span>
+              <span className="text-urdu-brown font-medium nastaleeq-primary">صفحۂ اول</span>
             </button>
 
             {/* Dashboard Link */}
@@ -473,7 +469,7 @@ const Profile = () => {
               className="flex items-center gap-2 px-4 py-2 bg-urdu-brown text-white rounded-lg hover:bg-urdu-maroon transition-colors"
             >
               <BarChart3 className="w-4 h-4" />
-              <span className="font-medium">Dashboard</span>
+              <span className="font-medium nastaleeq-primary" style={{ color: '#ffffff' }}>ڈیش بورڈ</span>
             </button>
           </div>
 
@@ -507,7 +503,7 @@ const Profile = () => {
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             >
               <LogOut className="w-4 h-4" />
-              <span className="font-medium">Logout</span>
+              <span className="font-medium nastaleeq-primary" style={{ color: '#ffffff' }}>لاگ آؤٹ</span>
             </button>
           </div>
         </div>
@@ -561,7 +557,7 @@ const Profile = () => {
                       setFormData({ ...formData, fullName: e.target.value })
                     }
                     className="input-field text-2xl font-bold"
-                    placeholder="Full Name"
+                    placeholder="پورا نام"
                   />
                   <textarea
                     value={formData.bio}
@@ -569,7 +565,7 @@ const Profile = () => {
                       setFormData({ ...formData, bio: e.target.value })
                     }
                     className="input-field"
-                    placeholder="Write a short bio..."
+                    placeholder="مختصر تعارف لکھیں..."
                     rows="3"
                   />
                   <div className="grid md:grid-cols-2 gap-4">
@@ -580,7 +576,7 @@ const Profile = () => {
                         setFormData({ ...formData, location: e.target.value })
                       }
                       className="input-field"
-                      placeholder="Location"
+                      placeholder="مقام"
                     />
                     <input
                       type="url"
@@ -589,7 +585,7 @@ const Profile = () => {
                         setFormData({ ...formData, website: e.target.value })
                       }
                       className="input-field"
-                      placeholder="Website URL"
+                      placeholder="ویب سائٹ کا پتہ"
                     />
                   </div>
                   <input
@@ -599,7 +595,7 @@ const Profile = () => {
                       setFormData({ ...formData, email: e.target.value })
                     }
                     className="input-field"
-                    placeholder="Email Address"
+                    placeholder="ای میل پتہ"
                   />
                   <div className="flex space-x-3">
                     <button
@@ -612,7 +608,7 @@ const Profile = () => {
                       ) : (
                         <Save className="w-4 h-4" />
                       )}
-                      Save Changes
+                      <span className="nastaleeq-primary">محفوظ کریں</span>
                     </button>
                     <button
                       onClick={() => {
@@ -630,15 +626,15 @@ const Profile = () => {
                       className="btn-secondary flex items-center gap-2"
                     >
                       <X className="w-4 h-4" />
-                      Cancel
+                      <span className="nastaleeq-primary">منسوخ</span>
                     </button>
                   </div>
                 </div>
               ) : (
                 <>
                   <div className="flex items-center justify-center md:justify-start space-x-3 mb-2">
-                    <h1 className="text-3xl font-bold text-urdu-brown">
-                      {user?.fullName || user?.name || "User"}
+                    <h1 className="text-3xl font-bold text-urdu-brown nastaleeq-heading">
+                      {user?.fullName || user?.name || "صارف"}
                     </h1>
                     <button
                       onClick={() => setIsEditing(true)}
@@ -649,8 +645,8 @@ const Profile = () => {
                   </div>
 
                   <p className="text-urdu-maroon mb-2">@{user?.name}</p>
-                  <p className="text-sm text-urdu-brown mb-4 capitalize">
-                    Role: {user?.role}
+                  <p className="text-sm text-urdu-brown mb-4 capitalize nastaleeq-primary">
+                    کردار: {user?.role}
                   </p>
 
                   {user?.bio && (
@@ -674,13 +670,13 @@ const Profile = () => {
                         rel="noopener noreferrer"
                       >
                         <Globe size={14} />
-                        Website
+                        <span className="nastaleeq-primary">ویب سائٹ</span>
                       </a>
                     )}
                     {statistics.joinedDate && (
                       <span className="flex items-center gap-1">
                         <Calendar size={14} />
-                        Joined{" "}
+                        <span className="nastaleeq-primary">شامل ہوئے:</span>{" "}
                         {new Date(statistics.joinedDate).toLocaleDateString()}
                       </span>
                     )}
@@ -713,9 +709,9 @@ const Profile = () => {
         <div className="mb-6">
           <div className="flex space-x-1 bg-urdu-cream/30 rounded-lg p-1">
             {[
-              { id: "profile", label: "Profile", icon: User },
-              { id: "activity", label: "Recent Activity", icon: Activity },
-              { id: "settings", label: "Account Settings", icon: Settings },
+              { id: "profile", label: "پروفائل", icon: User },
+              { id: "activity", label: "حالیہ سرگرمی", icon: Activity },
+              { id: "settings", label: "اکاؤنٹ کی ترتیبات", icon: Settings },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -740,9 +736,9 @@ const Profile = () => {
             <div className="md:col-span-2">
               <div className="card p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-urdu-brown flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-urdu-brown flex items-center gap-2 nastaleeq-heading">
                     <Activity size={24} />
-                    Recent Activity
+                    حالیہ سرگرمی
                   </h2>
                   <button
                     onClick={fetchRecentActivity}
@@ -769,8 +765,8 @@ const Profile = () => {
                           <p className="text-sm text-urdu-maroon flex items-center gap-1">
                             <Clock size={12} />
                             {activity.time instanceof Date
-                              ? `${activity.time.toLocaleDateString()} at ${activity.time.toLocaleTimeString()}`
-                              : "Recently"}
+                              ? `${activity.time.toLocaleDateString()} وقت: ${activity.time.toLocaleTimeString()}`
+                              : "حال ہی میں"}
                           </p>
                         </div>
                       </div>
@@ -779,8 +775,8 @@ const Profile = () => {
                 ) : (
                   <div className="text-center py-8">
                     <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-urdu-maroon">
-                      Your activity will appear here
+                    <p className="text-urdu-maroon nastaleeq-primary">
+                      آپ کی سرگرمی یہاں ظاہر ہو گی
                     </p>
                   </div>
                 )}
@@ -793,18 +789,18 @@ const Profile = () => {
             <div className="md:col-span-2 space-y-6">
               {/* Privacy Settings */}
               <div className="card p-6">
-                <h3 className="text-lg font-semibold text-urdu-brown mb-4 flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-urdu-brown mb-4 flex items-center gap-2 nastaleeq-heading">
                   <Shield size={20} />
-                  Privacy Settings
+                  رازداری کی ترتیبات
                 </h3>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-urdu-brown font-medium">
-                        Profile Visibility
+                      <label className="text-urdu-brown font-medium nastaleeq-primary">
+                        پروفائل کی وضاحت
                       </label>
-                      <p className="text-sm text-urdu-maroon">
-                        Who can see your profile
+                      <p className="text-sm text-urdu-maroon nastaleeq-primary">
+                        آپ کی پروفائل کون دیکھ سکتا ہے
                       </p>
                     </div>
                     <select
@@ -818,19 +814,19 @@ const Profile = () => {
                       }
                       className="border border-urdu-brown/20 rounded-lg px-3 py-2"
                     >
-                      <option value="public">Public</option>
-                      <option value="friends">Friends Only</option>
-                      <option value="private">Private</option>
+                      <option value="public">عوامی</option>
+                      <option value="friends">صرف دوست</option>
+                      <option value="private">نجی</option>
                     </select>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-urdu-brown font-medium">
-                        Show Email
+                      <label className="text-urdu-brown font-medium nastaleeq-primary">
+                        ای میل دکھائیں
                       </label>
-                      <p className="text-sm text-urdu-maroon">
-                        Display email on profile
+                      <p className="text-sm text-urdu-maroon nastaleeq-primary">
+                        پروفائل پر ای میل ظاہر کریں
                       </p>
                     </div>
                     <button
@@ -859,11 +855,11 @@ const Profile = () => {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-urdu-brown font-medium">
-                        Show Activity
+                      <label className="text-urdu-brown font-medium nastaleeq-primary">
+                        سرگرمی دکھائیں
                       </label>
-                      <p className="text-sm text-urdu-maroon">
-                        Display recent activity
+                      <p className="text-sm text-urdu-maroon nastaleeq-primary">
+                        حالیہ سرگرمی ظاہر کریں
                       </p>
                     </div>
                     <button
@@ -894,14 +890,14 @@ const Profile = () => {
 
               {/* Change Password */}
               <div className="card p-6">
-                <h3 className="text-lg font-semibold text-urdu-brown mb-4 flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-urdu-brown mb-4 flex items-center gap-2 nastaleeq-heading">
                   <Key size={20} />
-                  Change Password
+                  پاس ورڈ تبدیل کریں
                 </h3>
                 <div className="space-y-4">
                   <input
                     type="password"
-                    placeholder="Current Password"
+                    placeholder="موجودہ پاس ورڈ"
                     value={passwordData.currentPassword}
                     onChange={(e) =>
                       setPasswordData({
@@ -913,7 +909,7 @@ const Profile = () => {
                   />
                   <input
                     type="password"
-                    placeholder="New Password"
+                    placeholder="نیا پاس ورڈ"
                     value={passwordData.newPassword}
                     onChange={(e) =>
                       setPasswordData({
@@ -925,7 +921,7 @@ const Profile = () => {
                   />
                   <input
                     type="password"
-                    placeholder="Confirm New Password"
+                    placeholder="نیا پاس ورڈ دوبارہ"
                     value={passwordData.confirmPassword}
                     onChange={(e) =>
                       setPasswordData({
@@ -950,25 +946,25 @@ const Profile = () => {
                     ) : (
                       <Key className="w-4 h-4" />
                     )}
-                    Update Password
+                    <span className="nastaleeq-primary">پاس ورڈ تبدیل کریں</span>
                   </button>
                 </div>
               </div>
 
               {/* Reading Preferences */}
               <div className="card p-6">
-                <h3 className="text-lg font-semibold text-urdu-brown mb-4 flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-urdu-brown mb-4 flex items-center gap-2 nastaleeq-heading">
                   <BookOpen size={20} />
-                  Reading Preferences
+                  مطالعے کی ترجیحات
                 </h3>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-urdu-brown font-medium">
-                        Font Size
+                      <label className="text-urdu-brown font-medium nastaleeq-primary">
+                        حروف کا حجم
                       </label>
-                      <p className="text-sm text-urdu-maroon">
-                        Adjust reading font size
+                      <p className="text-sm text-urdu-maroon nastaleeq-primary">
+                        مطالعے کے حروف کی جسامت منتخب کریں
                       </p>
                     </div>
                     <select
@@ -982,19 +978,19 @@ const Profile = () => {
                       }
                       className="border border-urdu-brown/20 rounded-lg px-3 py-2"
                     >
-                      <option value="small">Small</option>
-                      <option value="medium">Medium</option>
-                      <option value="large">Large</option>
+                      <option value="small">چھوٹا</option>
+                      <option value="medium">درمیانہ</option>
+                      <option value="large">بڑا</option>
                     </select>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-urdu-brown font-medium">
-                        Auto Save
+                      <label className="text-urdu-brown font-medium nastaleeq-primary">
+                        خودکار محفوظی
                       </label>
-                      <p className="text-sm text-urdu-maroon">
-                        Automatically save reading progress
+                      <p className="text-sm text-urdu-maroon nastaleeq-primary">
+                        مطالعے کی پیشرفت خودکار محفوظ کریں
                       </p>
                     </div>
                     <button
@@ -1025,18 +1021,18 @@ const Profile = () => {
 
               {/* Email Notification Settings */}
               <div className="card p-6">
-                <h3 className="text-lg font-semibold text-urdu-brown mb-4 flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-urdu-brown mb-4 flex items-center gap-2 nastaleeq-heading">
                   <Bell size={20} />
-                  Email Notifications
+                  ای میل اطلاعات
                 </h3>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-urdu-brown font-medium">
-                        Email Notifications
+                      <label className="text-urdu-brown font-medium nastaleeq-primary">
+                        ای میل اطلاعات
                       </label>
-                      <p className="text-sm text-urdu-maroon">
-                        Receive notifications via email
+                      <p className="text-sm text-urdu-maroon nastaleeq-primary">
+                        ای میل پر اطلاعات وصول کریں
                       </p>
                     </div>
                     <button
@@ -1065,11 +1061,11 @@ const Profile = () => {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-urdu-brown font-medium">
-                        Poem Likes
+                      <label className="text-urdu-brown font-medium nastaleeq-primary">
+                        پسند کی اطلاع
                       </label>
-                      <p className="text-sm text-urdu-maroon">
-                        When someone likes your poems
+                      <p className="text-sm text-urdu-maroon nastaleeq-primary">
+                        جب کوئی آپ کی شاعری کو پسند کرے
                       </p>
                     </div>
                     <button
@@ -1098,11 +1094,11 @@ const Profile = () => {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-urdu-brown font-medium">
-                        Comments
+                      <label className="text-urdu-brown font-medium nastaleeq-primary">
+                        تبصرے
                       </label>
-                      <p className="text-sm text-urdu-maroon">
-                        When someone comments on your content
+                      <p className="text-sm text-urdu-maroon nastaleeq-primary">
+                        جب کوئی آپ کے مواد پر تبصرہ کرے
                       </p>
                     </div>
                     <button
@@ -1131,11 +1127,11 @@ const Profile = () => {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-urdu-brown font-medium">
-                        Contest Updates
+                      <label className="text-urdu-brown font-medium nastaleeq-primary">
+                        مقابلوں کی اطلاع
                       </label>
-                      <p className="text-sm text-urdu-maroon">
-                        Poetry contest announcements
+                      <p className="text-sm text-urdu-maroon nastaleeq-primary">
+                        شاعری کے مقابلوں کی اطلاعات
                       </p>
                     </div>
                     <button
@@ -1164,11 +1160,11 @@ const Profile = () => {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-urdu-brown font-medium">
-                        Newsletter
+                      <label className="text-urdu-brown font-medium nastaleeq-primary">
+                        خبرنامہ
                       </label>
-                      <p className="text-sm text-urdu-maroon">
-                        Weekly poetry highlights and news
+                      <p className="text-sm text-urdu-maroon nastaleeq-primary">
+                        ہفتے کے بہترین کلام اور خبریں
                       </p>
                     </div>
                     <button
@@ -1204,14 +1200,14 @@ const Profile = () => {
                           await dashboardAPI.sendTestEmail();
                           showMessage(
                             "success",
-                            "Test email sent successfully!"
+                            "آزمائشی ای میل کامیابی سے بھیج دی گئی"
                           );
                         } catch (error) {
                           console.error("Test email error:", error);
                           showMessage(
                             "error",
                             error.response?.data?.message ||
-                              "Failed to send test email"
+                              "آزمائشی ای میل بھیجنے میں خرابی پیش آئی"
                           );
                         } finally {
                           setLoading(false);
@@ -1227,7 +1223,7 @@ const Profile = () => {
                       ) : (
                         <Mail className="w-4 h-4" />
                       )}
-                      Send Test Email
+                      <span className="nastaleeq-primary">آزمائشی ای میل بھیجیں</span>
                     </button>
                   </div>
                 </div>
@@ -1235,9 +1231,9 @@ const Profile = () => {
 
               {/* Data Management */}
               <div className="card p-6">
-                <h3 className="text-lg font-semibold text-urdu-brown mb-4 flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-urdu-brown mb-4 flex items-center gap-2 nastaleeq-heading">
                   <Download size={20} />
-                  Data Management
+                  ڈیٹا کا انتظام
                 </h3>
                 <div className="space-y-3">
                   <button
@@ -1245,7 +1241,7 @@ const Profile = () => {
                     className="w-full flex items-center justify-center gap-2 p-3 border border-urdu-brown/20 rounded-lg hover:bg-urdu-cream/30 transition-colors"
                   >
                     <Download size={18} />
-                    Export My Data
+                    <span className="nastaleeq-primary">میرا ڈیٹا ایکسپورٹ کریں</span>
                   </button>
                   <button
                     onClick={async () => {
@@ -1260,7 +1256,7 @@ const Profile = () => {
                     className="w-full flex items-center justify-center gap-2 p-3 bg-red-100 text-red-700 border border-red-200 rounded-lg hover:bg-red-200 transition-colors"
                   >
                     <Trash2 size={18} />
-                    Delete Account
+                    <span className="nastaleeq-primary">اکاؤنٹ حذف کریں</span>
                   </button>
                 </div>
               </div>
@@ -1272,9 +1268,9 @@ const Profile = () => {
             <>
               {/* Recent Activity */}
               <div className="card p-6">
-                <h2 className="text-xl font-bold text-urdu-brown mb-4 flex items-center gap-2">
+                <h2 className="text-xl font-bold text-urdu-brown mb-4 flex items-center gap-2 nastaleeq-heading">
                   <Activity size={20} />
-                  Recent Activity
+                  حالیہ سرگرمی
                 </h2>
                 {recentActivity.length > 0 ? (
                   <div className="space-y-3">
@@ -1288,10 +1284,10 @@ const Profile = () => {
                           <p className="text-sm text-urdu-brown">
                             {activity.title}
                           </p>
-                          <p className="text-xs text-urdu-maroon">
+                          <p className="text-xs text-urdu-maroon nastaleeq-primary">
                             {activity.time instanceof Date
                               ? activity.time.toLocaleDateString()
-                              : "Recently"}
+                              : "حال ہی میں"}
                           </p>
                         </div>
                       </div>
@@ -1300,8 +1296,8 @@ const Profile = () => {
                 ) : (
                   <div className="text-center py-8">
                     <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-urdu-maroon">
-                      Your activity will appear here
+                    <p className="text-urdu-maroon nastaleeq-primary">
+                      آپ کی سرگرمی یہاں ظاہر ہو گی
                     </p>
                   </div>
                 )}
@@ -1310,9 +1306,9 @@ const Profile = () => {
               {/* Bookmarked Poems */}
               <div className="card p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-urdu-brown flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-urdu-brown flex items-center gap-2 nastaleeq-heading">
                     <Bookmark size={20} />
-                    Bookmarked Poems
+                    محفوظ کلام
                   </h2>
                   <button
                     onClick={fetchBookmarkedPoems}
@@ -1329,7 +1325,7 @@ const Profile = () => {
                 {bookmarksLoading ? (
                   <div className="text-center py-8">
                     <RefreshCw className="w-6 h-6 text-urdu-maroon animate-spin mx-auto mb-3" />
-                    <p className="text-urdu-maroon">Loading bookmarks...</p>
+                    <p className="text-urdu-maroon nastaleeq-primary">محفوظ شدہ لوڈ ہو رہے ہیں...</p>
                   </div>
                 ) : profileBookmarkedPoems.length > 0 ? (
                   <div className="space-y-3">
@@ -1352,14 +1348,14 @@ const Profile = () => {
                         <div className="flex items-center gap-2">
                           <Link
                             to={`/poems/${poem._id}`}
-                            className="px-3 py-1 text-xs rounded-lg border border-urdu-brown/20 text-urdu-brown hover:bg-urdu-cream/30"
+                            className="px-3 py-1 text-xs rounded-lg border border-urdu-brown/20 text-urdu-brown hover:bg-urdu-cream/30 nastaleeq-primary"
                           >
-                            Read
+                            پڑھیں
                           </Link>
                           <button
                             onClick={() => handleProfileBookmarkToggle(poem._id)}
                             className="p-2 text-yellow-600 hover:bg-yellow-100 rounded-lg transition-colors"
-                            title="Remove bookmark"
+                            title="محفوظ سے نکالیں"
                           >
                             <Bookmark className="w-4 h-4 fill-current" />
                           </button>
@@ -1370,16 +1366,16 @@ const Profile = () => {
                 ) : (
                   <div className="text-center py-8">
                     <Bookmark className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-urdu-maroon">No bookmarks yet</p>
+                    <p className="text-urdu-maroon nastaleeq-primary">ابھی کوئی کلام محفوظ نہیں</p>
                   </div>
                 )}
               </div>
 
               {/* Account Settings Quick Access */}
               <div className="card p-6">
-                <h2 className="text-xl font-bold text-urdu-brown mb-4 flex items-center gap-2">
+                <h2 className="text-xl font-bold text-urdu-brown mb-4 flex items-center gap-2 nastaleeq-heading">
                   <Settings size={20} />
-                  Account Settings
+                  اکاؤنٹ کی ترتیبات
                 </h2>
                 <div className="space-y-3">
                   <button
@@ -1388,7 +1384,7 @@ const Profile = () => {
                   >
                     <div className="flex items-center space-x-3">
                       <Shield className="w-5 h-5 text-urdu-gold" />
-                      <span className="text-urdu-brown">Privacy Settings</span>
+                      <span className="text-urdu-brown nastaleeq-primary">رازداری کی ترتیبات</span>
                     </div>
                   </button>
                   <button
@@ -1397,7 +1393,7 @@ const Profile = () => {
                   >
                     <div className="flex items-center space-x-3">
                       <Key className="w-5 h-5 text-urdu-gold" />
-                      <span className="text-urdu-brown">Change Password</span>
+                      <span className="text-urdu-brown nastaleeq-primary">پاس ورڈ تبدیل کریں</span>
                     </div>
                   </button>
                   <button
@@ -1406,8 +1402,8 @@ const Profile = () => {
                   >
                     <div className="flex items-center space-x-3">
                       <BookOpen className="w-5 h-5 text-urdu-gold" />
-                      <span className="text-urdu-brown">
-                        Reading Preferences
+                      <span className="text-urdu-brown nastaleeq-primary">
+                        مطالعے کی ترجیحات
                       </span>
                     </div>
                   </button>

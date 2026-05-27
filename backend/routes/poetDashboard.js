@@ -9,6 +9,7 @@ import { poetAuth } from "../middleware/auth.js";
 import axios from "axios";
 import multer from "multer";
 import cloudinary from "../config/cloudinary.js";
+import AIPoetryService from "../services/aiPoetryService.js";
 
 const router = express.Router();
 
@@ -848,26 +849,9 @@ router.post(
 
       const { content, language = "urdu" } = req.body;
 
-      const prompt = `As an expert Urdu poetry critic and mentor, please analyze the following ${language} poem and provide constructive feedback:
-
-Poem:
-${content}
-
-Please provide:
-1. Overall impression and strengths
-2. Areas for improvement (meter, rhyme, imagery, meaning)
-3. Specific suggestions for better word choices
-4. Cultural and literary context if relevant
-5. Encouragement and positive reinforcement
-
-Keep the feedback constructive, educational, and encouraging for the poet.`;
-
-      // Fallback: AI suggestions removed
-      res.json({
-        success: false,
-        message: "AI suggestions unavailable. OpenAI API removed.",
-        data: {},
-      });
+      // GPT-4o powered constructive feedback
+      const result = await AIPoetryService.generatePoetFeedback(content, language);
+      return res.json(result);
     } catch (error) {
       console.error("AI suggestions error:", error);
       res.status(500).json({
@@ -915,19 +899,9 @@ router.post(
         });
       }
 
-      const prompt = `Translate the following ${fromLanguage} poem to ${toLanguage}. Maintain the poetic essence, rhythm, and emotional depth while making it culturally appropriate:
-
-Original Poem (${fromLanguage}):
-${content}
-
-Please provide a thoughtful translation that preserves the artistic and emotional qualities of the original.`;
-
-      // Fallback: AI translation removed
-      res.json({
-        success: false,
-        message: "AI translation unavailable. OpenAI API removed.",
-        data: {},
-      });
+      // GPT-4o powered translation
+      const result = await AIPoetryService.translatePoem(content, fromLanguage, toLanguage);
+      return res.json(result);
     } catch (error) {
       console.error("AI translation error:", error);
       res.status(500).json({
