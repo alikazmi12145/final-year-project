@@ -57,6 +57,14 @@ import CopyrightReportDetailPage from "./pages/CopyrightReportDetailPage";
 import AdminCopyrightDashboard from "./pages/AdminCopyrightDashboard";
 import AdminViolationsPage from "./pages/AdminViolationsPage";
 
+// Membership / Premium Module
+import MembershipPage from "./pages/MembershipPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import PaymentSuccessPage from "./pages/PaymentSuccessPage";
+import PaymentFailurePage from "./pages/PaymentFailurePage";
+import ManageSubscriptionPage from "./pages/ManageSubscriptionPage";
+import AdminRevenueDashboard from "./pages/AdminRevenueDashboard";
+
 function App() {
   return (
     <Layout>
@@ -275,6 +283,45 @@ function App() {
           element={
             <ProtectedRoute requiredRole="admin">
               <CopyrightReportDetailPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Membership / Premium Module */}
+        <Route path="/membership" element={<MembershipPage />} />
+        <Route
+          path="/membership/checkout"
+          element={
+            <ProtectedRoute>
+              <CheckoutPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/membership/success"
+          element={
+            <ProtectedRoute>
+              <PaymentSuccessPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/membership/failure"
+          element={<PaymentFailurePage />}
+        />
+        <Route
+          path="/membership/manage"
+          element={
+            <ProtectedRoute>
+              <ManageSubscriptionPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/revenue"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminRevenueDashboard />
             </ProtectedRoute>
           }
         />

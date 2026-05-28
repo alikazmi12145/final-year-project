@@ -71,6 +71,7 @@ app.use(
 
 // Security headers (Helmet). crossOriginResourcePolicy is relaxed because the
 // /uploads and /storage static endpoints are consumed by the SPA running on a
+
 // different port during development.
 app.use(
   helmet({
@@ -352,6 +353,9 @@ const startServer = async () => {
     const notificationRoutes = await import("./routes/notifications.js");
     const feedbackRoutes = await import("./routes/feedback.js");
 
+    // Membership / Subscriptions
+    const subscriptionRoutes = await import("./routes/subscriptions.js");
+
     // Apply routes
     app.use("/api/auth", authRoutes.default);
     app.use("/api/auth", oauthRoutes.default);
@@ -384,6 +388,7 @@ const startServer = async () => {
     app.use("/api/comments", commentRoutes.default);
     app.use("/api/notifications", notificationRoutes.default);
     app.use("/api/feedback", feedbackRoutes.default);
+    app.use("/api/subscriptions", subscriptionRoutes.default);
 
     console.log("✅ Routes loaded successfully");
     console.log("🤖 AI Search routes available at /api/ai-search");

@@ -9,12 +9,16 @@ import {
   Heart,
   Sparkles,
   Star,
+  Crown,
+  Check,
+  Lock,
 } from "lucide-react";
 import PoetOfTheDay from "../components/homepage/PoetOfTheDay";
 import PersonalizedRecommendations from "../components/homepage/PersonalizedRecommendations";
 import LiveCommunityFeed from "../components/homepage/LiveCommunityFeed";
 import DarkModeToggle from "../components/homepage/DarkModeToggle";
 import PoetHistorySlider from "../components/homepage/PoetHistorySlider";
+import "../components/membership/membership.css";
 
 const Home = () => {
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
@@ -342,71 +346,146 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Features Section - Minimalist */}
-      <div className="relative z-10 py-16 px-4 bg-slate-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="nastaleeq-heading text-3xl md:text-4xl font-bold text-amber-900 mb-4">
+      {/* Features Section — Semi-Premium Classical Band */}
+      <div className="relative z-10 py-24 px-4 bes-bg-night bes-geo-pattern overflow-hidden">
+        <div className="max-w-7xl mx-auto relative">
+          {/* Section header */}
+          <div className="text-center mb-16 bes-fade-up">
+            <div className="mb-5">
+              <span className="bes-eyebrow">
+                <Sparkles className="inline w-3 h-3 mr-2 -mt-0.5" />
+                Platform Highlights
+              </span>
+            </div>
+            <h2
+              dir="rtl"
+              className="bes-urdu-display text-4xl md:text-6xl bes-shimmer-text"
+              style={{ lineHeight: "1.5" }}
+            >
               پلیٹ فارم کی فیچرز
             </h2>
+            <div className="max-w-sm mx-auto mt-5 mb-5">
+              <div className="bes-divider-double" />
+            </div>
+            <p className="font-elegant italic text-amber-100/70 tracking-[0.22em] uppercase text-xs sm:text-sm">
+              A New Era of Urdu Poetry
+            </p>
             <p
-              className="nastaleeq-primary text-slate-600 max-w-2xl mx-auto leading-relaxed"
               dir="rtl"
+              className="bes-urdu-display text-amber-100/80 max-w-2xl mx-auto mt-6 text-lg"
             >
-              جدید ٹیکنالوجی اور روایتی ثقافتی قدردانی کے ذریعے شاعری دریافت
-              کریں
+              جدید ٹیکنالوجی اور روایتی ثقافتی قدردانی کے ذریعے شاعری دریافت کریں
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-7">
             {[
               {
                 icon: Search,
                 title: "ذہین اے آئی تلاش",
+                english: "Intelligent AI Search",
                 description:
                   "آواز، تصاویر، اور ذہین متنی شناخت کے ساتھ ایڈوانس تلاش",
-                color: "from-blue-500 to-blue-600",
+                perks: [
+                  { text: "Voice search", premium: false },
+                  { text: "OCR poetry extraction", premium: false },
+                  { text: "Advanced semantic AI", premium: true },
+                ],
               },
               {
                 icon: Book,
                 title: "ڈیجیٹل لائبریری",
+                english: "Digital Library",
                 description: "کلاسیکی اور جدید اردو شاعری کا جامع ذخیرہ",
-                color: "from-green-500 to-green-600",
+                perks: [
+                  { text: "12,500+ poems", premium: false },
+                  { text: "Bookmark & save", premium: false },
+                  { text: "Rare classical PDFs", premium: true },
+                ],
+                featured: true,
               },
               {
                 icon: Users,
                 title: "کمیونٹی پلیٹ فارم",
+                english: "Community Platform",
                 description:
                   "شاعری کے شوقین سے رابطہ قائم کریں اور ثقافتی بحث میں حصہ لیں",
-                color: "from-purple-500 to-purple-600",
+                perks: [
+                  { text: "Discussions & comments", premium: false },
+                  { text: "Follow poets", premium: false },
+                  { text: "Premium member badge", premium: true },
+                ],
               },
             ].map((feature, index) => (
-              <div
+              <article
                 key={index}
-                className="group bsk-card-lift bsk-rise bg-white rounded-xl p-6 shadow-lg hover:shadow-2xl border border-slate-200 hover:border-amber-300"
+                className={`bes-glass bes-glass-hover bes-card bes-shine bes-price-card bes-fade-up ${
+                  feature.featured ? "featured bes-ring-gold lg:scale-105 lg:-mt-2" : ""
+                }`}
                 style={{ animationDelay: `${0.1 + index * 0.12}s` }}
               >
-                <div className="text-center">
-                  <div
-                    className={`w-14 h-14 bg-gradient-to-r ${feature.color} rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300`}
-                  >
-                    <feature.icon className="h-7 w-7 text-white" />
+                <div className="flex items-center justify-between mb-5">
+                  <div className="bes-medallion">
+                    <feature.icon className="h-6 w-6" />
                   </div>
-                  <h3
-                    className="nastaleeq-heading text-xl font-bold text-slate-800 mb-3"
-                    dir="rtl"
-                  >
-                    {feature.title}
-                  </h3>
-                  <p
-                    className="nastaleeq-primary text-slate-600 leading-relaxed"
-                    dir="rtl"
-                  >
-                    {feature.description}
-                  </p>
+                  <span className="bes-chip">0{index + 1}</span>
                 </div>
-              </div>
+
+                <h3
+                  dir="rtl"
+                  className="bes-section-title text-2xl md:text-3xl bes-gold-text mb-1"
+                >
+                  {feature.title}
+                </h3>
+                <p className="font-elegant italic text-amber-100/65 tracking-wider text-sm mb-4">
+                  {feature.english}
+                </p>
+
+                <p
+                  dir="rtl"
+                  className="bes-urdu-display text-amber-50/85 mb-5"
+                >
+                  {feature.description}
+                </p>
+
+                <div className="bes-divider mb-4" />
+
+                <ul className="space-y-2.5">
+                  {feature.perks.map((p) => (
+                    <li
+                      key={p.text}
+                      className="flex items-center justify-between gap-3 text-sm"
+                    >
+                      <span className="flex items-center gap-2 text-amber-50/90">
+                        <Check className="w-4 h-4 text-emerald-400" />
+                        {p.text}
+                      </span>
+                      {p.premium && (
+                        <span className="text-[10px] tracking-widest text-amber-300/90 bg-amber-400/10 border border-amber-400/30 rounded-full px-2 py-0.5 inline-flex items-center gap-1">
+                          <Lock className="w-3 h-3" /> PREMIUM
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </article>
             ))}
+          </div>
+
+          {/* CTA strip */}
+          <div className="mt-14 text-center bes-fade-up">
+            <Link
+              to="/membership"
+              className="bes-btn-gold bes-shine inline-flex"
+            >
+              <Crown className="w-4 h-4" /> Unlock Premium Features
+            </Link>
+            <p
+              dir="rtl"
+              className="bes-urdu-display text-amber-100/60 text-sm mt-4"
+            >
+              پریمیم رکنیت کے ساتھ تمام خصوصی فیچرز کا لطف اٹھائیں
+            </p>
           </div>
         </div>
       </div>

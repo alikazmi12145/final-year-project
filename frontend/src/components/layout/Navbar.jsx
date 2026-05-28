@@ -25,6 +25,7 @@ import {
   ChevronDown,
   Shield,
   ShieldAlert,
+  Crown,
 } from "lucide-react";
 
 const Navbar = () => {
@@ -134,6 +135,12 @@ const Navbar = () => {
       label: "آواز",
       urduLabel: "آواز",
       icon: Headphones,
+    },
+    {
+      path: "/membership",
+      label: "پریمیم",
+      urduLabel: "پریمیم",
+      icon: Crown,
     },
   ];
 

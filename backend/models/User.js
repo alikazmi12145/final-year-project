@@ -241,8 +241,27 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// Membership snapshot (synced by SubscriptionController for fast access checks)
+userSchema.add({
+  membership: {
+    isPremium: { type: Boolean, default: false },
+    plan: {
+      type: String,
+      enum: ["free", "premium_monthly", "premium_yearly", "vip_literary"],
+      default: "free",
+    },
+    activeSubscription: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Subscription",
+      default: null,
+    },
+    currentPeriodEnd: { type: Date, default: null },
+  },
+});
+
 // Indexes for performance
 userSchema.index({ email: 1 }, { unique: true }); // Explicit unique index for email
+userSchema.index({ "membership.isPremium": 1, "membership.plan": 1 });
 userSchema.index({ role: 1, status: 1 });
 userSchema.index({ "verificationRequest.status": 1 });
 userSchema.index({ lastActive: -1 });
