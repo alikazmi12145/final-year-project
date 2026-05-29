@@ -6,6 +6,7 @@ import { Button } from "../components/ui/Button";
 import PoetTimeline from "../components/poetry/PoetTimeline";
 import MemorialContributions from "../components/poetry/MemorialContributions";
 import EnhancedPoetSearch from "../components/poetry/EnhancedPoetSearch";
+import VerificationBadge from "../components/verification/VerificationBadge";
 import {
   User,
   Users,
@@ -21,7 +22,17 @@ import {
   Clock,
   Globe,
   Flag,
+  Crown,
+  Trophy,
+  Gem,
 } from "lucide-react";
+
+const TIER_META = {
+  bronze:  { label: "برانز",  Icon: Award,  gradient: "from-orange-400 to-amber-600", ring: "ring-orange-200" },
+  silver:  { label: "سلور",   Icon: Trophy, gradient: "from-slate-300 to-slate-500",  ring: "ring-slate-200"  },
+  gold:    { label: "گولڈ",   Icon: Crown,  gradient: "from-amber-400 to-yellow-600", ring: "ring-amber-200"  },
+  diamond: { label: "ڈائمنڈ", Icon: Gem,    gradient: "from-sky-400 to-indigo-600",   ring: "ring-sky-200"    },
+};
 
 const Poets = () => {
   const { id } = useParams();
@@ -224,15 +235,32 @@ const Poets = () => {
               </div>
 
               <div className="flex-1 text-center md:text-left">
-                <div className="flex items-center justify-center md:justify-start space-x-3 mb-3">
+                <div className="flex items-center justify-center md:justify-start flex-wrap gap-3 mb-3">
                   <h1 className="text-4xl font-bold text-urdu-brown font-urdu urdu-heading-lg">
                     {poet.name}
                   </h1>
                   {poet.isVerified && (
-                    <div className="bg-gradient-to-r from-urdu-gold to-cultural-amber p-2 rounded-full shadow-md">
-                      <Star className="w-6 h-6 text-white fill-current" />
-                    </div>
+                    <VerificationBadge
+                      isVerified
+                      badge={poet.verificationBadge || poet.user?.verificationBadge || "gold"}
+                      size="lg"
+                    />
                   )}
+                  {poet.isVerified && (() => {
+                    const tierKey = poet.verificationBadge || poet.user?.verificationBadge;
+                    const tier = TIER_META[tierKey];
+                    if (!tier) return null;
+                    const TierIcon = tier.Icon;
+                    return (
+                      <span
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-white font-urdu text-sm font-semibold shadow-md bg-gradient-to-r ${tier.gradient} ring-2 ${tier.ring}`}
+                        title={`${tier.label} تصدیق شدہ شاعر`}
+                      >
+                        <TierIcon className="w-4 h-4 fill-current" />
+                        <span>{tier.label}</span>
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 {/* Follow Button */}

@@ -1368,8 +1368,8 @@ const AdminDashboard = () => {
 
       {/* Poem View Modal */}
       {showPoemModal && selectedPoem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+          <div key={selectedPoem._id} className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold">نظم کی تفصیلات / Poem Details</h2>
@@ -1484,8 +1484,8 @@ const AdminDashboard = () => {
 
       {/* Poem Edit Modal */}
       {showEditPoemModal && selectedPoem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+          <div key={selectedPoem._id} className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold">نظم میں ترمیم / Edit Poem</h2>

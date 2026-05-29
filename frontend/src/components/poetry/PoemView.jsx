@@ -22,6 +22,7 @@ import { useAuth } from "../../context/AuthContext";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
 import ReviewsSection from "./ReviewsSection";
 import TTSModal from "../tts/TTSModal";
+import CopyrightBadge from "../copyright/CopyrightBadge";
 
 const PoemView = ({
   poem,
@@ -425,6 +426,11 @@ const PoemView = ({
                 <span>رپورٹ کریں</span>
               </button>
             )}
+          </div>
+
+          {/* Copyright / License badge */}
+          <div className="flex justify-center mt-4">
+            <CopyrightBadge poemId={poem._id || poem.id} />
           </div>
 
           {/* Statistics */}

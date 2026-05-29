@@ -37,6 +37,16 @@ const FEATURED_POETS = {
   },
 };
 
+/**
+ * Public helper: returns honorary stats override for a featured poet, or null.
+ * Used by both auto-verification and the public poet biography endpoint so
+ * featured poets show the same stats everywhere.
+ */
+export function getFeaturedPoetOverride(email) {
+  if (!email) return null;
+  return FEATURED_POETS[String(email).toLowerCase()] || null;
+}
+
 const TIER_RANK = { none: 0, bronze: 1, silver: 2, gold: 3, diamond: 4 };
 
 /**

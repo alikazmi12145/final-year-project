@@ -6,6 +6,7 @@ import User from "../models/User.js";
 import Poem from "../models/Poem.js";
 import { auth, poetAuth, adminAuth } from "../middleware/auth.js";
 import rateLimit from "express-rate-limit";
+import { getFeaturedPoetOverride } from "../utils/autoVerification.js";
 
 const router = express.Router();
 
@@ -294,6 +295,7 @@ router.get("/:id", poetOperationLimit, async (req, res) => {
     let isUserPoet = false;
     let poems = [];
     let poetStats = {};
+    let poetEmail = null;
 
     if (poet) {
       // If poet has a linked user with profileImage, use that
@@ -304,6 +306,17 @@ router.get("/:id", poetOperationLimit, async (req, res) => {
       // If poet has a linked user with bio, use that
       if (poet.user?.bio && !poet.bio) {
         poet.bio = poet.user.bio;
+      }
+
+      // Mirror verification status from linked User account so the public
+      // biography page reflects the same verification tier (bronze/silver/
+      // gold/diamond) shown on the poet's dashboard.
+      if (poet.user) {
+        if (poet.user.isVerified) poet.isVerified = true;
+        if (poet.user.verificationBadge && poet.user.verificationBadge !== "none") {
+          poet.verificationBadge = poet.user.verificationBadge;
+        }
+        poetEmail = poet.user.email || null;
       }
 
       console.log("Poet detail - After merging:", {
@@ -391,8 +404,17 @@ router.get("/:id", poetOperationLimit, async (req, res) => {
         era: "contemporary",
         status: userPoet.status,
         isExternal: false,
-        dateOfBirth: userPoet.createdAt,
+        dateOfBirth: userPoet.dateOfBirth || userPoet.createdAt,
+        // Surface verification info so the public biography page shows the
+        // same tier badge as the poet dashboard (bronze/silver/gold/diamond).
+        isVerified: !!userPoet.isVerified,
+        verificationBadge: userPoet.verificationBadge || "none",
+        followers: userPoet.followers || [],
+        stats: {
+          followers: Array.isArray(userPoet.followers) ? userPoet.followers.length : 0,
+        },
       };
+      poetEmail = userPoet.email || null;
 
       // Get user poet's poems
       poems = await Poem.find({
@@ -434,6 +456,27 @@ router.get("/:id", poetOperationLimit, async (req, res) => {
         totalComments: 0,
         averageRating: 0,
       };
+    }
+
+    // Featured-poet honorary stat override: keep the public biography page
+    // in sync with the dashboard for designated featured poets.
+    const featured = getFeaturedPoetOverride(poetEmail);
+    if (featured) {
+      poetStats = {
+        ...poetStats,
+        totalPoems: featured.stats.poems,
+        totalLikes: featured.stats.likes,
+      };
+      poet.stats = {
+        ...(poet.stats || {}),
+        followers: featured.stats.followers,
+        poemCount: featured.stats.poems,
+        totalLikes: featured.stats.likes,
+      };
+      if (!poet.isVerified) poet.isVerified = true;
+      if (!poet.verificationBadge || poet.verificationBadge === "none") {
+        poet.verificationBadge = featured.badge;
+      }
     }
 
     // Get poem categories distribution

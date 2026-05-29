@@ -203,6 +203,11 @@ export const adminDashboardAPI = {
     return response.data;
   },
 
+  updatePoem: async (poemId, poemData) => {
+    const response = await api.put(`/admin/poems/${poemId}`, poemData);
+    return response.data;
+  },
+
   // Contest Management
   getContests: async () => {
     const response = await api.get("/admin/contests");

@@ -4,6 +4,8 @@ import { useAuth } from "../context/AuthContext";
 import { useMessage } from "../context/MessageContext";
 import { poetryAPI } from "../services/api";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
+import CopyrightBadge from "../components/copyright/CopyrightBadge";
+import ReportCopyrightModal from "../components/copyright/ReportCopyrightModal";
 import {
   BookOpen,
   Heart,
@@ -25,6 +27,7 @@ import {
   StarIcon,
   FileDown,
   Link,
+  Flag,
 } from "lucide-react";
 
 const Poetry = () => {
@@ -32,6 +35,7 @@ const Poetry = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showSuccess, showError, showWarning } = useMessage();
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // Redirect to poetry collection page if no ID is provided
   useEffect(() => {
@@ -131,7 +135,7 @@ const Poetry = () => {
     }
 
     try {
-      const response = await poetryAPI.likePoem(id);
+      await poetryAPI.likePoem(id);
       setIsLiked(!isLiked);
       setLikesCount((prev) => (isLiked ? prev - 1 : prev + 1));
 
@@ -197,7 +201,7 @@ const Poetry = () => {
     }
 
     try {
-      const response = await poetryAPI.addRating(id, { rating });
+      await poetryAPI.addRating(id, { rating });
       setUserRating(rating);
 
       // Update average rating (simplified calculation)
@@ -419,6 +423,27 @@ const Poetry = () => {
               <Download className="w-4 h-4" />
               <span>ڈاؤن لوڈ</span>
             </button>
+          </div>
+
+          {/* Copyright / License + Report */}
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-4">
+            <CopyrightBadge poemId={poem._id || poem.id} />
+            {user &&
+              String(user._id || user.id) !==
+                String(
+                  typeof poem.author === "object"
+                    ? poem.author?._id
+                    : poem.author
+                ) && (
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className="flex items-center space-x-2 px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm hover:bg-red-100 transition-colors"
+                  title="کاپی رائٹ کی شکایت درج کریں"
+                >
+                  <Flag className="w-4 h-4" />
+                  <span>کاپی رائٹ شکایت</span>
+                </button>
+              )}
           </div>
 
           {/* User Rating Section - Available for all authenticated users */}
@@ -749,6 +774,18 @@ const Poetry = () => {
           </div>
         </div>
       </div>
+
+      {/* Copyright Report Modal */}
+      <ReportCopyrightModal
+        poemId={poem._id || poem.id}
+        poemTitle={poem.title}
+        open={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onSuccess={() => {
+          setShowReportModal(false);
+          showSuccess("شکایت کامیابی سے درج ہوگئی");
+        }}
+      />
     </div>
   );
 };

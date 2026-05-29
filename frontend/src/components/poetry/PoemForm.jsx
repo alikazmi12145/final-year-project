@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Save, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import LicenseSelector from "../copyright/LicenseSelector";
 
 const PoemForm = ({ onSubmit, initialData = null, isLoading = false, apiError = null }) => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ const PoemForm = ({ onSubmit, initialData = null, isLoading = false, apiError = 
     description: "",
     tags: [],
     poetryLanguage: "urdu",
+    license: "all_rights_reserved",
   });
 
   const [tagInput, setTagInput] = useState("");
@@ -52,6 +54,7 @@ const PoemForm = ({ onSubmit, initialData = null, isLoading = false, apiError = 
         description: initialData.description || "",
         tags: initialData.tags || [],
         poetryLanguage: initialData.poetryLanguage || "urdu",
+        license: initialData.license || "all_rights_reserved",
       });
     }
   }, [initialData]);
@@ -310,6 +313,23 @@ const PoemForm = ({ onSubmit, initialData = null, isLoading = false, apiError = 
               <p className="mt-1 text-sm text-urdu-maroon">
                 ٹیگز: {formData.tags.length}/10
               </p>
+            </div>
+
+            {/* License */}
+            <div>
+              <label className="block text-sm font-medium text-urdu-brown mb-2">
+                لائسنس / Copyright License
+              </label>
+              <p className="text-xs text-urdu-maroon mb-3">
+                اپنی نظم کے استعمال کے حقوق منتخب کریں۔ یہ ہر نظم پر بطور کاپی رائٹ نوٹس ظاہر ہوگا۔
+              </p>
+              <LicenseSelector
+                value={formData.license}
+                onChange={(val) =>
+                  setFormData((prev) => ({ ...prev, license: val }))
+                }
+                compact
+              />
             </div>
           </div>
 
